@@ -32,7 +32,7 @@ ai-news-hub/
 ## アーキテクチャ
 
 ```
-Obsidian保管庫（my-vault リポジトリ）
+my-vault リポジトリ
 └── 自動ニュース配信/*.md   ← AIが毎日生成するニュース記事
         ↓
     personal-pick.yml（GitHub Actions）
@@ -48,7 +48,7 @@ Obsidian保管庫（my-vault リポジトリ）
 
 | リポジトリ | 役割 |
 |---|---|
-| `suzutomo-organization/my-vault` | Obsidian保管庫本体。ニュース記事の生成・parse_news.pyの実行を担う |
+| `suzutomo-organization/my-vault` | ニュース記事の生成・parse_news.pyの実行を担うメインリポジトリ |
 | `suzutomo1984/ai-news-hub` | フロントエンド（HTML/CSS/JS）とarticles.jsonを管理。GitHub Pagesで配信 |
 
 ---
@@ -80,7 +80,7 @@ http://localhost:8000
 
 ## デプロイの仕組み
 
-`personal-pick.yml`（Obsidian保管庫側のGitHub Actions）の最後に以下が実行される：
+`personal-pick.yml`（my-vault リポジトリのGitHub Actions）の最後に以下が実行される：
 
 1. `parse_news.py` を実行 → `articles.json` を生成
 2. `suzutomo1984/ai-news-hub` リポジトリに push（PAT使用）
