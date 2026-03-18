@@ -8,7 +8,7 @@ AI・自動化・開発ツール領域のニュースを自動収集し、ブラ
 
 ## 概要
 
-Obsidian保管庫内の `自動ニュース配信/` フォルダに蓄積されたMarkdownニュース記事を、`parse_news.py` が `articles.json` に変換し、静的HTMLサイトとして配信する仕組み。
+GitHubリポジトリ内の `自動ニュース配信/` フォルダに蓄積されたMarkdownニュース記事を、`parse_news.py` が `articles.json` に変換し、静的HTMLサイトとして配信する仕組み。
 
 GitHub Actionsでパーソナルピック処理（`personal-pick.yml`）が完了するたびに自動更新される。
 
@@ -106,4 +106,3 @@ http://localhost:8000
 
 - 公開サイト: https://suzutomo1984.github.io/ai-news-hub/
 - リポジトリ: https://github.com/suzutomo1984/ai-news-hub
-- 保管庫リポ: https://github.com/suzutomo-organization/my-vault
