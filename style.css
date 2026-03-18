@@ -442,17 +442,83 @@ body {
   }
 }
 
-/* モバイル: サイドバー非表示、1カラム */
+/* モバイル: 2段ヘッダー・サイドバー非表示・1カラム */
 @media (max-width: 768px) {
-  :root { --sidebar-w: 0px; }
+  :root {
+    --sidebar-w: 0px;
+    --header-h: 96px; /* 2段分の高さ */
+  }
 
+  /* ヘッダーを2段構成に */
+  #header {
+    flex-wrap: wrap;
+    padding: 0 12px;
+    height: auto;
+    min-height: var(--header-h);
+    gap: 0;
+  }
+
+  /* 1段目: ロゴ + フィルターボタン + 検索 */
+  #logo {
+    flex: 1;
+    height: 48px;
+    align-items: center;
+  }
+
+  #search-wrapper {
+    height: 48px;
+    display: flex;
+    align-items: center;
+  }
+
+  #search-input {
+    width: 130px;
+    font-size: 13px;
+  }
+
+  #search-input:focus { width: 160px; }
+
+  #sidebar-toggle {
+    display: flex;
+    align-items: center;
+    height: 48px;
+    padding: 0 10px;
+    margin: 0 4px;
+  }
+
+  /* 2段目: タブバーを全幅で下段に */
+  #tabbar {
+    width: 100%;
+    height: 48px;
+    border-top: 1px solid var(--border);
+    justify-content: space-around;
+    gap: 0;
+    padding: 0 4px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 0 8px;
+    font-size: 13px;
+    height: 100%;
+    border-bottom: none;
+    border-radius: var(--radius-sm);
+  }
+
+  .tab-btn.active {
+    color: var(--accent-hover);
+    background: var(--accent-subtle);
+    border-bottom: none;
+  }
+
+  /* サイドバー: ドロップダウン型 */
   #sidebar {
     top: var(--header-h);
     left: 0; right: 0;
     bottom: auto;
     width: 100%;
     height: auto;
-    max-height: 60vh;
+    max-height: 50vh;
     border-right: none;
     border-bottom: 1px solid var(--border);
     display: none;
@@ -469,6 +535,8 @@ body {
     gap: 4px;
   }
 
+  .sidebar-divider { display: none; }
+
   .sidebar-item {
     border-left: none;
     border: 1px solid var(--border);
@@ -484,19 +552,10 @@ body {
     color: var(--accent-hover);
   }
 
+  /* メイン */
   #main { margin-left: 0; }
 
   .article-cards-grid { grid-template-columns: 1fr; }
 
   .date-group { padding: 0 12px; }
-
-  #sidebar-toggle { display: block; }
-
-  #search-input { width: 160px; }
-  #search-input:focus { width: 200px; }
-
-  #tabbar { gap: 0; }
-  .tab-btn { padding: 6px 10px; font-size: 13px; }
-
-  #logo-text { display: none; }
 }
