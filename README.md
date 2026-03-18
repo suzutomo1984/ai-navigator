@@ -21,7 +21,7 @@ ai-news-hub/
 ├── index.html        # メインUI（タブ：LATEST / PICKS / RANKING）
 ├── style.css         # スタイル
 ├── app.js            # フィルタ・検索・タブ切り替えロジック
-├── parse_news.py     # Obsidian保管庫のMDを articles.json に変換するパーサー
+├── parse_news.py     # MarkdownファイルをarticlesJSONに変換するパーサー
 ├── articles.json     # パーサーの出力（自動生成・gitignore対象）
 ├── start.bat         # ローカル確認用サーバー起動スクリプト（Windows）
 └── audit_report.txt  # parse_news.py の実行ログ
