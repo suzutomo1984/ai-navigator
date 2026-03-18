@@ -1,19 +1,19 @@
 /* =============================================
-   AI NEWS HUB - メインアプリケーション
+   AI Navigator - メインアプリケーション v2
    ============================================= */
 
-const PAGE_SIZE = 50; // 初期表示件数
+const PAGE_SIZE = 50;
 
 // =============================================
 // 状態管理
 // =============================================
 
 const state = {
-  tab: "latest",       // "latest" | "picks" | "ranking"
+  tab: "latest",
   category: "all",
   date: "all",
   search: "",
-  page: 1,             // 表示ページ数（1 = 最初のPAGE_SIZE件）
+  page: 1,
 };
 
 let allArticles = [];
@@ -33,43 +33,43 @@ async function loadData() {
   allDates = data.dates || [];
   allCategories = data.categories || [];
 
-  buildFilterBars();
+  buildSidebarFilters();
   render();
 }
 
 // =============================================
-// フィルターバー構築
+// サイドバーフィルター構築
 // =============================================
 
-function buildFilterBars() {
-  // カテゴリフィルター
-  const catBar = document.getElementById("category-filter");
-  catBar.innerHTML = `<button class="filter-btn active" data-cat="all">ALL</button>`;
+function buildSidebarFilters() {
+  // カテゴリフィルター（縦リスト）
+  const catList = document.getElementById("category-filter");
+  catList.innerHTML = `<li class="sidebar-item active" data-cat="all">ALL</li>`;
   allCategories
     .filter(c => c.articleCount > 0)
     .forEach(c => {
-      const btn = document.createElement("button");
-      btn.className = "filter-btn";
-      btn.dataset.cat = c.id;
-      btn.textContent = `${c.emoji} ${c.label}`;
-      catBar.appendChild(btn);
+      const li = document.createElement("li");
+      li.className = "sidebar-item";
+      li.dataset.cat = c.id;
+      li.textContent = `${c.emoji} ${c.label}`;
+      catList.appendChild(li);
     });
 
-  // 日付フィルター（最新30日分）
-  const dateBar = document.getElementById("date-filter");
-  dateBar.innerHTML = `<button class="filter-btn active" data-date="all">All</button>`;
+  // 日付フィルター（縦リスト、最新30日）
+  const dateList = document.getElementById("date-filter");
+  dateList.innerHTML = `<li class="sidebar-item active" data-date="all">All</li>`;
   allDates
     .filter(d => d.status === "ok" && d.articleCount > 0)
     .slice(0, 30)
     .forEach(d => {
-      const btn = document.createElement("button");
-      btn.className = "filter-btn";
-      btn.dataset.date = d.date;
+      const li = document.createElement("li");
+      li.className = "sidebar-item";
+      li.dataset.date = d.date;
       const dt = new Date(d.date);
       const mm = dt.getMonth() + 1;
       const dd = dt.getDate();
-      btn.textContent = `${mm}/${dd}`;
-      dateBar.appendChild(btn);
+      li.textContent = `${mm}/${dd}`;
+      dateList.appendChild(li);
     });
 }
 
@@ -79,16 +79,9 @@ function buildFilterBars() {
 
 function filterArticles() {
   return allArticles.filter(a => {
-    // タブ
     if (state.tab === "picks" && !a.isPick) return false;
-
-    // カテゴリ
     if (state.category !== "all" && a.category !== state.category) return false;
-
-    // 日付
     if (state.date !== "all" && a.date !== state.date) return false;
-
-    // 検索
     if (state.search) {
       const q = state.search.toLowerCase();
       const inTitle = a.title.toLowerCase().includes(q);
@@ -96,7 +89,6 @@ function filterArticles() {
       const inSource = a.source.toLowerCase().includes(q);
       if (!inTitle && !inSummary && !inSource) return false;
     }
-
     return true;
   });
 }
@@ -107,14 +99,11 @@ function filterArticles() {
 
 function sortArticles(articles) {
   if (state.tab === "ranking") {
-    // tier昇順 → score降順
     return [...articles].sort((a, b) => {
       if (a.rankingTier !== b.rankingTier) return a.rankingTier - b.rankingTier;
       return b.rankingScore - a.rankingScore;
     });
   }
-
-  // LATEST / PICKS: 日付降順 → id順
   return [...articles].sort((a, b) => {
     if (a.date !== b.date) return b.date.localeCompare(a.date);
     if (a.isPick && !b.isPick) return -1;
@@ -155,9 +144,18 @@ function createCard(article, isRanking = false) {
     : "";
 
   const categoryLabel = allCategories.find(c => c.id === article.category);
-  const catText = categoryLabel
-    ? `${categoryLabel.emoji} ${categoryLabel.label}`
-    : article.category;
+  const catText = categoryLabel ? `${categoryLabel.label}` : article.category;
+
+  // ソースバッジ（ドメイン短縮表示）
+  const sourceBadge = article.source
+    ? `<span class="card-badge">${escHtml(article.source)}</span>`
+    : "";
+
+  // カテゴリバッジ
+  const catBadge = `<span class="card-badge">${escHtml(catText)}</span>`;
+
+  // 時刻アイコン（見た目の演出）
+  const timeIcon = `<span class="card-badge badge-time">🕐</span>`;
 
   a.innerHTML = `
     <div class="card-header">
@@ -166,9 +164,10 @@ function createCard(article, isRanking = false) {
       ${rankScore}
     </div>
     <div class="card-meta">
-      ${article.source ? `<span class="card-source">${escHtml(article.source)}</span>` : ""}
-      <span class="card-category">${escHtml(catText)}</span>
+      ${sourceBadge}
+      ${catBadge}
       ${tierBadge}
+      ${timeIcon}
     </div>
     ${article.summary ? `<div class="card-summary">${escHtml(article.summary)}</div>` : ""}
   `;
@@ -194,11 +193,11 @@ function render() {
   document.getElementById("stats-bar").textContent =
     `${filtered.length}件表示中 (全${allArticles.length}件)`;
 
-  const main = document.getElementById("articles-container");
-  main.innerHTML = "";
+  const container = document.getElementById("articles-container");
+  container.innerHTML = "";
 
   if (visible.length === 0) {
-    main.innerHTML = `
+    container.innerHTML = `
       <div id="empty-state">
         <div class="empty-icon">🔍</div>
         <div>記事が見つかりませんでした</div>
@@ -210,14 +209,17 @@ function render() {
   const isRanking = state.tab === "ranking";
 
   if (isRanking) {
-    // RANKINGはフラットリスト
-    visible.forEach(article => {
-      main.appendChild(createCard(article, true));
-    });
+    // RANKINGは日付グループなしのグリッド
+    const group = document.createElement("div");
+    group.className = "date-group";
+    const grid = document.createElement("div");
+    grid.className = "article-cards-grid";
+    visible.forEach(article => grid.appendChild(createCard(article, true)));
+    group.appendChild(grid);
+    container.appendChild(group);
   } else {
-    // LATEST/PICKSは日付グルーピング
+    // LATEST/PICKS: 日付グルーピング
     let currentDate = null;
-    let dateGroup = null;
     let dateCards = null;
 
     visible.forEach(article => {
@@ -227,14 +229,14 @@ function render() {
         const dt = new Date(currentDate);
         const days = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
         const dayLabel = days[dt.getDay()];
+        const mm = dt.getMonth() + 1;
+        const dd = dt.getDate();
 
-        dateGroup = document.createElement("div");
+        const dateGroup = document.createElement("div");
         dateGroup.className = "date-group";
 
         const header = document.createElement("div");
         header.className = "date-header";
-        const mm = dt.getMonth() + 1;
-        const dd = dt.getDate();
         header.innerHTML = `
           <span class="date-label">${mm}/${dd} (${dayLabel})</span>
           <span class="date-count">${countForDate}</span>
@@ -245,7 +247,7 @@ function render() {
         dateCards.className = "article-cards-grid";
         dateGroup.appendChild(dateCards);
 
-        main.appendChild(dateGroup);
+        container.appendChild(dateGroup);
       }
       dateCards.appendChild(createCard(article, false));
     });
@@ -278,24 +280,24 @@ function setupEvents() {
     });
   });
 
-  // カテゴリフィルター
+  // カテゴリフィルター（サイドバー縦リスト）
   document.getElementById("category-filter").addEventListener("click", e => {
-    const btn = e.target.closest(".filter-btn");
-    if (!btn) return;
-    document.querySelectorAll("#category-filter .filter-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    state.category = btn.dataset.cat;
+    const item = e.target.closest(".sidebar-item");
+    if (!item) return;
+    document.querySelectorAll("#category-filter .sidebar-item").forEach(i => i.classList.remove("active"));
+    item.classList.add("active");
+    state.category = item.dataset.cat;
     state.page = 1;
     render();
   });
 
-  // 日付フィルター
+  // 日付フィルター（サイドバー縦リスト）
   document.getElementById("date-filter").addEventListener("click", e => {
-    const btn = e.target.closest(".filter-btn");
-    if (!btn) return;
-    document.querySelectorAll("#date-filter .filter-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    state.date = btn.dataset.date;
+    const item = e.target.closest(".sidebar-item");
+    if (!item) return;
+    document.querySelectorAll("#date-filter .sidebar-item").forEach(i => i.classList.remove("active"));
+    item.classList.add("active");
+    state.date = item.dataset.date;
     state.page = 1;
     render();
   });
@@ -314,7 +316,22 @@ function setupEvents() {
   document.getElementById("load-more-btn").addEventListener("click", () => {
     state.page++;
     render();
-    // スムーズスクロールしない（位置キープ）
+  });
+
+  // モバイルサイドバートグル
+  const sidebarToggle = document.getElementById("sidebar-toggle");
+  const sidebar = document.getElementById("sidebar");
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener("click", () => {
+      sidebar.classList.toggle("open");
+    });
+  }
+
+  // サイドバーアイテムクリック後（モバイル）: 自動的にサイドバーを閉じる
+  sidebar.addEventListener("click", e => {
+    if (e.target.closest(".sidebar-item") && window.innerWidth <= 768) {
+      sidebar.classList.remove("open");
+    }
   });
 }
 
@@ -329,7 +346,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <div id="empty-state">
         <div class="empty-icon">⚠️</div>
         <div>データの読み込みに失敗しました</div>
-        <div style="font-size:12px;margin-top:8px;color:#64748b">${err.message}</div>
+        <div style="font-size:12px;margin-top:8px;color:#484f58">${err.message}</div>
       </div>`;
   });
 });

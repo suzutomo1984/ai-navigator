@@ -8,9 +8,19 @@
 </head>
 <body>
 
-  <!-- ヘッダー -->
+  <!-- ヘッダー: ロゴ | タブ | 検索 -->
   <header id="header">
-    <h1>AI <span>Navigator</span></h1>
+    <div id="logo">
+      <span id="logo-icon">Ai</span>
+      <span id="logo-text">AI Navigator</span>
+    </div>
+
+    <nav id="tabbar">
+      <button class="tab-btn active" data-tab="latest">Latest</button>
+      <button class="tab-btn" data-tab="picks">Picks</button>
+      <button class="tab-btn" data-tab="ranking">Ranking</button>
+    </nav>
+
     <div id="search-wrapper">
       <span id="search-icon">🔍</span>
       <input
@@ -21,41 +31,40 @@
         spellcheck="false"
       >
     </div>
+
+    <!-- モバイル用サイドバートグル -->
+    <button id="sidebar-toggle" aria-label="フィルターを開く">☰</button>
   </header>
 
-  <!-- タブバー -->
-  <nav id="tabbar">
-    <button class="tab-btn active" data-tab="latest">LATEST</button>
-    <button class="tab-btn" data-tab="picks">PICKS</button>
-    <button class="tab-btn" data-tab="ranking">RANKING</button>
-  </nav>
+  <!-- アプリレイアウト: サイドバー + メイン -->
+  <div id="app-layout">
 
-  <!-- メインコンテンツ -->
-  <main id="main">
+    <!-- 左サイドバー: フィルター -->
+    <aside id="sidebar">
+      <section class="sidebar-section">
+        <ul id="category-filter"></ul>
+      </section>
+      <div class="sidebar-divider"></div>
+      <section class="sidebar-section">
+        <ul id="date-filter"></ul>
+      </section>
+    </aside>
 
-    <!-- カテゴリフィルター -->
-    <div class="filter-bar" id="category-filter"></div>
-
-    <!-- 日付フィルター -->
-    <div class="filter-bar" id="date-filter"></div>
-
-    <!-- 統計バー -->
-    <div id="stats-bar">読み込み中...</div>
-
-    <!-- 記事一覧 -->
-    <div id="articles-container">
-      <div id="empty-state">
-        <div class="empty-icon">⏳</div>
-        <div>読み込み中...</div>
+    <!-- メインコンテンツ -->
+    <main id="main">
+      <div id="stats-bar">読み込み中...</div>
+      <div id="articles-container">
+        <div id="empty-state">
+          <div class="empty-icon">⏳</div>
+          <div>読み込み中...</div>
+        </div>
       </div>
-    </div>
+      <div id="load-more-wrapper" style="display:none">
+        <button id="load-more-btn">もっと見る</button>
+      </div>
+    </main>
 
-    <!-- もっと見る -->
-    <div id="load-more-wrapper" style="display:none">
-      <button id="load-more-btn">もっと見る</button>
-    </div>
-
-  </main>
+  </div>
 
   <script src="app.js"></script>
 </body>
