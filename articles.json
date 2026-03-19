@@ -1,17 +1,24 @@
 {
-  "generatedAt": "2026-03-19T00:03:54.430889+09:00",
-  "totalArticles": 677,
+  "generatedAt": "2026-03-19T16:37:16.439861+09:00",
+  "totalArticles": 691,
   "dateRange": {
     "from": "2026-01-31",
-    "to": "2026-03-18"
+    "to": "2026-03-19"
   },
   "dates": [
+    {
+      "date": "2026-03-19",
+      "dayOfWeek": "THU",
+      "articleCount": 14,
+      "status": "ok",
+      "dailySummary": "本日は、AIエージェント、特に「Claude Code」や「MCP（Model Context Protocol）」を実務や個人開発に深く組み込む動きが一段と加速しています。単にコードを書かせる段階から、Blenderでの設計、家計管理の自動化、案件のスクリーニングなど、具体的な課題に対してAIを「自律」させる実践的な事例が多数報告されました。"
+    },
     {
       "date": "2026-03-18",
       "dayOfWeek": "WED",
       "articleCount": 16,
       "status": "ok",
-      "dailySummary": "今日の技術トレンドは、AIが単なる「チャット相手」から、具体的なタスクを完遂する「エージェント」へと完全にシフトしたことを示しています。特にClaude Codeの運用ノウハウ（CLAUDE.mdの活用など）や、ローカルLLMを簡単に扱える「Unsloth Studio」の登場など、開発環境の自動化が一段と加速しました。また、SEOリライトやゲーム制作、さらにはSNS運用代行の代替など、個人がAI"
+      "dailySummary": "今日の技術トレンドは、AIが単なる「チャット相手」から、具体的なタスクを完遂する「エージェント」へと完全にシフトしたことを示しています。特にClaude Codeの運用ノウハウ（CLAUDE.mdの活用など）や、ローカルLLMを簡単に扱える「Unsloth Studio」の登場など、開発環境の自動化が一段と加速しました。また、SEOリライトやゲーム制作、さらにはSNS運用代行の代替など、個人がAIを「実務の右腕」として使いこなし、具体的な収益や成果に繋げている事例が目立ちます。あなたは、どのルーチンワークをAIエージェントに託しますか？"
     },
     {
       "date": "2026-03-17",
@@ -25,14 +32,14 @@
       "dayOfWeek": "MON",
       "articleCount": 15,
       "status": "ok",
-      "dailySummary": "今日は、AIが単なるチャット相手から、自律的にタスクを完遂する「エージェント」へと完全にシフトしたことを象徴する一日でした。特にClaude Codeを中心とした開発自動化や、MCP（Model Context Protocol）を介してブラウザや外部ツールをAIが直接操作する手法が大きな注目を集めています。エンジニアがAIを「指揮」してツールを量産する一方で、非エンジニアが「AI要塞」を築き業務"
+      "dailySummary": "今日は、AIが単なるチャット相手から、自律的にタスクを完遂する「エージェント」へと完全にシフトしたことを象徴する一日でした。特にClaude Codeを中心とした開発自動化や、MCP（Model Context Protocol）を介してブラウザや外部ツールをAIが直接操作する手法が大きな注目を集めています。エンジニアがAIを「指揮」してツールを量産する一方で、非エンジニアが「AI要塞」を築き業務を丸投げする事例も増えており、スキルの定義が根本から再構築されつつあります。一方で、AIのハルシネーション問題や新たなセキュリティ攻撃（Unicode攻撃）への警鐘も鳴らされており、技術の進化に伴うリスク管理の重要性も浮き彫りになっています。あなたは、AIに「何を任せ、何を守り」ますか？"
     },
     {
       "date": "2026-03-15",
       "dayOfWeek": "SUN",
       "articleCount": 13,
       "status": "ok",
-      "dailySummary": "本日のニュースでは、AIが単なる「回答者」から、自ら判断し行動する「実行者（エージェント）」へと明確にシフトしている潮流が鮮明になりました。特に「Claude Code」がGitHubのPRに自らコメントしたり、銀行残高管理を自動化したりと、実務に深く食い込む事例が続出しています。また、ローカルLLMの「Qwen 3.5」が驚異的なパフォーマンスを見せるなど、クラウドに頼らないAI活用も現実味を帯"
+      "dailySummary": "本日のニュースでは、AIが単なる「回答者」から、自ら判断し行動する「実行者（エージェント）」へと明確にシフトしている潮流が鮮明になりました。特に「Claude Code」がGitHubのPRに自らコメントしたり、銀行残高管理を自動化したりと、実務に深く食い込む事例が続出しています。また、ローカルLLMの「Qwen 3.5」が驚異的なパフォーマンスを見せるなど、クラウドに頼らないAI活用も現実味を帯びてきました。さらに、ObsidianなどのツールとAIを組み合わせ、AIとの対話を「資産」として蓄積するナレッジ管理術も注目されています。あなたは、AIにどの程度の「権限」を譲渡する準備ができていますか？"
     },
     {
       "date": "2026-03-14",
@@ -81,21 +88,21 @@
       "dayOfWeek": "SUN",
       "articleCount": 13,
       "status": "ok",
-      "dailySummary": "本日の技術トレンドは、AIエージェントの実践投入と、それに伴う「開発環境の再定義」が大きなうねりを見せています。特にAnthropicの「Claude Code」に関する具体的なTipsやセキュリティ検証が相次いでおり、単なるコード生成から、ターミナル上で自律的に動くエージェントへの移行が急速に進んでいます。また、llama.cppへのMCP（Model Context Protocol）統合が発"
+      "dailySummary": "本日の技術トレンドは、AIエージェントの実践投入と、それに伴う「開発環境の再定義」が大きなうねりを見せています。特にAnthropicの「Claude Code」に関する具体的なTipsやセキュリティ検証が相次いでおり、単なるコード生成から、ターミナル上で自律的に動くエージェントへの移行が急速に進んでいます。また、llama.cppへのMCP（Model Context Protocol）統合が発表されるなど、ローカルLLMと外部ツールの連携も一段と強固になりました。"
     },
     {
       "date": "2026-03-07",
       "dayOfWeek": "SAT",
       "articleCount": 15,
       "status": "ok",
-      "dailySummary": "本日の技術ニュースは、AIが単なる「回答ツール」から、自律的にタスクを完遂する「実行エージェント」へと進化を加速させている様子が鮮明に表れています。OpenAIの「Symphony」やAnthropicの「Claude Code」といった、開発ワークフローに深く食い込むツールの話題が席巻しており、エンジニアの作業スタイルは「コードを書く」から「AIエージェントを指揮・検証する」フェーズへ移行しつつ"
+      "dailySummary": "本日の技術ニュースは、AIが単なる「回答ツール」から、自律的にタスクを完遂する「実行エージェント」へと進化を加速させている様子が鮮明に表れています。OpenAIの「Symphony」やAnthropicの「Claude Code」といった、開発ワークフローに深く食い込むツールの話題が席巻しており、エンジニアの作業スタイルは「コードを書く」から「AIエージェントを指揮・検証する」フェーズへ移行しつつあります。"
     },
     {
       "date": "2026-03-06",
       "dayOfWeek": "FRI",
       "articleCount": 14,
       "status": "ok",
-      "dailySummary": "本日の技術トレンドは、OpenAIによる「GPT-5.4」の突如たる発表と、Anthropicの「Claude Code」を軸としたエコシステムの急拡大という、二大巨頭による激しい主導権争いが中心となっています。特にClaude Codeに関しては、単なるコーディング補助に留まらず、Hooksを利用した時間感覚の付与やObsidianとの連携など、開発者が自ら「AIエージェントを飼い慣らす」フェー"
+      "dailySummary": "本日の技術トレンドは、OpenAIによる「GPT-5.4」の突如たる発表と、Anthropicの「Claude Code」を軸としたエコシステムの急拡大という、二大巨頭による激しい主導権争いが中心となっています。特にClaude Codeに関しては、単なるコーディング補助に留まらず、Hooksを利用した時間感覚の付与やObsidianとの連携など、開発者が自ら「AIエージェントを飼い慣らす」フェーズに突入しました。"
     },
     {
       "date": "2026-03-05",
@@ -334,19 +341,19 @@
       "id": "ai-agent",
       "label": "AI/MCP",
       "emoji": "🤖",
-      "articleCount": 191
+      "articleCount": 195
     },
     {
       "id": "obsidian-pkm",
       "label": "Obsidian",
       "emoji": "📝",
-      "articleCount": 104
+      "articleCount": 106
     },
     {
       "id": "dev-tools",
       "label": "開発ツール",
       "emoji": "🛠️",
-      "articleCount": 150
+      "articleCount": 153
     },
     {
       "id": "no-code",
@@ -358,13 +365,13 @@
       "id": "efficiency",
       "label": "業務効率化",
       "emoji": "⚡",
-      "articleCount": 130
+      "articleCount": 133
     },
     {
       "id": "marketing",
       "label": "マーケ/収益化",
       "emoji": "💰",
-      "articleCount": 44
+      "articleCount": 46
     }
   ],
   "articles": [
@@ -9840,6 +9847,202 @@
       "source": "Note",
       "category": "efficiency",
       "summary": "AIから最高の回答を引き出すための「問い」の技術。単なるプロンプト集ではなく、思考の整理や問題解決のパートナーとしてAIを扱うためのマインドセットです。",
+      "section": "main",
+      "isPick": false,
+      "pickPriority": null,
+      "rankingTier": 3,
+      "rankingScore": 4
+    },
+    {
+      "id": "2026-03-19_1",
+      "date": "2026-03-19",
+      "title": "Claude Code 公式プラグイン全解説",
+      "url": "https://zenn.dev/chmod644/articles/claude-code-official-plugins-guide",
+      "source": "Zenn",
+      "category": "ai-agent",
+      "summary": "Claude Codeを拡張する公式プラグインの使い方を網羅。ファイル操作や検索、ターミナル実行など、エージェントの能力を最大限に引き出す設定が解説されています。",
+      "section": "main",
+      "isPick": false,
+      "pickPriority": null,
+      "rankingTier": 3,
+      "rankingScore": 6
+    },
+    {
+      "id": "2026-03-19_2",
+      "date": "2026-03-19",
+      "title": "無料の国交省、中小企業庁、総務省データ用「リモートMCPサーバー」公開",
+      "url": "https://atmarkit.itmedia.co.jp/ait/articles/2603/18/news055.html",
+      "source": "ITmedia",
+      "category": "ai-agent",
+      "summary": "日本の行政データをAIから直接参照できるMCPサーバーが登場。AIエージェントが最新の統計や施策を元に回答・分析することが可能になります。",
+      "section": "main",
+      "isPick": true,
+      "pickPriority": "must-read",
+      "rankingTier": 1,
+      "rankingScore": 6
+    },
+    {
+      "id": "2026-03-19_3",
+      "date": "2026-03-19",
+      "title": "AI × Blender MCP で農作業小屋の設計図を1日で4種類作った話",
+      "url": "https://zenn.dev/hiroakikody/articles/47ba166f4dad26",
+      "source": "Zenn",
+      "category": "ai-agent",
+      "summary": "3D制作ソフトBlenderをAIから操作するMCPを活用した事例。専門知識が必要な3Dモデリングを、対話を通じて高速にプロトタイピングしています。",
+      "section": "main",
+      "isPick": true,
+      "pickPriority": "worth-checking",
+      "rankingTier": 2,
+      "rankingScore": 6
+    },
+    {
+      "id": "2026-03-19_4",
+      "date": "2026-03-19",
+      "title": "【2026年最新】OpenClawとは？話題のAIエージェントを完全解説",
+      "url": "https://note.com/engineer_words/n/n59fa1be290c5",
+      "source": "Note",
+      "category": "ai-agent",
+      "summary": "自律型AIエージェントとして注目を集めるOpenClawの概要と導入メリットを解説。複雑なタスクを自ら分解して実行する次世代の仕組みが分かります。",
+      "section": "main",
+      "isPick": false,
+      "pickPriority": null,
+      "rankingTier": 3,
+      "rankingScore": 6
+    },
+    {
+      "id": "2026-03-19_5",
+      "date": "2026-03-19",
+      "title": "WSL環境で Claude Code と Obsidian CLI をセットアップしてみた",
+      "url": "https://zenn.dev/takenokokingdom/articles/f3b4e33a5ce59e",
+      "source": "Zenn",
+      "category": "obsidian-pkm",
+      "summary": "開発環境（WSL）からClaude Codeを使って、メモアプリObsidianをコマンド操作する連携術。思考と開発をシームレスにつなぐ環境構築の記録です。",
+      "section": "main",
+      "isPick": false,
+      "pickPriority": null,
+      "rankingTier": 3,
+      "rankingScore": 4
+    },
+    {
+      "id": "2026-03-19_6",
+      "date": "2026-03-19",
+      "title": "Obsidianで確定申告してみた",
+      "url": "https://note.com/shotovim/n/n10913714ba9b",
+      "source": "Note",
+      "category": "obsidian-pkm",
+      "summary": "普段のメモツールであるObsidianを、複雑な確定申告の管理に活用。プラグインやテンプレートを駆使して、情報を一元化する実践的なTipsです。",
+      "section": "main",
+      "isPick": false,
+      "pickPriority": null,
+      "rankingTier": 3,
+      "rankingScore": 4
+    },
+    {
+      "id": "2026-03-19_7",
+      "date": "2026-03-19",
+      "title": "GitHub Copilot CLI の公式ハンズオンやってみた",
+      "url": "https://qiita.com/chomado/items/6d26b6ffc11d163dfd71",
+      "source": "Qiita",
+      "category": "dev-tools",
+      "summary": "ターミナル上でAIがコマンドを提案してくれるCopilot CLIの導入ガイド。コマンドを覚えるストレスから解放される、全エンジニア必見のツールです。",
+      "section": "main",
+      "isPick": false,
+      "pickPriority": null,
+      "rankingTier": 3,
+      "rankingScore": 4
+    },
+    {
+      "id": "2026-03-19_8",
+      "date": "2026-03-19",
+      "title": "「AIってコード書いてくれるんですか？」と聞いてきた事務の同僚が、3日後にアプリを作った話",
+      "url": "https://note.com/himawasa/n/nd743894329c7",
+      "source": "Note",
+      "category": "dev-tools",
+      "summary": "非エンジニアがAIをパートナーにすることで、短期間で実用的なツールを自作した感動的なエピソード。開発の民主化が現場で起きていることを示しています。",
+      "section": "main",
+      "isPick": false,
+      "pickPriority": null,
+      "rankingTier": 3,
+      "rankingScore": 4
+    },
+    {
+      "id": "2026-03-19_9",
+      "date": "2026-03-19",
+      "title": "Vibe Coding in Parallel Was Chaos—So I Built Agent Buddy for VS Code",
+      "url": "https://dev.to/dougs/vibe-coding-in-parallel-was-chaos-so-i-built-agent-buddy-for-vs-code-3b1k",
+      "source": "Dev.to",
+      "category": "dev-tools",
+      "summary": "複数のAIエージェントを同時に走らせる「Vibe Coding」の混乱を解決するVS Code拡張機能の開発記。エージェント管理の重要性が増しています。",
+      "section": "main",
+      "isPick": false,
+      "pickPriority": null,
+      "rankingTier": 3,
+      "rankingScore": 4
+    },
+    {
+      "id": "2026-03-19_10",
+      "date": "2026-03-19",
+      "title": "個人開発の開発者ツールを3週間でMAU 175にした全記録",
+      "url": "https://zenn.dev/ai_worklab/articles/developer-tool-suite-mau-growth",
+      "source": "Zenn",
+      "category": "marketing",
+      "summary": "広告費ゼロで、記事投稿とSEOだけでユーザーを増やした戦略の記録。ターゲット選定とコンテンツの質が、個人開発の成功にいかに重要かが学べます。",
+      "section": "main",
+      "isPick": false,
+      "pickPriority": null,
+      "rankingTier": 3,
+      "rankingScore": 4
+    },
+    {
+      "id": "2026-03-19_11",
+      "date": "2026-03-19",
+      "title": "海外AIニュースを日本語でまとめ読みしたくてaimatome.jpをClaude Codeだけで作った話",
+      "url": "https://zenn.dev/taketoc/articles/a40265fc313c68",
+      "source": "Zenn",
+      "category": "marketing",
+      "summary": "自身の「欲しい」をClaude Codeを使って即座に形にした事例。AIを使うことで、アイデアからリリースまでの速度が劇的に向上しています。",
+      "section": "main",
+      "isPick": true,
+      "pickPriority": "worth-checking",
+      "rankingTier": 2,
+      "rankingScore": 4
+    },
+    {
+      "id": "2026-03-19_12",
+      "date": "2026-03-19",
+      "title": "【Gemini 2.5 Flash】インボイスを自律抽出。画像PDFをExcel/Markdownへ製錬",
+      "url": "https://zenn.dev/dev_haru/articles/e5ccb8b5bcfae7",
+      "source": "Zenn",
+      "category": "efficiency",
+      "summary": "面倒な経理作業をAIで自動化。画像やPDFから必要な情報を正確に抜き出し、構造化データに変換する実用的なツールの紹介です。",
+      "section": "main",
+      "isPick": true,
+      "pickPriority": "must-read",
+      "rankingTier": 1,
+      "rankingScore": 4
+    },
+    {
+      "id": "2026-03-19_13",
+      "date": "2026-03-19",
+      "title": "家族の家計管理がつらすぎて、スクショ×AIで自動化するアプリを個人開発した話",
+      "url": "https://zenn.dev/snrnapa/articles/3103138faf7a50",
+      "source": "Zenn",
+      "category": "efficiency",
+      "summary": "銀行やカードの明細をスクショするだけで家計簿が完成する仕組み。日常の「つらさ」を技術で解決する、個人開発の原点が詰まっています。",
+      "section": "main",
+      "isPick": false,
+      "pickPriority": null,
+      "rankingTier": 3,
+      "rankingScore": 4
+    },
+    {
+      "id": "2026-03-19_14",
+      "date": "2026-03-19",
+      "title": "評価コメントをAIに任せたら、自分の\"癖\"が丸見えになった",
+      "url": "https://note.com/lisa_honda/n/n94ac6c23912a",
+      "source": "Note",
+      "category": "efficiency",
+      "summary": "管理職の負担である評価業務にAIを導入。効率化だけでなく、AIとの対話を通じて自身の評価基準の偏りに気づくという副次的な効果が興味深いです。",
       "section": "main",
       "isPick": false,
       "pickPriority": null,

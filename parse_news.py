@@ -425,7 +425,7 @@ def extract_daily_summary(filepath: Path) -> str:
         text = match.group(1).strip()
         # 最初の段落のみ（改行2つで切る）
         first_para = text.split("\n\n")[0].strip()
-        return first_para[:200]  # 最大200文字
+        return first_para
     return ""
 
 

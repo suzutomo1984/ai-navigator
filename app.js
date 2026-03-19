@@ -239,6 +239,15 @@ function render() {
         `;
         dateGroup.appendChild(header);
 
+        // dailySummary表示
+        const dateInfo = allDates.find(d => d.date === currentDate);
+        if (dateInfo && dateInfo.dailySummary) {
+          const summary = document.createElement("div");
+          summary.className = "daily-summary";
+          summary.innerHTML = `<span class="daily-summary-icon">💡</span><span class="daily-summary-text">${escHtml(dateInfo.dailySummary)}</span>`;
+          dateGroup.appendChild(summary);
+        }
+
         dateCards = document.createElement("div");
         dateCards.className = "article-cards-grid";
         dateGroup.appendChild(dateCards);
