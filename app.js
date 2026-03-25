@@ -45,6 +45,17 @@ function buildSidebarFilters() {
   // カテゴリフィルター（縦リスト）
   const catList = document.getElementById("category-filter");
   catList.innerHTML = `<li class="sidebar-item active" data-cat="all">ALL</li>`;
+
+  // 公式リリースフィルタ（固定・カテゴリリストの先頭）
+  const officialCount = allArticles.filter(a => a.isOfficial).length;
+  if (officialCount > 0) {
+    const li = document.createElement("li");
+    li.className = "sidebar-item";
+    li.dataset.cat = "official";
+    li.textContent = "📢 公式リリース";
+    catList.appendChild(li);
+  }
+
   allCategories
     .filter(c => c.articleCount > 0)
     .forEach(c => {
@@ -80,7 +91,8 @@ function buildSidebarFilters() {
 function filterArticles() {
   return allArticles.filter(a => {
     if (state.tab === "picks" && !a.isPick) return false;
-    if (state.category !== "all" && a.category !== state.category) return false;
+    if (state.category === "official" && !a.isOfficial) return false;
+    if (state.category !== "all" && state.category !== "official" && a.category !== state.category) return false;
     if (state.date !== "all" && a.date !== state.date) return false;
     if (state.search) {
       const q = state.search.toLowerCase();
@@ -154,6 +166,9 @@ function createCard(article, isRanking = false) {
   // カテゴリバッジ
   const catBadge = `<span class="card-badge">${escHtml(catText)}</span>`;
 
+  // 公式バッジ
+  const officialBadge = article.isOfficial ? `<span class="card-badge official-badge">📢 公式</span>` : "";
+
   a.innerHTML = `
     <div class="card-header">
       ${pickBadge}
@@ -163,6 +178,7 @@ function createCard(article, isRanking = false) {
     <div class="card-meta">
       ${sourceBadge}
       ${catBadge}
+      ${officialBadge}
       ${tierBadge}
     </div>
     ${article.summary ? `<div class="card-summary">${escHtml(article.summary)}</div>` : ""}

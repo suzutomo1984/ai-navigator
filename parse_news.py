@@ -40,6 +40,16 @@ CATEGORY_MAP = [
 # スキップと見なす固定セクションのキーワード
 SKIP_SECTIONS = ["今日のサマリー", "GitHub Trending", "その他の注目ニュース", "収集ソース"]
 
+# 公式ソース判定リスト（isOfficial: True をセットするソース名）
+OFFICIAL_SOURCES = [
+    "OpenAI Blog",
+    "Google AI Blog",
+    "Claude Code Releases",
+    "Anthropic SDK Releases",
+    "OpenAI SDK Releases",
+    "Google GenAI SDK Releases",
+]
+
 # 要約生成スキップ判定（ファイルがほぼ空）
 SKIP_THRESHOLD = 200  # バイト
 
@@ -163,6 +173,7 @@ def parse_tech_news(filepath: Path, date_str: str) -> list[dict]:
                 "pickPriority": None,
                 "rankingTier": 3,
                 "rankingScore": 0,
+                "isOfficial": source in OFFICIAL_SOURCES,
             })
             i = j
             continue
@@ -382,6 +393,7 @@ def main():
     output = {
         "generatedAt": datetime.now(JST).isoformat(),
         "totalArticles": len(all_articles),
+        "officialCount": sum(1 for a in all_articles if a.get("isOfficial")),
         "dateRange": {"from": date_from, "to": date_to},
         "dates": sorted(dates_meta, key=lambda x: x["date"], reverse=True),
         "categories": categories,
