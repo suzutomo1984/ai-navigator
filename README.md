@@ -3,143 +3,91 @@
 AI・自動化・開発ツール領域のニュースを自動収集し、ブラウザで閲覧できるパーソナルニュースリーダー。
 
 **本番URL**: https://ai-news-eev.pages.dev
-**リポジトリ**: https://github.com/suzutomo1984/ai-news-hub
 
 ---
 
 ## 概要
 
-`my-vault` リポジトリの `自動ニュース配信/` フォルダに蓄積されたMarkdownニュース記事を、`parse_news.py` が `articles.json` に変換し、Cloudflare Pagesで静的サイトとして配信する仕組み。
+GitHub Actionsで毎日自動更新される3ページ構成のニュースサイト。
+
+| ページ | 内容 |
+|---|---|
+| 📰 AIニュース | Zenn・Qiita・HackerNews等から収集したAI関連記事 |
+| 📢 公式リリース | OpenAI・Anthropic・Google等の公式ブログ・SDKリリース |
+| 🌟 GitHub Trending | 毎日のGitHub Trendingリポジトリ（stars/language/日本語説明付き） |
 
 ---
 
 ## 構成ファイル
 
 ```
-ai-news-hub/
-├── index.html        # メインUI
-├── style.css         # スタイル（ダークテーマ・CSS変数管理）
-├── app.js            # フィルター・検索・タブ切り替えロジック
-├── parse_news.py     # MarkdownファイルをarticlesJSONに変換するパーサー
-├── articles.json     # パーサーの出力（自動生成・gitignore対象）
-├── start.bat         # ローカル確認用サーバー起動スクリプト（Windows）
-└── audit_report.txt  # parse_news.py の実行ログ（gitignore対象）
+ai-navigator/
+├── index.html        # AIニュースページ
+├── official.html     # 公式リリースページ
+├── trending.html     # GitHub Trendingページ
+├── style.css         # 全ページ共通スタイル（ダークテーマ）
+├── app.js            # AIニュースのフロントエンドロジック
+├── official.js       # 公式ページのフロントエンドロジック
+├── trending.js       # Trendingページのフロントエンドロジック
+├── parse_news.py     # MD → articles.json 変換・Trending取得・Gemini翻訳
+└── articles.json     # 全データ（記事・trending・カテゴリ）
 ```
 
 ---
 
-## UIレイアウト（v2 / 2026-03-19）
+## 自動化フロー
 
 ```
-┌─────────────────────────────────────────────────────┐
-│ [Ai] AI Navigator  │  最新  ピックアップ  ランキング  │  🔍検索  │
-├──────────────┬──────────────────────────────────────┤
-│              │  3/18 (WED) 16                        │
-│ カテゴリ     │ ┌────────┐ ┌────────┐ ┌────────┐     │
-│   ALL        │ │ card   │ │ card   │ │ card   │     │
-│   AI/MCP     │ └────────┘ └────────┘ └────────┘     │
-│   Obsidian   │                                       │
-│   開発ツール  │  3/17 (TUE) 14                        │
-│   ノーコード  │ ┌────────┐ ┌────────┐ ┌────────┐     │
-│   業務効率化  │ │ card   │ │ card   │ │ card   │     │
-│   マーケ     │ └────────┘ └────────┘ └────────┘     │
-│              │                                       │
-│ 日付         │                                       │
-│   All        │                                       │
-│   3/18       │                                       │
-│   3/17 ...   │                                       │
-└──────────────┴──────────────────────────────────────┘
+毎朝7時（JST）
+  ↓ auto-news.yml: RSSから記事収集 → Geminiで要約 → MD生成
+  ↓ personal-pick.yml: パーソナルピック生成
+  ↓ parse_news.py: MD → articles.json 変換
+       + GitHub Trending RSS取得 → GitHub API補完 → Gemini日本語翻訳
+  ↓ gh-pagesブランチへデプロイ
+  ↓ Cloudflare Pagesが自動公開
 ```
 
-- **タブ**: 最新 / ピックアップ / ランキング
-- **サイドバー**: カテゴリ・日付フィルター（縦リスト型）
-- **カードグリッド**: デスクトップ3列 / タブレット2列 / モバイル1列
-
----
-
-## アーキテクチャ
-
-```
-my-vault リポジトリ
-└── 自動ニュース配信/*.md   ← AIが毎日生成するニュース記事
-        ↓
-    personal-pick.yml（GitHub Actions）
-        ↓ parse_news.py を実行
-    articles.json を生成
-        ↓ git push（手動）
-    ai-news-hub リポジトリ（main → gh-pages ブランチ）
-        ↓ Cloudflare Pages
-    https://ai-news-eev.pages.dev
-```
-
-### 2リポジトリ構成
-
-| リポジトリ | 役割 |
-|---|---|
-| `suzutomo-organization/my-vault` | ニュース記事の生成・parse_news.pyの実行を担うメインリポジトリ |
-| `suzutomo1984/ai-news-hub` | フロントエンド（HTML/CSS/JS）とarticles.jsonを管理 |
-
----
-
-## デプロイフロー
-
-```bash
-# 1. ローカルで編集・確認
-start.bat   # http://localhost:8080 で確認
-
-# 2. GitHubにpush（mainブランチ）
-git add .
-git commit -m "feat: ..."
-git push origin main
-
-# 3. Cloudflare本番に反映（gh-pagesがプロダクションブランチ）
-git push origin main:gh-pages --force
-```
-
-> **注意**: CloudflareはGitHubの `gh-pages` ブランチをプロダクションとして監視。
-> `main` へのpushはプレビューにしかならない。本番反映には `main:gh-pages` へのpushが必須。
-
----
-
-## ブランチ構成
-
-| ブランチ | 用途 |
-|---|---|
-| `main` | 開発・作業用メインブランチ |
-| `gh-pages` | Cloudflare Pagesのプロダクションソース |
-
----
-
-## カテゴリ
-
-| カテゴリ | アイコン | 対象キーワード |
-|---|---|---|
-| AI/MCP | 🤖 | AIエージェント、LLM、Claude |
-| Obsidian | 📝 | Obsidian、PKM、知識管理 |
-| 開発ツール | 🛠️ | AI駆動開発、プログラミング、AIコーディング |
-| ノーコード | 🔌 | Vibe Coding、個人開発 |
-| 業務効率化 | ⚡ | DX、ビジネス |
-| マーケ/収益化 | 💰 | Webマーケティング、個人開発マネタイズ |
+このリポジトリは `suzutomo-organization/my-vault` のサブモジュールとして管理されており、
+GitHub Actionsは my-vault 側で実行される。
 
 ---
 
 ## ローカル確認
 
 ```bash
-# start.bat を実行（parse_news.py → http.server 起動）
-start.bat
-
-# または手動で
+# articles.json を再生成
 python parse_news.py
-python -m http.server 8080
-# → http://localhost:8080
+
+# ローカルサーバー起動（file://では動かないためHTTPサーバーが必須）
+python -m http.server 8765
+# → http://localhost:8765
 ```
 
 ---
 
-## 開発経緯
+## デプロイ
 
-- **Phase 0（2026-03-18完了）**: ローカルMVP構築・動作確認
-- **Phase 1（2026-03-18完了）**: GitHub Actions連携・Cloudflare Pages公開・AI Navigatorにリネーム
-- **Phase 2（2026-03-19完了）**: UI v2 - 左サイドバー + 3カラムグリッドレイアウトに刷新
-- **Phase 3（今後）**: 機能追加・改善
+```bash
+# ai-navigator に変更を加えたら
+git add .
+git commit -m "feat: ..."
+git push origin main
+
+# my-vault 側のサブモジュール参照も更新する（重要）
+cd ..
+git add ai-navigator
+git commit -m "chore: ai-navigator更新"
+git push origin master
+# → personal-pick.yml が自動でgh-pagesにデプロイ
+```
+
+---
+
+## 開発履歴
+
+| Phase | 内容 |
+|---|---|
+| Phase 0-1（2026-03-18） | MVP構築・Cloudflare Pages公開 |
+| Phase 2（2026-03-19） | UI v2 - 左サイドバー + 3カラムグリッド |
+| Phase 3（2026-03-22〜） | 公式リリースページ・サムネイル表示 |
+| Phase 4（2026-03-27） | GitHub Trendingページ・公式カテゴリ・完全自動化 |
