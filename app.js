@@ -50,6 +50,7 @@ function buildSidebarFilters() {
   const officialCount = allArticles.filter(a => a.isOfficial).length;
   if (officialCount > 0) {
     const li = document.createElement("li");
+    li.id = "sidebar-official-filter";
     li.className = "sidebar-item";
     li.dataset.cat = "official";
     li.textContent = "📢 公式リリース";
@@ -91,6 +92,8 @@ function buildSidebarFilters() {
 function filterArticles() {
   return allArticles.filter(a => {
     if (state.tab === "picks" && !a.isPick) return false;
+    if (state.tab === "official" && !a.isOfficial) return false;
+    if (state.tab === "latest" && a.isOfficial) return false;
     if (state.category === "official" && !a.isOfficial) return false;
     if (state.category !== "all" && state.category !== "official" && a.category !== state.category) return false;
     if (state.date !== "all" && a.date !== state.date) return false;
@@ -200,6 +203,12 @@ function render() {
   const sorted = sortArticles(filtered);
   const visible = sorted.slice(0, state.page * PAGE_SIZE);
   const hasMore = visible.length < sorted.length;
+
+  // 公式タブ時はサイドバーの「📢 公式リリース」フィルタを非表示（冗長なため）
+  const sidebarOfficial = document.getElementById("sidebar-official-filter");
+  if (sidebarOfficial) {
+    sidebarOfficial.style.display = state.tab === "official" ? "none" : "";
+  }
 
   // 統計バー
   document.getElementById("stats-bar").textContent =

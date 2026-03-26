@@ -48,6 +48,15 @@ OFFICIAL_SOURCES = [
     "Anthropic SDK Releases",
     "OpenAI SDK Releases",
     "Google GenAI SDK Releases",
+    "Google DeepMind Blog",
+    "Gemini Blog",
+    "Microsoft Foundry Blog",
+    "Anthropic TypeScript SDK Releases",
+    "OpenAI Node.js SDK Releases",
+    "MCP Specification Releases",
+    "MCP Python SDK Releases",
+    "LangChain Releases",
+    "LlamaIndex Releases",
 ]
 
 # 要約生成スキップ判定（ファイルがほぼ空）
