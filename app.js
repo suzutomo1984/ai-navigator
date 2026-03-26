@@ -47,7 +47,7 @@ function buildSidebarFilters() {
   catList.innerHTML = `<li class="sidebar-item active" data-cat="all">ALL</li>`;
 
   allCategories
-    .filter(c => c.articleCount > 0)
+    .filter(c => c.articleCount > 0 && c.id !== "official")
     .forEach(c => {
       const li = document.createElement("li");
       li.className = "sidebar-item";

@@ -32,6 +32,7 @@ SEVEN_DAYS_AGO = (NOW - timedelta(days=7)).strftime("%Y-%m-%d")
 
 # カテゴリ正規化マッピング（優先順位順）
 CATEGORY_MAP = [
+    ("official",    "公式リリース", "📢", ["📢", "公式リリース", "AI企業アップデート"]),
     ("ai-agent",    "AI/MCP",      "🤖", ["🤖", "AIエージェント", "LLM", "Claude"]),
     ("obsidian-pkm","Obsidian",    "📝", ["📝", "Obsidian", "PKM", "知識管理"]),
     ("dev-tools",   "開発ツール",   "🛠️", ["🛠", "開発ツール", "AI駆動開発", "プログラミング", "AIコーディング"]),
@@ -171,6 +172,7 @@ def parse_tech_news(filepath: Path, date_str: str) -> list[dict]:
 
                 j += 1
 
+            is_official = source in OFFICIAL_SOURCES
             article_num += 1
             articles.append({
                 "id": f"{date_str}_{article_num}",
@@ -178,14 +180,14 @@ def parse_tech_news(filepath: Path, date_str: str) -> list[dict]:
                 "title": title,
                 "url": url,
                 "source": source,
-                "category": current_category_id,
+                "category": "official" if is_official else current_category_id,
                 "summary": summary,
                 "section": "main",
                 "isPick": False,
                 "pickPriority": None,
                 "rankingTier": 3,
                 "rankingScore": 0,
-                "isOfficial": source in OFFICIAL_SOURCES,
+                "isOfficial": is_official,
             })
             i = j
             continue
@@ -717,7 +719,12 @@ def translate_trending_descriptions(repos: list[dict]) -> None:
 
 
 def get_ogp_image(url: str) -> str | None:
-    """URLからOGP画像URLを取得する"""
+    """URLからOGP画像URLを取得する（GitHubはOGP APIを直接利用）"""
+    # GitHub releases/repo URL → opengraph.githubassets.com で直接取得
+    gh_match = re.match(r"https://github\.com/([^/]+/[^/?#]+)", url)
+    if gh_match:
+        full_name = gh_match.group(1)
+        return f"https://opengraph.githubassets.com/1/{full_name}"
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=8) as res:
