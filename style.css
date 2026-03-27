@@ -451,6 +451,13 @@ body {
   background: #2d6a4f; /* ソース系は緑系 */
 }
 
+.card-date {
+  font-size: 11px;
+  color: var(--text-muted, #666);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .card-summary {
   font-size: 13px;
   color: var(--text-secondary);

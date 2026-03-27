@@ -151,6 +151,9 @@ function createCard(article) {
 
   const catBadge = `<span class="card-badge">${escHtml(catText)}</span>`;
   const officialBadge = `<span class="card-badge official-badge">📢 公式</span>`;
+  const dateBadge = article.date
+    ? `<span class="card-date">${article.date.slice(5).replace("-", "/")}</span>`
+    : "";
 
   const thumbHtml = article.thumbnail
     ? `<div class="card-thumb"><img src="${article.thumbnail}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`
@@ -166,6 +169,7 @@ function createCard(article) {
         ${sourceBadge}
         ${catBadge}
         ${officialBadge}
+        ${dateBadge}
       </div>
       ${article.summary ? `<div class="card-summary">${escHtml(article.summary)}</div>` : ""}
     </div>
