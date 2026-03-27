@@ -8,11 +8,17 @@ const PAGE_SIZE = 50;
 const SOURCE_GROUPS = {
   "OpenAI":     ["OpenAI Blog", "OpenAI SDK Releases", "OpenAI Node.js SDK Releases"],
   "Google":     ["Google AI Blog", "Google GenAI SDK Releases", "Google DeepMind Blog", "Gemini Blog"],
-  "Anthropic":  ["Claude Code Releases", "Anthropic SDK Releases", "Anthropic TypeScript SDK Releases"],
+  "Anthropic":  ["Claude Code Releases", "Anthropic SDK Releases", "Anthropic TypeScript SDK Releases", "Anthropic News"],
   "Microsoft":  ["Microsoft Foundry Blog"],
   "MCP":        ["MCP Specification Releases", "MCP Python SDK Releases"],
   "LangChain":  ["LangChain Releases"],
   "LlamaIndex": ["LlamaIndex Releases"],
+  "Ollama":     ["Ollama Releases"],
+  "CrewAI":     ["CrewAI Releases"],
+  "vLLM":       ["vLLM Releases"],
+  "LiteLLM":    ["LiteLLM Releases"],
+  "Dify":       ["Dify Releases"],
+  "Flowise":    ["Flowise Releases"],
 };
 
 const state = {

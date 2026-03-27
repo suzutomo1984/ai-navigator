@@ -32,13 +32,12 @@ SEVEN_DAYS_AGO = (NOW - timedelta(days=7)).strftime("%Y-%m-%d")
 
 # カテゴリ正規化マッピング（優先順位順）
 CATEGORY_MAP = [
-    ("official",    "公式リリース", "📢", ["📢", "公式リリース", "AI企業アップデート"]),
-    ("ai-agent",    "AI/MCP",      "🤖", ["🤖", "AIエージェント", "LLM", "Claude"]),
-    ("obsidian-pkm","Obsidian",    "📝", ["📝", "Obsidian", "PKM", "知識管理"]),
-    ("dev-tools",   "開発ツール",   "🛠️", ["🛠", "開発ツール", "AI駆動開発", "プログラミング", "AIコーディング"]),
-    ("no-code",     "ノーコード",   "🔌", ["🔌", "ノーコード", "Vibe Coding", "個人開発"]),
-    ("efficiency",  "業務効率化",   "⚡", ["⚡", "業務効率化", "DX", "ビジネス"]),
-    ("marketing",   "マーケ/収益化","💰", ["💰", "Webマーケティング", "マーケティング", "個人開発マネタイズ"]),
+    ("official",  "公式リリース", "📢", ["📢", "公式リリース", "AI企業アップデート"]),
+    ("ai-agent",  "AI/エージェント", "🤖", ["🤖", "AIエージェント", "LLM", "Claude", "エージェント"]),
+    ("dev-tools", "開発ツール",   "🛠️", ["🛠", "開発ツール", "AI駆動開発", "プログラミング", "AIコーディング"]),
+    ("efficiency","業務効率化",   "⚡", ["⚡", "業務効率化", "DX", "ビジネス", "ノーコード", "Vibe Coding", "個人開発"]),
+    ("ai-biz",    "AIビジネス",   "💼", ["💼", "AIビジネス", "Webマーケティング", "マーケティング", "個人開発マネタイズ", "収益化", "AI導入"]),
+    ("pkm",       "知識管理",     "🧠", ["🧠", "知識管理", "PKM", "Obsidian", "ナレッジ", "情報整理", "NotionAI"]),
 ]
 
 # スキップと見なす固定セクションのキーワード
@@ -50,6 +49,7 @@ OFFICIAL_SOURCES = [
     "Google AI Blog",
     "Claude Code Releases",
     "Anthropic SDK Releases",
+    "Anthropic News",
     "OpenAI SDK Releases",
     "Google GenAI SDK Releases",
     "Google DeepMind Blog",
@@ -61,6 +61,12 @@ OFFICIAL_SOURCES = [
     "MCP Python SDK Releases",
     "LangChain Releases",
     "LlamaIndex Releases",
+    "Ollama Releases",
+    "vLLM Releases",
+    "LiteLLM Releases",
+    "CrewAI Releases",
+    "Dify Releases",
+    "Flowise Releases",
 ]
 
 # 要約生成スキップ判定（ファイルがほぼ空）
