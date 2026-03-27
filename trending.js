@@ -7,6 +7,7 @@ const PAGE_SIZE = 50;
 const state = {
   date: "all",
   search: "",
+  sort: "stars_desc",
   page: 1,
 };
 
@@ -26,6 +27,25 @@ async function loadData() {
 }
 
 function buildSidebarFilters() {
+  // ソートUI
+  const sortContainer = document.getElementById("sort-filter");
+  if (sortContainer) {
+    const sorts = [
+      { key: "stars_desc", label: "⭐ Stars 多い順" },
+      { key: "stars_asc",  label: "⭐ Stars 少ない順" },
+      { key: "forks_desc", label: "🍴 Forks 多い順" },
+      { key: "forks_asc",  label: "🍴 Forks 少ない順" },
+    ];
+    sortContainer.innerHTML = "";
+    sorts.forEach(s => {
+      const li = document.createElement("li");
+      li.className = "sidebar-item" + (s.key === state.sort ? " active" : "");
+      li.dataset.sort = s.key;
+      li.textContent = s.label;
+      sortContainer.appendChild(li);
+    });
+  }
+
   // 日付フィルター（月別アコーディオン）
   const dateContainer = document.getElementById("date-filter");
   dateContainer.innerHTML = `<li class="sidebar-item active" data-date="all">All</li>`;
@@ -74,7 +94,7 @@ function buildSidebarFilters() {
 }
 
 function filterRepos() {
-  return allTrending.filter(r => {
+  const filtered = allTrending.filter(r => {
     if (state.date !== "all" && r.date !== state.date) return false;
     if (state.search) {
       const q = state.search.toLowerCase();
@@ -82,6 +102,14 @@ function filterRepos() {
     }
     return true;
   });
+
+  switch (state.sort) {
+    case "stars_desc": return [...filtered].sort((a, b) => (b.stars || 0) - (a.stars || 0));
+    case "stars_asc":  return [...filtered].sort((a, b) => (a.stars || 0) - (b.stars || 0));
+    case "forks_desc": return [...filtered].sort((a, b) => (b.forks || 0) - (a.forks || 0));
+    case "forks_asc":  return [...filtered].sort((a, b) => (a.forks || 0) - (b.forks || 0));
+    default:           return filtered; // date順（元の順序）
+  }
 }
 
 function createCard(repo) {
@@ -197,6 +225,16 @@ function render() {
 }
 
 function setupEvents() {
+  document.getElementById("sort-filter")?.addEventListener("click", e => {
+    const item = e.target.closest(".sidebar-item");
+    if (!item) return;
+    document.querySelectorAll("#sort-filter .sidebar-item").forEach(i => i.classList.remove("active"));
+    item.classList.add("active");
+    state.sort = item.dataset.sort;
+    state.page = 1;
+    render();
+  });
+
   document.getElementById("date-filter").addEventListener("click", e => {
     const item = e.target.closest(".sidebar-item");
     if (!item) return;
