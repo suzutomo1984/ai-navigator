@@ -363,7 +363,7 @@ body {
 
 .card-thumb {
   width: 100%;
-  height: 170px;
+  height: 130px;
   flex-shrink: 0;
   overflow: hidden;
   background: var(--bg-primary);
