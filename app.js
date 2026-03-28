@@ -508,11 +508,51 @@ function setupEvents() {
 }
 
 // =============================================
+// スワイプでカテゴリ切替（モバイル）
+// =============================================
+
+function setupSwipe() {
+  let startX = 0, startY = 0;
+
+  document.addEventListener("touchstart", e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener("touchend", e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+
+    const scroll = document.getElementById("mobile-cat-scroll");
+    if (!scroll) return;
+    const btns = [...scroll.querySelectorAll(".mob-cat-btn")];
+    if (!btns.length) return;
+
+    const activeIdx = btns.findIndex(b => b.classList.contains("active"));
+    const nextIdx = dx < 0
+      ? Math.min(activeIdx + 1, btns.length - 1)
+      : Math.max(activeIdx - 1, 0);
+
+    if (nextIdx === activeIdx) return;
+
+    btns.forEach(b => b.classList.remove("active"));
+    btns[nextIdx].classList.add("active");
+    btns[nextIdx].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+
+    state.category = btns[nextIdx].dataset.cat;
+    state.page = 1;
+    render();
+  }, { passive: true });
+}
+
+// =============================================
 // 初期化
 // =============================================
 
 document.addEventListener("DOMContentLoaded", () => {
   setupEvents();
+  setupSwipe();
   loadData().catch(err => {
     document.getElementById("articles-container").innerHTML = `
       <div id="empty-state">
