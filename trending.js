@@ -50,7 +50,7 @@ function buildSidebarFilters() {
 
   // 日付フィルター（月別アコーディオン）
   const dateContainer = document.getElementById("date-filter");
-  dateContainer.innerHTML = `<li class="sidebar-item active" data-date="all">All</li>`;
+  dateContainer.innerHTML = "";
 
   const monthMap = new Map();
   allDates.forEach(d => {
@@ -190,11 +190,11 @@ function filterRepos() {
   });
 
   switch (state.sort) {
-    case "stars_desc": return [...filtered].sort((a, b) => (b.stars || 0) - (a.stars || 0));
-    case "stars_asc":  return [...filtered].sort((a, b) => (a.stars || 0) - (b.stars || 0));
-    case "forks_desc": return [...filtered].sort((a, b) => (b.forks || 0) - (a.forks || 0));
-    case "forks_asc":  return [...filtered].sort((a, b) => (a.forks || 0) - (b.forks || 0));
-    default:           return filtered; // date順（元の順序）
+    case "stars_desc": return [...filtered].sort((a, b) => b.date.localeCompare(a.date) || (b.stars || 0) - (a.stars || 0));
+    case "stars_asc":  return [...filtered].sort((a, b) => b.date.localeCompare(a.date) || (a.stars || 0) - (b.stars || 0));
+    case "forks_desc": return [...filtered].sort((a, b) => b.date.localeCompare(a.date) || (b.forks || 0) - (a.forks || 0));
+    case "forks_asc":  return [...filtered].sort((a, b) => b.date.localeCompare(a.date) || (a.forks || 0) - (b.forks || 0));
+    default:           return filtered;
   }
 }
 

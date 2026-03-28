@@ -306,6 +306,10 @@ body {
   margin-top: 24px;
 }
 
+.date-group:first-child {
+  margin-top: 8px;
+}
+
 .date-header {
   font-size: 11px;
   font-weight: 700;
@@ -551,7 +555,13 @@ body {
 @media (max-width: 768px) {
   #trending-info-banner {
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
+    padding: 8px 12px;
+  }
+
+  .trending-info-item {
+    font-size: 11px;
+    line-height: 1.4;
   }
 }
 
