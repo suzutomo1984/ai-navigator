@@ -456,41 +456,113 @@ function setupEvents() {
 }
 
 // =============================================
-// スワイプでカテゴリ切替（モバイル）
+// スワイプでカテゴリ切替（モバイル・ページめくりアニメーション）
 // =============================================
 
 function setupSwipe() {
-  let startX = 0, startY = 0;
+  if (window.innerWidth > 768) return;
 
-  document.addEventListener("touchstart", e => {
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-  }, { passive: true });
+  const container = document.getElementById("articles-container");
+  let startX = 0, startY = 0, currentX = 0;
+  let isSwiping = false;
+  let isAnimating = false;
 
-  document.addEventListener("touchend", e => {
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
-
+  function getNextIdx(dx) {
     const scroll = document.getElementById("mobile-cat-scroll");
-    if (!scroll) return;
+    if (!scroll) return null;
     const btns = [...scroll.querySelectorAll(".mob-cat-btn")];
-    if (!btns.length) return;
-
     const activeIdx = btns.findIndex(b => b.classList.contains("active"));
     const nextIdx = dx < 0
       ? Math.min(activeIdx + 1, btns.length - 1)
       : Math.max(activeIdx - 1, 0);
+    return nextIdx === activeIdx ? null : { btns, activeIdx, nextIdx };
+  }
 
-    if (nextIdx === activeIdx) return;
+  document.addEventListener("touchstart", e => {
+    if (isAnimating) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    currentX = 0;
+    isSwiping = false;
+  }, { passive: true });
 
-    btns.forEach(b => b.classList.remove("active"));
-    btns[nextIdx].classList.add("active");
-    btns[nextIdx].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  document.addEventListener("touchmove", e => {
+    if (isAnimating) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!isSwiping && Math.abs(dy) > Math.abs(dx)) return;
+    if (Math.abs(dx) > 8) {
+      isSwiping = true;
+      currentX = dx;
+      const resist = Math.min(Math.abs(dx), 80) / Math.abs(dx);
+      container.style.transform = `translateX(${dx * resist * 0.4}px)`;
+      container.style.transition = "none";
+      container.style.opacity = `${1 - Math.min(Math.abs(dx) / 300, 0.3)}`;
+    }
+  }, { passive: true });
 
-    state.company = btns[nextIdx].dataset.company;
-    state.page = 1;
-    render();
+  document.addEventListener("touchend", e => {
+    if (!isSwiping || isAnimating) {
+      container.style.transform = "";
+      container.style.transition = "";
+      container.style.opacity = "";
+      isSwiping = false;
+      return;
+    }
+
+    const dx = e.changedTouches[0].clientX - startX;
+    isSwiping = false;
+
+    if (Math.abs(dx) < 50) {
+      container.style.transition = "transform 0.2s ease, opacity 0.2s ease";
+      container.style.transform = "translateX(0)";
+      container.style.opacity = "1";
+      return;
+    }
+
+    const result = getNextIdx(dx);
+    if (!result) {
+      container.style.transition = "transform 0.2s ease, opacity 0.2s ease";
+      container.style.transform = "translateX(0)";
+      container.style.opacity = "1";
+      return;
+    }
+
+    const { btns, nextIdx } = result;
+    const dir = dx < 0 ? -1 : 1;
+    isAnimating = true;
+
+    container.style.transition = "transform 0.22s ease-in, opacity 0.22s ease-in";
+    container.style.transform = `translateX(${dir * 100}%)`;
+    container.style.opacity = "0";
+
+    setTimeout(() => {
+      btns.forEach(b => b.classList.remove("active"));
+      btns[nextIdx].classList.add("active");
+      btns[nextIdx].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      state.company = btns[nextIdx].dataset.company;
+      state.page = 1;
+      render();
+
+      container.style.transition = "none";
+      container.style.transform = `translateX(${dir * -100}%)`;
+      container.style.opacity = "0";
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          container.style.transition = "transform 0.25s ease-out, opacity 0.25s ease-out";
+          container.style.transform = "translateX(0)";
+          container.style.opacity = "1";
+
+          setTimeout(() => {
+            container.style.transform = "";
+            container.style.transition = "";
+            container.style.opacity = "";
+            isAnimating = false;
+          }, 260);
+        });
+      });
+    }, 230);
   }, { passive: true });
 }
 
