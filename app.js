@@ -332,6 +332,19 @@ function openModal(article) {
   modal.classList.add("open");
   document.body.style.overflow = "hidden";
   document.documentElement.style.overflow = "hidden";
+
+  // スマホのみ: 記事を読む以外のモーダル内タップで閉じる
+  if (window.innerWidth <= 768) {
+    const box = modal.querySelector(".modal-box");
+    const readBtn = document.getElementById("modal-read-btn");
+    const onTap = e => {
+      if (!readBtn.contains(e.target)) {
+        closeModal();
+        box.removeEventListener("click", onTap);
+      }
+    };
+    box.addEventListener("click", onTap);
+  }
 }
 
 function closeModal() {
