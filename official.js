@@ -289,8 +289,19 @@ function render() {
   const visible = sorted.slice(0, state.page * PAGE_SIZE);
   const hasMore = visible.length < sorted.length;
 
-  document.getElementById("stats-bar").textContent =
-    `${filtered.length}件表示中 (全${allArticles.length}件)`;
+  const companies = Object.entries(SOURCE_GROUPS)
+    .map(([company, sources]) => {
+      const count = filtered.filter(a => sources.includes(a.source)).length;
+      return count > 0 ? `${company} ${count}` : null;
+    })
+    .filter(Boolean)
+    .slice(0, 4)
+    .join(" / ");
+  const statsEl = document.getElementById("stats-bar");
+  statsEl.innerHTML = `
+    <span class="stats-item">📢 公式リリース <strong>${filtered.length}件</strong></span>
+    ${companies ? `<span class="stats-sep">|</span><span class="stats-item stats-companies">${companies}</span>` : ""}
+  `;
 
   const container = document.getElementById("articles-container");
   container.innerHTML = "";

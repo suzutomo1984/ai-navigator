@@ -250,8 +250,12 @@ function render() {
   const visible = filtered.slice(0, state.page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;
 
-  document.getElementById("stats-bar").textContent =
-    `GitHub Trending — ${filtered.length}件表示中 (全${allTrending.length}件)`;
+  const hotCount = filtered.filter(r => r.trendingDays >= 2).length;
+  const statsEl = document.getElementById("stats-bar");
+  statsEl.innerHTML = `
+    <span class="stats-item">🌟 GitHub Trending <strong>${filtered.length}件</strong></span>
+    ${hotCount > 0 ? `<span class="stats-sep">|</span><span class="stats-item">🔥 連続ランクイン <strong>${hotCount}件</strong></span>` : ""}
+  `;
 
   const container = document.getElementById("articles-container");
   container.innerHTML = "";

@@ -289,12 +289,27 @@ body {
 
 /* 統計バー */
 #stats-bar {
-  padding: 10px 20px;
-  font-size: 11px;
+  display: none;
+}
+
+.stats-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stats-item strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.stats-sep {
   color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
-  background: transparent;
-  letter-spacing: 0.02em;
+}
+
+.stats-companies {
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
 /* =============================================
@@ -771,6 +786,18 @@ body {
     border-bottom: 1px solid var(--border);
     z-index: 190;
     overflow: hidden;
+  }
+
+  /* 右端フェードアウト（スクロール続きがあることを示す） */
+  #mobile-category-bar::after {
+    content: "";
+    position: absolute;
+    right: 44px; /* 日付ボタンの左端まで */
+    top: 0; bottom: 0;
+    width: 32px;
+    background: linear-gradient(to right, transparent, var(--bg-surface));
+    pointer-events: none;
+    z-index: 1;
   }
 
   #mobile-cat-scroll {

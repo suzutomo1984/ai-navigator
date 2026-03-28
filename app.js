@@ -337,8 +337,18 @@ function render() {
   const hasMore = visible.length < sorted.length;
 
   // 統計バー
-  document.getElementById("stats-bar").textContent =
-    `${filtered.length}件表示中 (全${allArticles.length}件)`;
+  const todayStr = allDates.length > 0 ? allDates[0].date : null;
+  const todayCount = todayStr ? filtered.filter(a => a.date === todayStr).length : 0;
+  const mustCount = allArticles.filter(a => a.isPick && a.pickPriority === "must-read").length;
+  const checkCount = allArticles.filter(a => a.isPick && a.pickPriority !== "must-read").length;
+  const statsEl = document.getElementById("stats-bar");
+  statsEl.innerHTML = `
+    <span class="stats-item">📰 ${filtered.length}件表示中</span>
+    <span class="stats-sep">|</span>
+    <span class="stats-item">本日 <strong>${todayCount}件</strong></span>
+    ${mustCount > 0 ? `<span class="stats-sep">|</span><span class="stats-item">🔴マスト <strong>${mustCount}</strong></span>` : ""}
+    ${checkCount > 0 ? `<span class="stats-sep">|</span><span class="stats-item">🟡チェック <strong>${checkCount}</strong></span>` : ""}
+  `;
 
   const container = document.getElementById("articles-container");
   container.innerHTML = "";
