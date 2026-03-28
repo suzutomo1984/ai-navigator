@@ -41,6 +41,30 @@ def build_prompt(article: dict) -> str:
     title = article.get("title", "")
     existing = article.get("summary", "") or "(なし)"
 
+    # GitHub Trendingリポジトリの場合は専用プロンプト
+    if article.get("isTrending") or source == "GitHub Trending":
+        github_desc = article.get("githubDescription", "")
+        stars = article.get("stars", "")
+        language = article.get("language", "")
+        return f"""以下のGitHubリポジトリについて、日本語の詳しい説明を1行で書いてください。
+
+## 内容に含めること
+1. このリポジトリが何をするものか（主目的）
+2. 具体的にどんなことができるか・どう使うか
+3. どんな開発者・場面で役立つか
+
+## 文字数ルール（最重要）
+- **100文字以上・200文字以内**で書くこと
+- 改行は一切しない（1行のみ）
+- 説明文・前置き・番号は不要。説明文のみ出力すること
+
+リポジトリ名: {title}
+言語: {language}
+スター数: {stars}
+GitHubの説明文（英語）: {github_desc}
+既存の日本語要約（参考）: {existing}
+"""
+
     # 記事タイプ判定
     is_release = any(x in source for x in ["Releases", "Blog", "News"])
 
@@ -83,37 +107,48 @@ def main():
         data = json.load(f)
 
     articles = data["articles"]
+    trending = data.get("trending", [])
 
-    # 対象: 非Trending・全日付（summaryが150文字未満のみ）
+    # articlesの対象: 非Trending・全日付（summaryが150文字未満のみ）
     targets = [
-        (i, a) for i, a in enumerate(articles)
+        ("articles", i, a) for i, a in enumerate(articles)
         if not a.get("isTrending")
         and len(a.get("summary", "")) < 150
+    ]
+
+    # trendingの対象: summaryが150文字未満
+    targets += [
+        ("trending", i, a) for i, a in enumerate(trending)
+        if len(a.get("summary", "")) < 150
     ]
 
     if not targets:
         print(f"✅ 対象記事なし（全件150文字以上）")
         return
 
-    print(f"📝 対象記事: {len(targets)}件（{TARGET_DATE}）\n")
+    print(f"📝 対象記事: {len(targets)}件\n")
 
+    import re
     updated = 0
-    for idx, (orig_idx, article) in enumerate(targets):
+    for idx, (bucket, orig_idx, article) in enumerate(targets):
         # 100件ごとに中間保存
         if idx > 0 and idx % 100 == 0:
             data["articles"] = articles
+            data["trending"] = trending
             with open(ARTICLES_JSON, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
             print(f"\n💾 中間保存 ({idx}件完了)\n")
-        print(f"  [{idx+1}/{len(targets)}] {article['source']} | {article['title'][:40]}...")
+        print(f"  [{idx+1}/{len(targets)}] [{bucket}] {article.get('source', article.get('name', ''))} | {str(article.get('title', article.get('name', '')))[:40]}...")
         try:
             response_text = call_gemini(build_prompt(article)).strip()
             # 番号付きリスト形式が返ってきた場合の除去
-            import re
             response_text = re.sub(r"^\d+[\.\)]\s+", "", response_text)
 
             if response_text and len(response_text) >= 80:
-                articles[orig_idx]["summary"] = response_text
+                if bucket == "articles":
+                    articles[orig_idx]["summary"] = response_text
+                else:
+                    trending[orig_idx]["summary"] = response_text
                 updated += 1
                 print(f"    ✓ {len(response_text)}文字: {response_text[:60]}...")
             else:
@@ -128,6 +163,7 @@ def main():
 
     if updated > 0:
         data["articles"] = articles
+        data["trending"] = trending
         with open(ARTICLES_JSON, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
         print(f"\n✅ {updated}件を更新して articles.json を保存しました")
