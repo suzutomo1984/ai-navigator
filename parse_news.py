@@ -681,13 +681,13 @@ def translate_trending_descriptions(repos: list[dict]) -> None:
         print("⚠️  GEMINI_API_KEY未設定 - 翻訳スキップ")
         return
 
-    # 翻訳対象（githubDescriptionあり・summaryが200文字未満）
+    # 翻訳対象（githubDescriptionあり・summaryが150文字未満）
     targets = [
         r for r in repos
-        if r.get("githubDescription") and len(r.get("summary", "")) < 200
+        if r.get("githubDescription") and len(r.get("summary", "")) < 150
     ]
     if not targets:
-        print("🌐 翻訳対象なし（全件200文字以上）")
+        print("🌐 翻訳対象なし（全件150文字以上）")
         return
 
     # 一括翻訳プロンプト
@@ -697,13 +697,13 @@ def translate_trending_descriptions(repos: list[dict]) -> None:
     )
     prompt = f"""以下はGitHubリポジトリの名前と英語説明文です。
 各リポジトリについて、以下の内容を含む日本語の詳細説明を書いてください：
-1. このリポジトリが何をするものか（主目的・一言で）
+1. このリポジトリが何をするものか（主目的）
 2. 具体的にどんなことができるか・主な機能や特徴
 3. なぜ今注目されているか・どんな開発者・場面で役立つか
 
 ## ルール（最重要）
-- **200文字以上・350文字以内**で書くこと
-- 読みやすさのために適宜改行してよい（最大3行まで）
+- **150文字以上・250文字以内**で書くこと
+- 改行は一切しない（1行のみ）
 - 説明文のみ出力（番号・タイトルは含めない）
 - 技術用語（AI、LLM、Python、Claude等）はそのままでOK
 - 出力は番号付きリスト形式（例: 1. 説明文）
@@ -718,21 +718,13 @@ def translate_trending_descriptions(repos: list[dict]) -> None:
             result = json.loads(res.read())
         text = result["candidates"][0]["content"]["parts"][0]["text"]
 
-        # 番号付きリストをパース: "1. 説明文（複数行可）" → index → summary
-        # まず全体を番号ごとにブロック分割してから結合
-        blocks = {}
-        current_idx = None
+        # 番号付きリストをパース: "1. 説明文" → index → summary
         for line in text.strip().splitlines():
             m = re.match(r"^(\d+)\.\s+(.+)", line.strip())
             if m:
-                current_idx = int(m.group(1)) - 1
-                blocks[current_idx] = m.group(2).strip()
-            elif current_idx is not None and line.strip():
-                # 続き行（改行で連結）
-                blocks[current_idx] += " " + line.strip()
-        for idx, summary in blocks.items():
-            if 0 <= idx < len(targets):
-                targets[idx]["summary"] = summary
+                idx = int(m.group(1)) - 1
+                if 0 <= idx < len(targets):
+                    targets[idx]["summary"] = m.group(2).strip()
 
         translated = sum(1 for r in targets if r.get("summary"))
         print(f"🌐 Gemini翻訳: {translated}/{len(targets)}件")
