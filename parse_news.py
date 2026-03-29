@@ -8,6 +8,8 @@ import json
 import os
 import re
 import sys
+import time
+import urllib.error
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -15,6 +17,14 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+
+
+def read_env_int(name: str, default: int, minimum: int) -> int:
+    """環境変数の整数値を安全に読み取る"""
+    try:
+        return max(minimum, int(os.environ.get(name, str(default))))
+    except ValueError:
+        return default
 
 # ============================================================
 # 設定
@@ -71,6 +81,15 @@ OFFICIAL_SOURCES = [
 
 # 要約生成スキップ判定（ファイルがほぼ空）
 SKIP_THRESHOLD = 200  # バイト
+
+# GitHub Trending 説明文の日本語化設定
+TRENDING_SUMMARY_MODEL = os.environ.get("TRENDING_SUMMARY_MODEL", "gemini-3-flash-preview")
+TRENDING_SUMMARY_MIN_CHARS = 150
+TRENDING_SUMMARY_MAX_CHARS = 250
+TRENDING_SUMMARY_BATCH_SIZE = read_env_int("TRENDING_SUMMARY_BATCH_SIZE", 5, 1)
+TRENDING_SUMMARY_RETRY_BATCH_SIZE = read_env_int("TRENDING_SUMMARY_RETRY_BATCH_SIZE", 2, 1)
+TRENDING_SUMMARY_MAX_PASSES = read_env_int("TRENDING_SUMMARY_MAX_PASSES", 2, 1)
+TRENDING_SUMMARY_TIMEOUT = read_env_int("TRENDING_SUMMARY_TIMEOUT", 45, 10)
 
 
 # ============================================================
@@ -674,62 +693,228 @@ def enrich_trending_with_github_api(repos: list[dict], existing_cache: dict | No
     print(f"🐙 GitHub API: 新規{enriched}件 / キャッシュ{cached}件 補完")
 
 
+def chunked(items: list[dict], size: int):
+    """リストを固定サイズのチャンクに分割する"""
+    for i in range(0, len(items), size):
+        yield items[i:i + size]
+
+
+def normalize_trending_summary(text: str) -> str:
+    """Geminiの出力を1行テキストに正規化する"""
+    return re.sub(r"\s+", " ", text or "").strip()
+
+
+def is_valid_trending_summary(text: str) -> bool:
+    """Trending summary が UI 要件を満たしているか判定する"""
+    return TRENDING_SUMMARY_MIN_CHARS <= len(text) <= TRENDING_SUMMARY_MAX_CHARS
+
+
+def build_trending_summary_schema(batch_size: int) -> dict:
+    """Gemini 2.0 向けの propertyOrdering 付き JSON Schema"""
+    return {
+        "type": "object",
+        "propertyOrdering": ["items"],
+        "properties": {
+            "items": {
+                "type": "array",
+                "minItems": batch_size,
+                "maxItems": batch_size,
+                "items": {
+                    "type": "object",
+                    "propertyOrdering": ["id", "summary"],
+                    "properties": {
+                        "id": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": batch_size,
+                            "description": "入力で与えられた id をそのまま返す。",
+                        },
+                        "summary": {
+                            "type": "string",
+                            "description": (
+                                "GitHub リポジトリの日本語説明文。改行なしの 1 行のみ。"
+                                "180〜220文字を目標に、必ず150〜250文字に収める。"
+                                "主な用途、特徴、向いている利用者や活用場面を自然に含める。"
+                            ),
+                        },
+                    },
+                    "required": ["id", "summary"],
+                    "additionalProperties": False,
+                },
+            }
+        },
+        "required": ["items"],
+        "additionalProperties": False,
+    }
+
+
+def build_trending_summary_prompt(batch: list[dict], pass_index: int) -> str:
+    """小分けバッチ用の Gemini プロンプトを組み立てる"""
+    retry_note = ""
+    if pass_index > 0:
+        retry_note = (
+            "前回は文字数不足または形式不一致がありました。"
+            "今回は各 summary を少し詳しめにし、必ず 150〜250 文字の 1 行にしてください。\n\n"
+        )
+
+    entries = []
+    for item_id, repo in enumerate(batch, start=1):
+        github_desc = normalize_trending_summary(str(repo.get("githubDescription", "")))
+        title = normalize_trending_summary(str(repo.get("title", "")))
+        language = normalize_trending_summary(str(repo.get("language", "") or "Unknown"))
+        stars = repo.get("stars") or 0
+        entries.append(
+            f"""ID: {item_id}
+title: {title}
+language: {language}
+stars: {stars}
+github_description: {github_desc}"""
+        )
+    joined_entries = "\n\n".join(entries)
+
+    return f"""次の GitHub Trending リポジトリについて、日本語の詳しい説明文を作成してください。
+
+{retry_note}要件:
+- 出力は JSON のみ。説明文本文以外の前置きや markdown は不要
+- 各 summary は改行なしの 1 行のみ
+- 各 summary は 180〜220文字を目標にし、必ず 150〜250文字に収める
+- 説明文には「何をするリポジトリか」「主な特徴」「どんな人や場面に向くか」を自然に含める
+- github_description の直訳で終わらせず、読み手が概要を把握できる密度にする
+- id は入力の ID をそのまま返す
+
+入力:
+{joined_entries}"""
+
+
+def call_gemini_structured(prompt: str, schema: dict, api_key: str, batch_size: int) -> dict:
+    """Gemini Structured Output を使って JSON で応答を受け取る"""
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{TRENDING_SUMMARY_MODEL}:generateContent?key={api_key}"
+    )
+    payload = {
+        "systemInstruction": {
+            "parts": [
+                {
+                    "text": (
+                        "You write dense Japanese summaries for GitHub repositories. "
+                        "Return JSON only and follow the provided schema exactly."
+                    )
+                }
+            ]
+        },
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.2,
+            "topP": 0.9,
+            "maxOutputTokens": max(512, batch_size * 400),
+            "responseMimeType": "application/json",
+            "responseJsonSchema": schema,
+        },
+    }
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={"Content-Type": "application/json"},
+    )
+
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=TRENDING_SUMMARY_TIMEOUT) as res:
+                result = json.loads(res.read())
+            text = result["candidates"][0]["content"]["parts"][0]["text"]
+            return json.loads(text)
+        except urllib.error.HTTPError as e:
+            error_text = e.read().decode("utf-8", errors="ignore")
+            if e.code in {429, 500, 502, 503, 504} and attempt < 2:
+                time.sleep(2 ** attempt)
+                continue
+            raise RuntimeError(f"Gemini HTTP {e.code}: {error_text[:200]}") from e
+        except urllib.error.URLError as e:
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+                continue
+            raise RuntimeError(f"Gemini URL error: {e}") from e
+        except (KeyError, IndexError, json.JSONDecodeError) as e:
+            raise RuntimeError(f"Gemini structured response parse error: {e}") from e
+
+    raise RuntimeError("Gemini structured response retry exhausted")
+
+
+def translate_trending_batch(batch: list[dict], api_key: str, pass_index: int) -> list[dict]:
+    """1バッチ分の Trending 説明文を生成し、失敗分を返す"""
+    prompt = build_trending_summary_prompt(batch, pass_index)
+    schema = build_trending_summary_schema(len(batch))
+    response = call_gemini_structured(prompt, schema, api_key, len(batch))
+
+    response_items = response.get("items", [])
+    items_by_id = {}
+    for item in response_items:
+        if isinstance(item, dict) and isinstance(item.get("id"), int):
+            items_by_id[item["id"]] = item
+
+    failures = []
+    for item_id, repo in enumerate(batch, start=1):
+        item = items_by_id.get(item_id)
+        if not item:
+            failures.append(repo)
+            continue
+
+        summary = normalize_trending_summary(str(item.get("summary", "")))
+        if is_valid_trending_summary(summary):
+            repo["summary"] = summary
+        else:
+            failures.append(repo)
+
+    return failures
+
+
 def translate_trending_descriptions(repos: list[dict]) -> None:
-    """Gemini APIでGitHub Trendingリポジトリの説明文を日本語に一括翻訳する"""
+    """Gemini APIでGitHub Trendingリポジトリの説明文を日本語化する"""
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         print("⚠️  GEMINI_API_KEY未設定 - 翻訳スキップ")
         return
 
-    # 翻訳対象（githubDescriptionあり・summaryが150文字未満）
     targets = [
         r for r in repos
-        if r.get("githubDescription") and len(r.get("summary", "")) < 150
+        if r.get("githubDescription") and not is_valid_trending_summary(r.get("summary", ""))
     ]
     if not targets:
-        print("🌐 翻訳対象なし（全件150文字以上）")
+        print("🌐 翻訳対象なし（全件150〜250文字）")
         return
 
-    # 一括翻訳プロンプト
-    lines = "\n".join(
-        f"{i+1}. [{r['title']}] {r['githubDescription']}"
-        for i, r in enumerate(targets)
+    print(
+        "📝 Gemini翻訳開始: "
+        f"{len(targets)}件 / batch={TRENDING_SUMMARY_BATCH_SIZE} / model={TRENDING_SUMMARY_MODEL}"
     )
-    prompt = f"""以下はGitHubリポジトリの名前と英語説明文です。
-各リポジトリについて、以下の内容を含む日本語の詳細説明を書いてください：
-1. このリポジトリが何をするものか（主目的）
-2. 具体的にどんなことができるか・主な機能や特徴
-3. なぜ今注目されているか・どんな開発者・場面で役立つか
 
-## ルール（最重要）
-- **150文字以上・250文字以内**で書くこと
-- 改行は一切しない（1行のみ）
-- 説明文のみ出力（番号・タイトルは含めない）
-- 技術用語（AI、LLM、Python、Claude等）はそのままでOK
-- 出力は番号付きリスト形式（例: 1. 説明文）
+    remaining = targets[:]
+    for pass_index in range(TRENDING_SUMMARY_MAX_PASSES):
+        if not remaining:
+            break
 
-{lines}"""
+        batch_size = TRENDING_SUMMARY_BATCH_SIZE if pass_index == 0 else TRENDING_SUMMARY_RETRY_BATCH_SIZE
+        print(f"  ↳ pass {pass_index + 1}: {len(remaining)}件 / batch={batch_size}")
 
-    try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
-        body = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode("utf-8")
-        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=30) as res:
-            result = json.loads(res.read())
-        text = result["candidates"][0]["content"]["parts"][0]["text"]
+        failures = []
+        for batch_no, batch in enumerate(chunked(remaining, batch_size), start=1):
+            try:
+                batch_failures = translate_trending_batch(batch, api_key, pass_index)
+                ok_count = len(batch) - len(batch_failures)
+                print(f"    batch {batch_no}: {ok_count}/{len(batch)}件")
+                failures.extend(batch_failures)
+            except Exception as e:
+                print(f"    batch {batch_no}: 失敗 {e}")
+                failures.extend(batch)
 
-        # 番号付きリストをパース: "N. 説明文（改行含む可能性）" → index → summary
-        # re.DOTALLで改行をまたいで次の番号まで取得し、改行をスペースに正規化
-        for m in re.finditer(r"^(\d+)\.\s+(.+?)(?=\n\d+\.|$)", text, re.MULTILINE | re.DOTALL):
-            idx = int(m.group(1)) - 1
-            if 0 <= idx < len(targets):
-                summary = re.sub(r"\s+", " ", m.group(2)).strip()
-                targets[idx]["summary"] = summary
+        remaining = failures
 
-        translated = sum(1 for r in targets if r.get("summary"))
-        print(f"🌐 Gemini翻訳: {translated}/{len(targets)}件")
-    except Exception as e:
-        print(f"⚠️  Gemini翻訳失敗: {e}")
+    translated = sum(1 for r in targets if is_valid_trending_summary(r.get("summary", "")))
+    print(f"🌐 Gemini翻訳: {translated}/{len(targets)}件")
+    if remaining:
+        print(f"⚠️  未更新: {len(remaining)}件")
 
 
 def get_ogp_image(url: str) -> str | None:
