@@ -718,13 +718,13 @@ def translate_trending_descriptions(repos: list[dict]) -> None:
             result = json.loads(res.read())
         text = result["candidates"][0]["content"]["parts"][0]["text"]
 
-        # 番号付きリストをパース: "1. 説明文" → index → summary
-        for line in text.strip().splitlines():
-            m = re.match(r"^(\d+)\.\s+(.+)", line.strip())
-            if m:
-                idx = int(m.group(1)) - 1
-                if 0 <= idx < len(targets):
-                    targets[idx]["summary"] = m.group(2).strip()
+        # 番号付きリストをパース: "N. 説明文（改行含む可能性）" → index → summary
+        # re.DOTALLで改行をまたいで次の番号まで取得し、改行をスペースに正規化
+        for m in re.finditer(r"^(\d+)\.\s+(.+?)(?=\n\d+\.|$)", text, re.MULTILINE | re.DOTALL):
+            idx = int(m.group(1)) - 1
+            if 0 <= idx < len(targets):
+                summary = re.sub(r"\s+", " ", m.group(2)).strip()
+                targets[idx]["summary"] = summary
 
         translated = sum(1 for r in targets if r.get("summary"))
         print(f"🌐 Gemini翻訳: {translated}/{len(targets)}件")
