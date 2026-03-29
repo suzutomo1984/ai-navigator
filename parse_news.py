@@ -681,13 +681,13 @@ def translate_trending_descriptions(repos: list[dict]) -> None:
         print("⚠️  GEMINI_API_KEY未設定 - 翻訳スキップ")
         return
 
-    # 翻訳対象（githubDescriptionあり・summaryなし）
+    # 翻訳対象（githubDescriptionあり・summaryが200文字未満）
     targets = [
         r for r in repos
-        if r.get("githubDescription") and not r.get("summary")
+        if r.get("githubDescription") and len(r.get("summary", "")) < 200
     ]
     if not targets:
-        print("🌐 翻訳対象なし（全件キャッシュ済み）")
+        print("🌐 翻訳対象なし（全件200文字以上）")
         return
 
     # 一括翻訳プロンプト
