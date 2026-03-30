@@ -142,14 +142,16 @@ function buildDateFilter() {
 
 // カテゴリごとのタブカラー
 const CAT_COLORS = {
-  "all":          "#3b82f6",
-  "ai-agent":     "#8b5cf6",
-  "dev-tools":    "#06b6d4",
-  "obsidian-pkm": "#10b981",
-  "no-code":      "#f59e0b",
-  "efficiency":   "#ef4444",
-  "marketing":    "#ec4899",
-  "official":     "#6366f1",
+  "all":              "#3b82f6",
+  "sales-marketing":  "#3b82f6",
+  "back-office":      "#8b5cf6",
+  "productivity":     "#f59e0b",
+  "strategy":         "#10b981",
+  "info-mgmt":        "#6366f1",
+  "ai-tech":          "#06b6d4",
+  "trend":            "#f97316",
+  "official":         "#6b7280",
+  "other":            "#6b7280",
 };
 
 function buildMobileCategoryBar() {
@@ -503,7 +505,7 @@ function render() {
           summary.className = "date-daily-summary";
           summary.innerHTML = `
             <div class="summary-header">
-              <span class="summary-date">📅 ${mm}/${dd} の AI ニュース</span>
+              <span class="summary-date">📅 ${mm}/${dd} のAIビジネスニュース</span>
               <span class="summary-count">${dateInfo.articleCount || 0}件</span>
             </div>
             <div class="summary-text">${escHtml(dateInfo.dailySummary)}</div>
