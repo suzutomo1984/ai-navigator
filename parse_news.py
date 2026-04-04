@@ -328,15 +328,15 @@ def main():
     audit_lines = ["=== AI NEWS HUB 監査レポート ===\n"]
     url_seen = {}  # URL重複検出用
 
-    # 既存のthumbnailキャッシュを読み込む（article id → thumbnail URL）
+    # 既存のthumbnailキャッシュを読み込む（article url → thumbnail URL）
     existing_thumbnails = {}
     existing_data = {}
     if OUTPUT_FILE.exists():
         try:
             existing_data = json.loads(OUTPUT_FILE.read_text(encoding="utf-8"))
             for a in existing_data.get("articles", []):
-                if a.get("thumbnail"):
-                    existing_thumbnails[a["id"]] = a["thumbnail"]
+                if a.get("thumbnail") and a.get("url"):
+                    existing_thumbnails[a["url"]] = a["thumbnail"]
         except Exception:
             pass
 
@@ -481,8 +481,8 @@ def main():
     thumb_ok = 0
     thumb_new = 0
     for a in all_articles:
-        if a["id"] in existing_thumbnails:
-            a["thumbnail"] = existing_thumbnails[a["id"]]
+        if a.get("url") and a["url"] in existing_thumbnails:
+            a["thumbnail"] = existing_thumbnails[a["url"]]
             thumb_ok += 1
         elif a.get("url", "").startswith("http"):
             thumb = get_ogp_image(a["url"])
