@@ -69,6 +69,8 @@ OFFICIAL_SOURCES = [
     "CrewAI Releases",
     "Dify Releases",
     "Flowise Releases",
+    "Gemini CLI Releases",
+    "Codex CLI Releases",
 ]
 
 # 要約生成スキップ判定（ファイルがほぼ空）

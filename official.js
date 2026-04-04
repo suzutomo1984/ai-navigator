@@ -19,6 +19,8 @@ const SOURCE_GROUPS = {
   "LiteLLM":    ["LiteLLM Releases"],
   "Dify":       ["Dify Releases"],
   "Flowise":    ["Flowise Releases"],
+  "Gemini CLI": ["Gemini CLI Releases"],
+  "Codex CLI":  ["Codex CLI Releases"],
 };
 
 const state = {
@@ -158,6 +160,8 @@ const COMPANY_COLORS = {
   "LiteLLM":    "#06b6d4",
   "Dify":       "#7c3aed",
   "Flowise":    "#059669",
+  "Gemini CLI": "#1a73e8",
+  "Codex CLI":  "#00a67e",
 };
 
 function buildMobileCategoryBar() {
