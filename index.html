@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>AI Navigator — AIニュースを、現場の言葉に。</title>
+  <meta name="description" content="中小企業の経営者・現場担当者向けAIビジネスニュース。営業・マーケ・総務・経営戦略への活用ヒントを毎日自動配信。難しい技術用語をビジネスの言葉に翻訳。">
+  <meta property="og:title" content="AI Navigator — AIニュースを、現場の言葉に。">
+  <meta property="og:description" content="中小企業の経営者・現場担当者向けAIビジネスニュース。営業・マーケ・総務・経営戦略への活用ヒントを毎日自動配信。難しい技術用語をビジネスの言葉に翻訳。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ai-news-eev.pages.dev/">
+  <meta property="og:image" content="https://ai-news-eev.pages.dev/ogp.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AI Navigator — AIニュースを、現場の言葉に。">
+  <meta name="twitter:description" content="非エンジニアのための AIビジネスニュース。営業・マーケ・総務・経営に使えるAI情報を毎日配信。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ヘッダー: ロゴ | タブ | 検索 -->
+  <header id="header">
+    <a href="index.html" id="logo">
+      <span id="logo-icon">Ai</span>
+      <div id="logo-group">
+        <span id="logo-text">AI Navigator</span>
+        <span id="logo-tagline">AIニュースを、現場の言葉に。</span>
+      </div>
+    </a>
+
+    <nav id="tabbar">
+      <button class="tab-btn active" data-tab="latest">📰 AIニュース</button>
+      <a class="tab-btn" href="official.html">📢 公式</a>
+      <a class="tab-btn" href="trending.html">🌟 GitHub Trending</a>
+    </nav>
+
+    <div id="search-wrapper">
+      <span id="search-icon">🔍</span>
+      <input
+        type="text"
+        id="search-input"
+        placeholder="記事を検索..."
+        autocomplete="off"
+        spellcheck="false"
+      >
+    </div>
+
+    <!-- モバイル用サイドバートグル -->
+    <button id="sidebar-toggle" aria-label="フィルターを開く">☰</button>
+  </header>
+
+  <!-- アプリレイアウト: サイドバー + メイン -->
+  <!-- モバイル: カテゴリタブバー（上部） -->
+  <div id="mobile-category-bar">
+    <div id="mobile-cat-scroll">
+      <!-- app.js が動的に生成 -->
+    </div>
+    <button id="mob-date-btn">📅 <span id="mob-date-label">日付</span></button>
+  </div>
+  <!-- 日付ドロップダウン -->
+  <div id="mob-date-dropdown">
+    <div id="mob-date-list"></div>
+  </div>
+
+  <!-- ボトムナビ -->
+  <nav id="bottom-nav">
+    <a class="bnav-item active" href="index.html">
+      <span class="bnav-icon">🏠</span>
+      <span class="bnav-label">ホーム</span>
+    </a>
+    <a class="bnav-item" href="official.html">
+      <span class="bnav-icon">📢</span>
+      <span class="bnav-label">公式</span>
+    </a>
+    <a class="bnav-item" href="trending.html">
+      <span class="bnav-icon">🌟</span>
+      <span class="bnav-label">Trending</span>
+    </a>
+  </nav>
+
+  <div id="app-layout">
+
+    <!-- 左サイドバー: フィルター -->
+    <aside id="sidebar">
+      <section class="sidebar-section">
+        <ul id="category-filter"></ul>
+      </section>
+      <div class="sidebar-divider"></div>
+      <section class="sidebar-section">
+        <ul id="date-filter"></ul>
+      </section>
+    </aside>
+
+    <!-- メインコンテンツ -->
+    <main id="main">
+      <div id="site-hero">
+        <p id="hero-tagline">AIニュースを、現場の言葉に。</p>
+        <p id="hero-sub">経営者・現場担当者向けに、毎日のAIニュースをビジネスで使える言葉に翻訳してお届け</p>
+      </div>
+      <div id="stats-bar">読み込み中...</div>
+      <div id="articles-container">
+        <div id="empty-state">
+          <div class="empty-icon">⏳</div>
+          <div>読み込み中...</div>
+        </div>
+      </div>
+      <div id="load-more-wrapper" style="display:none">
+        <button id="load-more-btn">もっと見る</button>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- 記事詳細モーダル -->
+  <div id="article-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close-btn" aria-label="閉じる">✕</button>
+      <div class="modal-thumb-wrap" id="modal-thumb-wrap"></div>
+      <div class="modal-content">
+        <div class="modal-meta" id="modal-meta"></div>
+        <h2 class="modal-title" id="modal-title"></h2>
+        <p class="modal-summary" id="modal-summary"></p>
+        <a class="modal-read-btn" id="modal-read-btn" target="_blank" rel="noopener noreferrer">記事を読む →</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "899bb0ef97f74baa90f5584bb37ff9c4"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>

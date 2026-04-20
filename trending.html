@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>GitHub Trending | AI Navigator — 今日の注目AIリポジトリ</title>
+  <meta name="description" content="GitHub Trendingの注目リポジトリを毎日自動収集。stars・forks・連続ランクイン日数バッジ付きで今ホットなAI関連リポジトリをまとめてチェック。">
+  <meta property="og:title" content="GitHub Trending | AI Navigator — 今日の注目AIリポジトリ">
+  <meta property="og:description" content="GitHub Trendingの注目リポジトリを毎日自動収集。stars・forks・連続ランクイン日数バッジ付き。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ai-news-eev.pages.dev/trending.html">
+  <meta property="og:image" content="https://ai-news-eev.pages.dev/ogp.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="GitHub Trending | AI Navigator — 今日の注目AIリポジトリ">
+  <meta name="twitter:description" content="GitHub Trendingの注目リポジトリを毎日自動収集。stars・forks・🔥連続日数バッジ付き。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header id="header">
+    <a href="index.html" id="logo">
+      <span id="logo-icon">Ai</span>
+      <span id="logo-text">AI Navigator</span>
+    </a>
+
+    <nav id="tabbar">
+      <a class="tab-btn" href="index.html">📰 AIニュース</a>
+      <a class="tab-btn" href="official.html">📢 公式</a>
+      <button class="tab-btn active">🌟 GitHub Trending</button>
+    </nav>
+
+    <div id="search-wrapper">
+      <span id="search-icon">🔍</span>
+      <input
+        type="text"
+        id="search-input"
+        placeholder="リポジトリを検索..."
+        autocomplete="off"
+        spellcheck="false"
+      >
+    </div>
+
+    <button id="sidebar-toggle" aria-label="フィルターを開く">☰</button>
+  </header>
+
+  <!-- モバイル: カテゴリタブバー（ソートフィルター） -->
+  <div id="mobile-category-bar">
+    <div id="mobile-cat-scroll">
+      <!-- trending.js が動的に生成 -->
+    </div>
+    <button id="mob-date-btn">📅 <span id="mob-date-label">日付</span></button>
+  </div>
+  <div id="mob-date-dropdown">
+    <div id="mob-date-list"></div>
+  </div>
+
+  <!-- ボトムナビ -->
+  <nav id="bottom-nav">
+    <a class="bnav-item" href="index.html">
+      <span class="bnav-icon">🏠</span>
+      <span class="bnav-label">ホーム</span>
+    </a>
+    <a class="bnav-item" href="official.html">
+      <span class="bnav-icon">📢</span>
+      <span class="bnav-label">公式</span>
+    </a>
+    <a class="bnav-item active" href="trending.html">
+      <span class="bnav-icon">🌟</span>
+      <span class="bnav-label">Trending</span>
+    </a>
+  </nav>
+
+  <div id="app-layout">
+
+    <aside id="sidebar">
+      <section class="sidebar-section">
+        <div class="sidebar-section-label">ソート</div>
+        <ul id="sort-filter"></ul>
+      </section>
+      <div class="sidebar-divider"></div>
+      <section class="sidebar-section">
+        <div class="sidebar-section-label">日付</div>
+        <ul id="date-filter"></ul>
+      </section>
+    </aside>
+
+    <main id="main">
+      <div id="trending-info-banner">
+        <div class="trending-info-item">🌟 GitHubの注目リポジトリを毎日自動収集</div>
+        <div class="trending-info-item">🔥 複数日連続ランクインで🔥日数バッジを表示</div>
+        <div class="trending-info-item">⭐ スター数・言語・説明文はGitHub APIから自動取得</div>
+      </div>
+      <div id="stats-bar">読み込み中...</div>
+      <div id="articles-container">
+        <div id="empty-state">
+          <div class="empty-icon">⏳</div>
+          <div>読み込み中...</div>
+        </div>
+      </div>
+      <div id="load-more-wrapper" style="display:none">
+        <button id="load-more-btn">もっと見る</button>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- リポジトリ詳細モーダル -->
+  <div id="article-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close-btn" aria-label="閉じる">✕</button>
+      <div class="modal-content">
+        <div class="modal-meta" id="modal-meta"></div>
+        <h2 class="modal-title" id="modal-title"></h2>
+        <p class="modal-summary" id="modal-summary"></p>
+        <a class="modal-read-btn" id="modal-read-btn" target="_blank" rel="noopener noreferrer">GitHubで見る →</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="trending.js"></script>
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "899bb0ef97f74baa90f5584bb37ff9c4"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>
