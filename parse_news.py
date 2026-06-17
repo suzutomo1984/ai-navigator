@@ -10,6 +10,7 @@ import re
 import sys
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import urllib.parse
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
@@ -482,28 +483,51 @@ def main():
         "trending": all_trending,
     }
 
-    # サムネイル付与（既存キャッシュ引き継ぎ + 新規のみOGP取得）
-    # 新規OGP取得は1件ずつHTTP通信するため、全体に時間上限を設ける。
-    # 上限を超えたら以降はサムネ無しでスキップ（記事自体は必ず全件出力する）。
+    # サムネイル付与（既存キャッシュ引き継ぎ + 新規のみ並列OGP取得）
+    # 新規OGP取得はThreadPoolで並列化し、サムネを必ず全件埋める。
+    # 一度取得したサムネはarticles.json経由でキャッシュされ、次回は引き継がれる。
+    # 全体に時間上限(OGP_BUDGET_SEC, 既定600秒)を設け、超過分のみサムネ無しで残す。
     # OGP_BUDGET_SEC=0 で新規取得を完全停止（既存キャッシュのみ）。
-    ogp_budget = float(os.environ.get("OGP_BUDGET_SEC", "120"))
-    ogp_start = time.monotonic()
+    ogp_budget = float(os.environ.get("OGP_BUDGET_SEC", "600"))
+    ogp_workers = int(os.environ.get("OGP_WORKERS", "20"))
     thumb_ok = 0
     thumb_new = 0
     thumb_skipped = 0
+
+    # キャッシュヒット分を先に適用し、新規取得が必要な記事を集める
+    pending = []
     for a in all_articles:
-        if a.get("url") and a["url"] in existing_thumbnails:
-            a["thumbnail"] = existing_thumbnails[a["url"]]
+        url = a.get("url", "")
+        if url and url in existing_thumbnails:
+            a["thumbnail"] = existing_thumbnails[url]
             thumb_ok += 1
-        elif a.get("url", "").startswith("http"):
-            if ogp_budget <= 0 or (time.monotonic() - ogp_start) > ogp_budget:
-                thumb_skipped += 1
-                continue
-            thumb = get_ogp_image(a["url"])
-            if thumb:
-                a["thumbnail"] = thumb
-                thumb_new += 1
-    print(f"🖼️  サムネイル: 引き継ぎ{thumb_ok}件 / 新規取得{thumb_new}件 / 時間切れスキップ{thumb_skipped}件")
+        elif url.startswith("http"):
+            pending.append(a)
+
+    if pending and ogp_budget > 0:
+        ogp_start = time.monotonic()
+        with ThreadPoolExecutor(max_workers=ogp_workers) as executor:
+            future_to_article = {
+                executor.submit(get_ogp_image, a["url"]): a for a in pending
+            }
+            for future in as_completed(future_to_article):
+                if (time.monotonic() - ogp_start) > ogp_budget:
+                    for f in future_to_article:
+                        f.cancel()
+                    break
+                a = future_to_article[future]
+                try:
+                    thumb = future.result()
+                except Exception:
+                    thumb = None
+                if thumb:
+                    a["thumbnail"] = thumb
+                    thumb_new += 1
+        thumb_skipped = len(pending) - thumb_new
+    else:
+        thumb_skipped = len(pending)
+
+    print(f"🖼️  サムネイル: 引き継ぎ{thumb_ok}件 / 新規取得{thumb_new}件 / 未取得{thumb_skipped}件")
 
     # JSON出力
     OUTPUT_FILE.write_text(
