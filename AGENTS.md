@@ -37,10 +37,12 @@ AI・自動化ニュースを毎日自動収集して表示するニュースサ
 
 フロントのサイドバーは `articles.json` の `categories` を動的描画する（`articleCount>0` かつ `id!="official"` で自動表示）。HTML自体の改修は不要。
 
-### 3. gh-pages の上書き事故に注意
-- `personal-pick.yml` は「gh-pages の既存 `articles.json`」を取得してサムネキャッシュを引き継いだ上で再生成 → `gh-pages` に force push する。
-- **このリポへのPRを `main` にマージすると、gh-pages がmainの内容で上書きされ得る**（articles.jsonが古くなる）。
-- **マージ後の正しい手順**: my-vault側でサブモジュール参照を更新&push → `auto-news.yml` を手動実行（`gh workflow run auto-news.yml`）して再生成し、本番を最新に戻す。
+### 3. mainに `push: main` トリガーのデプロイworkflowを復活させるな（過去の重大事故）
+- **事故（2026-06-17）**: かつて `.github/workflows/deploy.yml` が `on: push: main` で `git push origin HEAD:gh-pages --force` を実行していた。これがPRマージのたびに発火し、**mainに残る古い `articles.json` で本番(gh-pages)を上書き**して、本番が繰り返し約2ヶ月前に巻き戻った（1日で3回発生）。
+- **根治済み**: deploy.yml は**削除**し、`articles.json` は**gitignore**（自動生成物なのでmainで追跡しない）。フロント配信は my-vault の `personal-pick.yml` が完全に担う（html/js/css/articles.json をビルドして gh-pages に force push）。
+- **禁止**: このリポに `on: push: main` で gh-pages を更新するworkflowを再追加すること。`articles.json` をmainにコミットすること（gitignore済み）。
+- 「PRをマージしたら本番が古い日付になった」が再発したら、まず `push: main` トリガーのworkflowが復活していないか・articles.jsonがmainに混入していないか確認する。
+- 本番(gh-pages)を手動で再生成したいときは my-vault で `gh workflow run auto-news.yml`（→ personal-pick が連鎖デプロイ）。
 
 ---
 
