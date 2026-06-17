@@ -83,6 +83,31 @@ git push origin master
 
 ---
 
+## ⚠️ よくある落とし穴（改修前に必読）
+
+> AIエージェントで改修する場合は **[AGENTS.md](AGENTS.md)** に詳細あり。
+
+1. **OGPサムネ取得は並列を維持する**
+   `parse_news.py` のサムネ取得は `ThreadPoolExecutor`（既定20並列）。
+   直列に戻すと記事増加時に `articles.json` 書き出し前にActionsがタイムアウトし、
+   **本番が古い日付で更新停止**する（Actionsはsuccess表示のまま）。実際に2026-06-17に発生。
+   調整は環境変数 `OGP_WORKERS` / `OGP_BUDGET_SEC`（既定600秒、0で取得停止）。
+
+2. **カテゴリ追加は3点同期**
+   ① my-vault `auto_news.py`（SOURCES＋Geminiプロンプトの出力セクション）
+   ② このリポ `parse_news.py` の `CATEGORY_MAP`
+   ③ このリポ `app.js` の `CAT_COLORS`（無いとサイドバーで色が浮く）
+   ※ `auto_news.py` のSOURCESの `category` は分類に使われない（実分類はGemini出力のH2見出し）。
+
+3. **PRマージ後はgh-pagesの再生成が必要**
+   `main` へのマージで gh-pages の `articles.json` が古い内容に上書きされ得る。
+   マージ後は my-vault でサブモジュール参照を更新 → `auto-news.yml` を手動実行して本番を最新化する。
+
+「本番が古い日付で止まっている」ときは、まず `OGP_BUDGET_SEC=0 python parse_news.py` で
+OGP無効にして即完走するか確認する（最新日付が出れば犯人はOGP取得）。
+
+---
+
 ## 開発履歴
 
 | Phase | 内容 |
