@@ -99,9 +99,11 @@ git push origin master
    ③ このリポ `app.js` の `CAT_COLORS`（無いとサイドバーで色が浮く）
    ※ `auto_news.py` のSOURCESの `category` は分類に使われない（実分類はGemini出力のH2見出し）。
 
-3. **PRマージ後はgh-pagesの再生成が必要**
-   `main` へのマージで gh-pages の `articles.json` が古い内容に上書きされ得る。
-   マージ後は my-vault でサブモジュール参照を更新 → `auto-news.yml` を手動実行して本番を最新化する。
+3. **`push: main` で gh-pages を更新するworkflowを追加しない**
+   かつて `deploy.yml`（`on: push: main` → mainをgh-pagesにforce push）があり、PRマージのたびに
+   mainの古い `articles.json` で本番を上書きして繰り返し巻き戻した（2026-06-17に根治）。
+   現在は deploy.yml を削除し `articles.json` は gitignore 済み。本番配信は my-vault の
+   `personal-pick.yml` が担う。同種のworkflowを再追加しないこと。
 
 「本番が古い日付で止まっている」ときは、まず `OGP_BUDGET_SEC=0 python parse_news.py` で
 OGP無効にして即完走するか確認する（最新日付が出れば犯人はOGP取得）。
