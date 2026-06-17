@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -482,18 +483,27 @@ def main():
     }
 
     # サムネイル付与（既存キャッシュ引き継ぎ + 新規のみOGP取得）
+    # 新規OGP取得は1件ずつHTTP通信するため、全体に時間上限を設ける。
+    # 上限を超えたら以降はサムネ無しでスキップ（記事自体は必ず全件出力する）。
+    # OGP_BUDGET_SEC=0 で新規取得を完全停止（既存キャッシュのみ）。
+    ogp_budget = float(os.environ.get("OGP_BUDGET_SEC", "120"))
+    ogp_start = time.monotonic()
     thumb_ok = 0
     thumb_new = 0
+    thumb_skipped = 0
     for a in all_articles:
         if a.get("url") and a["url"] in existing_thumbnails:
             a["thumbnail"] = existing_thumbnails[a["url"]]
             thumb_ok += 1
         elif a.get("url", "").startswith("http"):
+            if ogp_budget <= 0 or (time.monotonic() - ogp_start) > ogp_budget:
+                thumb_skipped += 1
+                continue
             thumb = get_ogp_image(a["url"])
             if thumb:
                 a["thumbnail"] = thumb
                 thumb_new += 1
-    print(f"🖼️  サムネイル: 引き継ぎ{thumb_ok}件 / 新規取得{thumb_new}件")
+    print(f"🖼️  サムネイル: 引き継ぎ{thumb_ok}件 / 新規取得{thumb_new}件 / 時間切れスキップ{thumb_skipped}件")
 
     # JSON出力
     OUTPUT_FILE.write_text(
