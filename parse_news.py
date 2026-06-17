@@ -529,6 +529,20 @@ def main():
 
     print(f"🖼️  サムネイル: 引き継ぎ{thumb_ok}件 / 新規取得{thumb_new}件 / 未取得{thumb_skipped}件")
 
+    # 記事数の激減ガード（OGPタイムアウト等で生成が途中失敗した時の自己防衛）
+    # 既存より大幅に減っていたら警告。FAIL_ON_SHRINK=1 で中断（古いjsonを上書きしない）。
+    prev_count = len(existing_data.get("articles", [])) if existing_data else 0
+    new_count = len(all_articles)
+    if prev_count > 0 and new_count < prev_count * 0.7:
+        msg = (
+            f"⚠️ 記事数が激減しています: {prev_count} → {new_count}件 "
+            f"(前回比 {round(new_count / prev_count * 100)}%)。"
+            "OGP取得タイムアウトや収集失敗の可能性があります。AGENTS.md参照。"
+        )
+        print(msg)
+        if os.environ.get("FAIL_ON_SHRINK") == "1":
+            raise SystemExit(f"❌ 記事数激減のため中断（FAIL_ON_SHRINK=1）: {msg}")
+
     # JSON出力
     OUTPUT_FILE.write_text(
         json.dumps(output, ensure_ascii=False, indent=2),
