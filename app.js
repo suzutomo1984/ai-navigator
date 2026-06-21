@@ -42,6 +42,7 @@ const state = {
   date: "all",
   search: "",
   page: 1,
+  view: "paper", // 紙面表示に固定（カード/リストのトグルは廃止）
 };
 
 let allArticles = [];
@@ -172,7 +173,7 @@ function buildDateFilter() {
 
 // カテゴリごとのタブカラー
 const CAT_COLORS = {
-  "all":              "#3b82f6",
+  "all":              "#ff335f",
   "sales-marketing":  "#3b82f6",
   "back-office":      "#8b5cf6",
   "productivity":     "#f59e0b",
@@ -343,7 +344,7 @@ function openModal(article) {
   // サムネイル
   const thumbWrap = document.getElementById("modal-thumb-wrap");
   if (article.thumbnail) {
-    thumbWrap.innerHTML = `<img src="${article.thumbnail}" alt="" onerror="this.parentElement.style.display='none'">`;
+    thumbWrap.innerHTML = `<img src="${article.thumbnail}" alt="" onerror="onThumbError(this)">`;
     thumbWrap.style.display = "block";
   } else {
     thumbWrap.innerHTML = "";
@@ -431,7 +432,7 @@ function createCard(article, isRanking = false) {
     : "";
 
   const thumbHtml = article.thumbnail
-    ? `<div class="card-thumb"><img src="${article.thumbnail}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`
+    ? `<div class="card-thumb"><img src="${article.thumbnail}" alt="" loading="lazy" onerror="onThumbError(this)"></div>`
     : "";
 
   card.innerHTML = `
@@ -458,8 +459,288 @@ function createCard(article, isRanking = false) {
   return card;
 }
 
+// サムネ画像読み込み失敗時: 枠を消し、祖先のクリック要素に no-thumb を付けて本文をフル幅化
+function onThumbError(img) {
+  const wrap = img.parentElement;
+  if (wrap) wrap.style.display = "none";
+  const host = img.closest(".article-card, .paper-lead, .paper-chlead, .paper-cell");
+  if (host) host.classList.add("no-thumb");
+}
+
 function escHtml(str) {
   return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// =============================================
+// 新聞マストヘッド更新（発行物メタファー）
+// =============================================
+
+function updateMasthead(todayStr) {
+  // 号数: 最新記事日付 YYYY-MM-DD → MMDD（例: 2026-06-21 → 0621）
+  const issueEl = document.getElementById("masthead-issue-no");
+  if (issueEl) {
+    const m = todayStr && /^\d{4}-(\d{2})-(\d{2})$/.exec(todayStr);
+    issueEl.textContent = m ? `${m[1]}${m[2]}` : "----";
+  }
+
+  // ダイジェスト統計: 本日号「<本日件数> HEADLINES · <本日カテゴリ数> CATEGORIES」
+  const statsEl = document.getElementById("digest-stats");
+  if (statsEl) {
+    const todayArticles = allArticles.filter(
+      a => !a.isOfficial && a.date === todayStr
+    );
+    const headlineCount = todayArticles.length;
+    const catCount = new Set(
+      todayArticles.map(a => a.category).filter(Boolean)
+    ).size;
+    statsEl.textContent = `${headlineCount} HEADLINES · ${catCount} CATEGORIES`;
+  }
+}
+
+// =============================================
+// 罫線リスト描画（カテゴリ別番号付きセクション / OrangeBot風）
+// =============================================
+
+function renderDateAsList(dateStr, filtered, listEl) {
+  // その日付の記事を全件取得（リストは情報密度重視で全件表示）
+  const dayArticles = filtered.filter(a => a.date === dateStr);
+
+  // カテゴリごとにグルーピング（allCategoriesの並び順を尊重）
+  const orderedCats = allCategories.filter(
+    c => c.id !== "official" && dayArticles.some(a => a.category === c.id)
+  );
+  // allCategoriesに無いカテゴリの記事は末尾にまとめる
+  const knownCatIds = new Set(orderedCats.map(c => c.id));
+  const hasOther = dayArticles.some(a => !knownCatIds.has(a.category));
+
+  let secNo = 0;
+  const buildSection = (catId, emoji, label) => {
+    const items = dayArticles.filter(a =>
+      catId === "__other__" ? !knownCatIds.has(a.category) : a.category === catId
+    );
+    if (items.length === 0) return;
+    secNo += 1;
+    const no = String(secNo).padStart(2, "0");
+
+    const section = document.createElement("div");
+    section.className = "list-section";
+
+    const head = document.createElement("div");
+    head.className = "list-section-head";
+    head.innerHTML = `
+      <span class="list-sec-no">${no}</span>
+      <span class="list-sec-emoji">${emoji || ""}</span>
+      <span class="list-sec-label">${escHtml(label)}</span>
+      <span class="list-sec-count">${items.length}</span>
+    `;
+    section.appendChild(head);
+
+    items.forEach(article => {
+      const row = document.createElement("a");
+      row.className = "list-row";
+      row.href = article.url || "#";
+      if (article.isPick) {
+        row.classList.add(article.pickPriority === "must-read" ? "row-must" : "row-check");
+      }
+      const pick = article.isPick
+        ? `<span class="row-pick">${article.pickPriority === "must-read" ? "🔴" : "🟡"}</span>`
+        : "";
+      const isNew = isNewArticle(article) ? `<span class="row-new">NEW</span>` : "";
+      const src = article.source ? `<span class="row-source">${escHtml(article.source)}</span>` : "";
+      row.innerHTML = `
+        <span class="row-marker">▸</span>
+        <span class="row-main">
+          <span class="row-title">${isNew}${pick}${escHtml(article.title)}</span>
+          ${src}
+        </span>
+      `;
+      row.addEventListener("click", e => {
+        e.preventDefault();
+        openModal(article);
+      });
+      section.appendChild(row);
+    });
+
+    listEl.appendChild(section);
+  };
+
+  orderedCats.forEach(c => buildSection(c.id, c.emoji, c.label));
+  if (hasOther) buildSection("__other__", "📦", "その他");
+}
+
+// =============================================
+// 紙面描画（大1＋小N マルチカラム / 本物の新聞）
+// =============================================
+
+function renderDateAsPaper(dateStr, filtered, paperEl) {
+  const dayArticles = filtered.filter(a => a.date === dateStr);
+  if (dayArticles.length === 0) return;
+
+  // トップ記事を選定: PICK最上位(must-read) > PICK(check) > 先頭
+  const score = a => (a.isPick ? (a.pickPriority === "must-read" ? 2 : 1) : 0);
+  let leadIdx = 0;
+  let best = -1;
+  dayArticles.forEach((a, i) => {
+    const s = score(a);
+    if (s > best) { best = s; leadIdx = i; }
+  });
+  const lead = dayArticles[leadIdx];
+  const rest = dayArticles.filter((_, i) => i !== leadIdx);
+
+  const catLabel = a => {
+    const c = allCategories.find(x => x.id === a.category);
+    return c ? c.label : (a.category || "");
+  };
+  const pickMark = a => a.isPick
+    ? `<span class="paper-pick">${a.pickPriority === "must-read" ? "🔴" : "🟡"}</span>` : "";
+  const newMark = a => isNewArticle(a) ? `<span class="row-new">NEW</span>` : "";
+
+  // セル生成ヘルパー（tier: "mid"=サムネ付き中見出し / "small"=テキストのみ）
+  const makeCell = (article, tier, extraClass) => {
+    const cell = document.createElement("a");
+    cell.className = "paper-cell paper-cell-" + tier + (extraClass ? " " + extraClass : "");
+    cell.href = article.url || "#";
+    if (article.isPick) cell.classList.add(article.pickPriority === "must-read" ? "row-must" : "row-check");
+    const thumb = (tier === "mid" && article.thumbnail)
+      ? `<div class="paper-cell-thumb"><img src="${article.thumbnail}" alt="" loading="lazy" onerror="onThumbError(this)"></div>`
+      : "";
+    cell.innerHTML = `
+      ${thumb}
+      <div class="paper-cell-body">
+        <div class="paper-cell-cat">${escHtml(catLabel(article))}</div>
+        <h4 class="paper-cell-title">${newMark(article)}${pickMark(article)}${escHtml(article.title)}</h4>
+        ${article.source ? `<span class="paper-source">${escHtml(article.source)}</span>` : ""}
+      </div>
+    `;
+    cell.addEventListener("click", e => { e.preventDefault(); openModal(article); });
+    return cell;
+  };
+
+  // --- 3階層に振り分け: 大1 / 中(サイド) / 小(下段) ---
+  const SIDE_COUNT = 3;   // 大記事の右に並べる中記事
+  const MID_BELOW = 3;    // 下段の頭に置く中記事（サムネ付き）
+  const sideArticles = rest.slice(0, SIDE_COUNT);
+  const midBelowArticles = rest.slice(SIDE_COUNT, SIDE_COUNT + MID_BELOW);
+  const smallArticles = rest.slice(SIDE_COUNT + MID_BELOW);
+
+  const topBlock = document.createElement("div");
+  topBlock.className = "paper-top";
+
+  // 大セル
+  const leadEl = document.createElement("a");
+  leadEl.className = "paper-lead";
+  leadEl.href = lead.url || "#";
+  if (lead.isPick) leadEl.classList.add(lead.pickPriority === "must-read" ? "row-must" : "row-check");
+  const leadThumb = lead.thumbnail
+    ? `<div class="paper-lead-thumb"><img src="${lead.thumbnail}" alt="" loading="lazy" onerror="onThumbError(this)"></div>`
+    : "";
+  leadEl.innerHTML = `
+    ${leadThumb}
+    <div class="paper-lead-body">
+      <div class="paper-kicker">${newMark(lead)}${pickMark(lead)}<span class="paper-kicker-cat">${escHtml(catLabel(lead))}</span></div>
+      <h3 class="paper-lead-title">${escHtml(lead.title)}</h3>
+      ${lead.summary ? `<p class="paper-lead-summary">${escHtml(lead.summary)}</p>` : ""}
+      ${lead.source ? `<span class="paper-source">${escHtml(lead.source)}</span>` : ""}
+    </div>
+  `;
+  leadEl.addEventListener("click", e => { e.preventDefault(); openModal(lead); });
+  topBlock.appendChild(leadEl);
+
+  // サイド中セル（大記事の右に回り込む / サムネ付き中見出し）
+  const sideWrap = document.createElement("div");
+  sideWrap.className = "paper-side";
+  sideArticles.forEach(a => sideWrap.appendChild(makeCell(a, "mid", "paper-cell-onside")));
+  topBlock.appendChild(sideWrap);
+
+  paperEl.appendChild(topBlock);
+
+  // --- 中段: サムネ付き中記事の横並び（視覚的フック） ---
+  if (midBelowArticles.length > 0) {
+    const midWrap = document.createElement("div");
+    midWrap.className = "paper-midrow";
+    midBelowArticles.forEach(a => midWrap.appendChild(makeCell(a, "mid")));
+    paperEl.appendChild(midWrap);
+  }
+
+  // --- 下段: カテゴリ別の章立て（01 営業・マーケ … 長いリストを章で割る） ---
+  if (smallArticles.length > 0) {
+    // カテゴリごとにグルーピング（allCategoriesの並び順を尊重）
+    const knownIds = new Set(allCategories.map(c => c.id));
+    const orderedCats = allCategories.filter(
+      c => c.id !== "official" && smallArticles.some(a => a.category === c.id)
+    );
+    const hasOther = smallArticles.some(a => !knownIds.has(a.category));
+
+    // 章トップ記事（面トップ / 中サイズの大記事: サムネ中＋見出し中＋リード2行）
+    const makeChapterLead = article => {
+      const el = document.createElement("a");
+      el.className = "paper-chlead";
+      el.href = article.url || "#";
+      if (article.isPick) el.classList.add(article.pickPriority === "must-read" ? "row-must" : "row-check");
+      const thumb = article.thumbnail
+        ? `<div class="paper-chlead-thumb"><img src="${article.thumbnail}" alt="" loading="lazy" onerror="onThumbError(this)"></div>`
+        : "";
+      el.innerHTML = `
+        ${thumb}
+        <div class="paper-chlead-body">
+          <div class="paper-cell-cat">${escHtml(catLabel(article))}</div>
+          <h3 class="paper-chlead-title">${newMark(article)}${pickMark(article)}${escHtml(article.title)}</h3>
+          ${article.summary ? `<p class="paper-chlead-summary">${escHtml(article.summary)}</p>` : ""}
+          ${article.source ? `<span class="paper-source">${escHtml(article.source)}</span>` : ""}
+        </div>
+      `;
+      el.addEventListener("click", e => { e.preventDefault(); openModal(article); });
+      return el;
+    };
+
+    let chapterNo = 0;
+    const CH_SIDE = 4; // 章トップの右に並べる中記事数
+    const buildChapter = (catId, emoji, label) => {
+      const items = smallArticles.filter(a =>
+        catId === "__other__" ? !knownIds.has(a.category) : a.category === catId
+      );
+      if (items.length === 0) return;
+      chapterNo += 1;
+      const no = String(chapterNo).padStart(2, "0");
+
+      const head = document.createElement("div");
+      head.className = "paper-chapter-head";
+      head.innerHTML = `
+        <span class="paper-chapter-no">${no}</span>
+        <span class="paper-chapter-emoji">${emoji || ""}</span>
+        <span class="paper-chapter-label">${escHtml(label)}</span>
+        <span class="paper-chapter-count">${items.length}</span>
+      `;
+      paperEl.appendChild(head);
+
+      const chLead = items[0];
+      const chSide = items.slice(1, 1 + CH_SIDE);
+      const chSmall = items.slice(1 + CH_SIDE);
+
+      // 章トップブロック: 面トップ（中）＋右に中記事
+      const top = document.createElement("div");
+      top.className = "paper-chapter-top";
+      top.appendChild(makeChapterLead(chLead));
+      if (chSide.length > 0) {
+        const side = document.createElement("div");
+        side.className = "paper-side";
+        chSide.forEach(a => side.appendChild(makeCell(a, "small", "paper-cell-onside")));
+        top.appendChild(side);
+      }
+      paperEl.appendChild(top);
+
+      // 章の残り: 小記事グリッド
+      if (chSmall.length > 0) {
+        const grid = document.createElement("div");
+        grid.className = "paper-rest";
+        chSmall.forEach(a => grid.appendChild(makeCell(a, "small")));
+        paperEl.appendChild(grid);
+      }
+    };
+
+    orderedCats.forEach(c => buildChapter(c.id, c.emoji, c.label));
+    if (hasOther) buildChapter("__other__", "📦", "その他");
+  }
 }
 
 // =============================================
@@ -485,6 +766,8 @@ function render() {
     ${mustCount > 0 ? `<span class="stats-sep">|</span><span class="stats-item">🔴マスト <strong>${mustCount}</strong></span>` : ""}
     ${checkCount > 0 ? `<span class="stats-sep">|</span><span class="stats-item">🟡チェック <strong>${checkCount}</strong></span>` : ""}
   `;
+
+  updateMasthead(todayStr);
 
   const container = document.getElementById("articles-container");
   container.innerHTML = "";
@@ -551,13 +834,30 @@ function render() {
           dateGroup.appendChild(summary);
         }
 
-        dateCards = document.createElement("div");
-        dateCards.className = "article-cards-grid";
-        dateGroup.appendChild(dateCards);
+        if (state.view === "list") {
+          // 罫線リスト: カテゴリ別番号付きセクション（OrangeBot風）
+          dateCards = document.createElement("div");
+          dateCards.className = "article-list";
+          dateGroup.appendChild(dateCards);
+          renderDateAsList(currentDate, filtered, dateCards);
+        } else if (state.view === "paper") {
+          // 紙面: 大1＋小Nのマルチカラムグリッド（本物の新聞）
+          dateCards = document.createElement("div");
+          dateCards.className = "article-paper";
+          dateGroup.appendChild(dateCards);
+          renderDateAsPaper(currentDate, filtered, dateCards);
+        } else {
+          dateCards = document.createElement("div");
+          dateCards.className = "article-cards-grid";
+          dateGroup.appendChild(dateCards);
+        }
 
         container.appendChild(dateGroup);
       }
-      dateCards.appendChild(createCard(article, false));
+      // カード表示時のみ1件ずつ追加（リスト・紙面はセクション一括描画済み）
+      if (state.view === "cards") {
+        dateCards.appendChild(createCard(article, false));
+      }
     });
   }
 

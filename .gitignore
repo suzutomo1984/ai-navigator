@@ -1,6 +1,7 @@
 audit_report.txt
 __pycache__/
 *.pyc
+.playwright-cli/
 
 # articles.json は parse_news.py が生成する自動生成物。
 # mainで追跡するとPRマージ時にgh-pages(本番)を古い版で上書きする事故の原因になる。

@@ -146,7 +146,7 @@ function buildDateFilter() {
 // =============================================
 
 const COMPANY_COLORS = {
-  "all":        "#3b82f6",
+  "all":        "#ff335f",
   "OpenAI":     "#10a37f",
   "Google":     "#ea4335",
   "Anthropic":  "#d97706",
