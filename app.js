@@ -694,7 +694,8 @@ function renderDateAsPaper(dateStr, filtered, paperEl) {
     };
 
     let chapterNo = 0;
-    const CH_SIDE = 4; // 章トップの右に並べる中記事数
+    const CH_SIDE = 4;        // 章トップの右に並べる中記事数
+    const CH_MIN_FEATURE = 6; // この本数以上なら面トップ構成、未満は均一グリッド
     const buildChapter = (catId, emoji, label) => {
       const items = smallArticles.filter(a =>
         catId === "__other__" ? !knownIds.has(a.category) : a.category === catId
@@ -712,6 +713,15 @@ function renderDateAsPaper(dateStr, filtered, paperEl) {
         <span class="paper-chapter-count">${items.length}</span>
       `;
       paperEl.appendChild(head);
+
+      // 記事が少ない章は均一グリッドのみ（面トップを作ると空白が出るため）
+      if (items.length < CH_MIN_FEATURE) {
+        const grid = document.createElement("div");
+        grid.className = "paper-rest";
+        items.forEach(a => grid.appendChild(makeCell(a, "small")));
+        paperEl.appendChild(grid);
+        return;
+      }
 
       const chLead = items[0];
       const chSide = items.slice(1, 1 + CH_SIDE);

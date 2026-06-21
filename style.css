@@ -1251,8 +1251,9 @@ body {
 
 .paper-chlead {
   display: flex;
-  gap: 18px;
-  padding: 14px 22px 14px 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 22px 0 0;
   text-decoration: none;
   color: inherit;
   cursor: pointer;
@@ -1262,8 +1263,8 @@ body {
 
 .paper-chlead-thumb {
   flex-shrink: 0;
-  width: 180px;
-  height: 120px;
+  width: 100%;
+  height: 200px;
   overflow: hidden;
   border-radius: var(--radius-sm);
   background: var(--bg-primary);
@@ -1286,7 +1287,7 @@ body {
 }
 
 .paper-chlead-title {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   line-height: 1.4;
   color: var(--text-primary);
@@ -1295,11 +1296,11 @@ body {
 
 .paper-chlead-summary {
   font-size: 13px;
-  line-height: 1.7;
+  line-height: 1.75;
   color: var(--text-secondary);
   margin: 0;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
