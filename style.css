@@ -1263,6 +1263,34 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+/* 記事1件のみの章: サイドが無いので大記事を全幅に。
+   サムネ左・本文右の横長カードにして右側の空白をなくす */
+.paper-chapter-top-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.paper-chapter-top-single .paper-chlead {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 20px;
+  padding-right: 0;
+}
+.paper-chapter-top-single .paper-chlead-thumb {
+  width: 320px;
+  max-width: 42%;
+  height: 180px;
+}
+@media (max-width: 600px) {
+  .paper-chapter-top-single .paper-chlead {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .paper-chapter-top-single .paper-chlead-thumb {
+    width: 100%;
+    max-width: none;
+    height: 180px;
+  }
+}
+
 .paper-chlead {
   display: flex;
   flex-direction: column;

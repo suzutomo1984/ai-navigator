@@ -704,7 +704,6 @@ function renderDateAsPaper(dateStr, filtered, paperEl) {
 
     let chapterNo = 0;
     const CH_SIDE = 4;        // 章トップの右に並べる中記事数
-    const CH_MIN_FEATURE = 6; // この本数以上なら面トップ構成、未満は均一グリッド
     const buildChapter = (catId, emoji, label) => {
       const match = a => catId === "__other__" ? !knownIds.has(a.category) : a.category === catId;
       const items = smallArticles.filter(match);
@@ -729,22 +728,16 @@ function renderDateAsPaper(dateStr, filtered, paperEl) {
       // 記事が無い章は見出しのみで終了
       if (items.length === 0) return;
 
-      // 記事が少ない章は均一グリッドのみ（面トップを作ると空白が出るため）
-      if (items.length < CH_MIN_FEATURE) {
-        const grid = document.createElement("div");
-        grid.className = "paper-rest";
-        items.forEach(a => grid.appendChild(makeCell(a, "small")));
-        paperEl.appendChild(grid);
-        return;
-      }
-
+      // どの章も必ず大記事（面トップ）を出す。記事数に応じてレイアウトを可変にし、
+      // 少数でも右側に空白が出ないようにする（1件=横幅ワイド / 2件以上=大記事＋右サイド）。
       const chLead = items[0];
       const chSide = items.slice(1, 1 + CH_SIDE);
       const chSmall = items.slice(1 + CH_SIDE);
 
       // 章トップブロック: 面トップ（中）＋右に中記事
       const top = document.createElement("div");
-      top.className = "paper-chapter-top";
+      // サイド記事が無い（=1件のみ）章は大記事を全幅に広げて空白を防ぐ
+      top.className = "paper-chapter-top" + (chSide.length === 0 ? " paper-chapter-top-single" : "");
       top.appendChild(makeChapterLead(chLead));
       if (chSide.length > 0) {
         const side = document.createElement("div");
