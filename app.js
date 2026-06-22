@@ -216,7 +216,7 @@ function buildMobileCategoryBar() {
     state.category = btn.dataset.cat;
     state.page = 1;
     buildDateFilter();
-    render();
+    render(true);
   });
 }
 
@@ -243,7 +243,7 @@ function buildMobileDateDropdown() {
     dropdown.classList.remove("open");
     btn.classList.remove("active");
     buildDateFilter();
-    render();
+    render(true);
   });
 
   // 初期リスト構築
@@ -756,7 +756,11 @@ function renderDateAsPaper(dateStr, filtered, paperEl) {
 // レンダリング
 // =============================================
 
-function render() {
+function render(resetScroll = false) {
+  // 日付・カテゴリ・タブ・検索の切り替え時はページ最上部に戻す
+  // （「もっと見る」のページ送りは現在位置を維持するため resetScroll を渡さない）
+  if (resetScroll) window.scrollTo(0, 0);
+
   const filtered = filterArticles();
   const sorted = sortArticles(filtered);
   const visible = sorted.slice(0, state.page * PAGE_SIZE);
@@ -903,7 +907,7 @@ function setupEvents() {
       state.tab = btn.dataset.tab;
       state.page = 1;
       buildDateFilter();
-      render();
+      render(true);
     });
   });
 
@@ -916,7 +920,7 @@ function setupEvents() {
     state.category = item.dataset.cat;
     state.page = 1;
     buildDateFilter();
-    render();
+    render(true);
   });
 
   // 日付フィルター（サイドバー縦リスト）
@@ -927,7 +931,7 @@ function setupEvents() {
     item.classList.add("active");
     state.date = item.dataset.date;
     state.page = 1;
-    render();
+    render(true);
   });
 
   // テキスト検索（300ms debounce）
@@ -936,7 +940,7 @@ function setupEvents() {
     searchTimer = setTimeout(() => {
       state.search = e.target.value.trim();
       state.page = 1;
-      render();
+      render(true);
     }, 300);
   });
 
@@ -1059,7 +1063,7 @@ function setupSwipe() {
       state.category = btns[nextIdx].dataset.cat;
       state.page = 1;
       buildDateFilter();
-      render();
+      render(true);
 
       // 反対側から新ページをスライドイン
       container.style.transition = "none";
