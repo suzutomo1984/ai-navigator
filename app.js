@@ -674,11 +674,17 @@ function renderDateAsPaper(dateStr, filtered, paperEl) {
   {
     // カテゴリごとにグルーピング（allCategoriesの並び順を尊重）
     const knownIds = new Set(allCategories.map(c => c.id));
-    // official と other を除く全カテゴリを章立て対象にする（記事の有無でフィルタしない）
-    // ※other は固定章として常出しせず、未知カテゴリ記事が実在する日だけ hasOther 経由で出す
-    const orderedCats = allCategories.filter(c => c.id !== "official" && c.id !== "other");
-    // 「その他」は、その日に未知カテゴリの記事が実在する時だけ出す（空の箱を増やさない）
-    const hasOther = dayArticles.some(a => !knownIds.has(a.category));
+    // ALL表示時は official/other を除く全カテゴリの章見出しを必ず出す（0件は「配信なし」）。
+    // 特定カテゴリで絞り込み中は、そのカテゴリの章だけ出す（他カテゴリの「配信なし」章は出さない）。
+    const filteringCat = state.category !== "all";
+    const orderedCats = allCategories.filter(c =>
+      c.id !== "official" && c.id !== "other" &&
+      (!filteringCat || c.id === state.category)
+    );
+    // 「その他」は、ALL表示 or その他で絞り込み中、かつ未知カテゴリ記事が実在する日だけ出す
+    const hasOther =
+      (!filteringCat || state.category === "other") &&
+      dayArticles.some(a => !knownIds.has(a.category));
 
     // 章トップ記事（面トップ / 中サイズの大記事: サムネ中＋見出し中＋リード2行）
     const makeChapterLead = article => {
