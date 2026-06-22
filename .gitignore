@@ -10,3 +10,8 @@ articles.json
 articles (1).json
 articles.prod.json
 articles.local-backup.json
+
+# robots.txt / sitemap.xml も parse_news.py の自動生成物。
+# 本番(gh-pages)は personal-pick.yml が parse 実行後に生成・デプロイする。
+robots.txt
+sitemap.xml

@@ -17,3 +17,9 @@
 # HTML は常に最新を取りに行く（中身が軽く、古いと配信構成がズレるため）。
 /*.html
   Cache-Control: public, max-age=0, s-maxage=300, must-revalidate
+
+# SEOファイル。sitemap は lastmod が毎日変わるので短め、robots はほぼ不変なので長め。
+/sitemap.xml
+  Cache-Control: public, max-age=3600, s-maxage=3600
+/robots.txt
+  Cache-Control: public, max-age=86400, s-maxage=86400

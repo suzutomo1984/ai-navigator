@@ -1808,3 +1808,33 @@ body {
 
   .bnav-label { line-height: 1; }
 }
+
+/* 運営者情報フッター（E-E-A-T: 誰が・何を・更新頻度を明示） */
+#site-footer {
+  max-width: 760px;
+  margin: 48px auto 32px;
+  padding: 24px 22px 0;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+#site-footer .footer-title {
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+  letter-spacing: 0.04em;
+}
+#site-footer .footer-desc {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+}
+#site-footer .footer-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+}
+#site-footer .footer-meta a { color: var(--accent); text-decoration: none; }
+#site-footer .footer-meta a:hover { text-decoration: underline; }

@@ -27,6 +27,11 @@ VAULT_ROOT = Path(__file__).parent.parent
 NEWS_DIR = VAULT_ROOT / "自動ニュース配信"
 OUTPUT_FILE = Path(__file__).parent / "articles.json"
 AUDIT_FILE = Path(__file__).parent / "audit_report.txt"
+# SEO基礎工事の出力先と公開URL（作品として正しく存在するための自動生成物）
+SITEMAP_FILE = Path(__file__).parent / "sitemap.xml"
+ROBOTS_FILE = Path(__file__).parent / "robots.txt"
+INDEX_FILE = Path(__file__).parent / "index.html"
+BASE_URL = "https://ai-news-eev.pages.dev"
 
 # 基準日（直近7日ボーナス判定用）
 NOW = datetime.now(JST)
@@ -555,6 +560,100 @@ def main():
 
     print(f"✅ articles.json 生成完了: {len(all_articles)}記事 / {len(dates_meta)}日分")
     print(f"📋 監査レポート: {AUDIT_FILE}")
+
+    # SEO基礎工事（robots.txt / sitemap.xml / 構造化データ）を自動生成
+    generate_seo_assets(all_articles)
+
+
+def generate_seo_assets(all_articles: list[dict]) -> None:
+    """robots.txt・sitemap.xml を生成し、index.html に WebSite/CollectionPage の
+    JSON-LD を埋め込む。記事収集のたびに毎回上書きされるため運用は完全自動。"""
+    today = datetime.now(JST)
+    lastmod = today.strftime("%Y-%m-%d")
+
+    # --- robots.txt（全許可＋サイトマップ案内）---
+    ROBOTS_FILE.write_text(
+        f"User-agent: *\nAllow: /\nSitemap: {BASE_URL}/sitemap.xml\n",
+        encoding="utf-8",
+    )
+
+    # --- sitemap.xml（個別記事URLは存在しないのでトップとofficialの2ページのみ）---
+    sitemap = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>{BASE_URL}/</loc>
+    <lastmod>{lastmod}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>{BASE_URL}/official.html</loc>
+    <lastmod>{lastmod}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>"""
+    SITEMAP_FILE.write_text(sitemap, encoding="utf-8")
+
+    # --- 構造化データ（JSON-LD）を index.html に埋め込み ---
+    # 個別記事URLが無いため NewsArticle ではなく WebSite + CollectionPage(ItemList)
+    non_official = [a for a in all_articles if not a.get("isOfficial")]
+    # 配列順は日付降順とは限らないため max() で最新日を確定する
+    latest_date = max((a.get("date", "") for a in non_official), default="")
+    latest = [a for a in non_official if a.get("date") == latest_date][:30]
+
+    website_schema = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "AI Navigator",
+        "description": "中小企業の経営者・現場担当者向けAIビジネスニュース。",
+        "url": BASE_URL + "/",
+        "inLanguage": "ja",
+    }
+    collection_schema = {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": f"AI Navigator — {latest_date} のAIニュース",
+        "description": "AIビジネスニュースを毎日自動収集・要約配信。",
+        "url": BASE_URL + "/",
+        "dateModified": today.isoformat(),
+        "mainEntity": {
+            "@type": "ItemList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": i,
+                    "name": a.get("title", ""),
+                    "url": a.get("url", BASE_URL),
+                }
+                for i, a in enumerate(latest, 1)
+            ],
+        },
+    }
+    json_ld = (
+        '<script type="application/ld+json">\n'
+        + json.dumps(website_schema, ensure_ascii=False)
+        + "\n</script>\n"
+        + '<script type="application/ld+json">\n'
+        + json.dumps(collection_schema, ensure_ascii=False)
+        + "\n</script>"
+    )
+
+    # マーカーで挟んだ区間を毎回置換する（冪等：何度実行してもマーカーが残る）
+    block = (
+        "<!-- JSON_LD:start -->\n" + json_ld + "\n<!-- JSON_LD:end -->"
+    )
+    if INDEX_FILE.exists():
+        html = INDEX_FILE.read_text(encoding="utf-8")
+        pattern = re.compile(
+            r"<!-- JSON_LD:start -->.*?<!-- JSON_LD:end -->", re.DOTALL
+        )
+        if pattern.search(html):
+            INDEX_FILE.write_text(pattern.sub(lambda _: block, html), encoding="utf-8")
+        else:
+            print("⚠️ index.html に JSON_LD マーカーが無いためJSON-LD未挿入")
+
+    print("✅ SEO生成完了: robots.txt / sitemap.xml / JSON-LD")
 
 
 def parse_trending(filepath: Path, date_str: str) -> list[dict]:
