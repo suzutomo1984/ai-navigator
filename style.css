@@ -1393,19 +1393,30 @@ body {
   .paper-lead-thumb { width: 100%; height: 190px; }
   .paper-lead-title { font-size: 21px; }
   .paper-lead-summary { font-size: 13px; -webkit-line-clamp: 3; }
-  /* サイドは大記事の下に積む（左罫線→上罫線に） */
+  /* 中記事はSmartNews型の横並びカード（左テキスト＋右小サムネ）に。
+     大記事＝縦・大サムネ、中記事＝横・小サムネ、で緩急をスマホでも保ち見やすくする */
   .paper-side { border-left: none; }
-  .paper-cell-onside {
-    padding: 13px 4px !important;
+  .paper-cell-onside,
+  .paper-midrow .paper-cell-mid {
+    flex-direction: row !important;
+    align-items: flex-start;
+    gap: 12px !important;
+    padding: 12px 4px !important;
     border-top: 1px solid var(--border) !important;
+    border-right: none !important;
   }
-  .paper-cell-onside .paper-cell-thumb { height: 150px; }
-  /* 中段は2カラム */
-  .paper-midrow { grid-template-columns: repeat(2, 1fr); }
-  .paper-midrow .paper-cell-mid { padding: 0 0 0 12px; }
-  .paper-midrow .paper-cell-mid:nth-child(3n) { border-right: 1px solid var(--border); }
-  .paper-midrow .paper-cell-mid:nth-child(2n) { border-right: none; }
-  .paper-cell-mid .paper-cell-thumb { height: 100px; }
+  /* テキストを左（先）に、サムネを右（後）に並べる */
+  .paper-cell-onside .paper-cell-body,
+  .paper-midrow .paper-cell-mid .paper-cell-body { order: 1; }
+  .paper-cell-onside .paper-cell-thumb,
+  .paper-midrow .paper-cell-mid .paper-cell-thumb {
+    order: 2;
+    flex: 0 0 auto;
+    width: 88px;
+    height: 88px !important;
+  }
+  /* 中段は1カラムにして横並びカードを縦に積む */
+  .paper-midrow { grid-template-columns: 1fr; }
   /* 下段は1カラム */
   .paper-rest { grid-template-columns: 1fr; }
   .paper-cell-small {
