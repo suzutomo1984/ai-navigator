@@ -1664,6 +1664,9 @@ body {
     flex: 1;
     padding: 0 10px;
     height: 100%;
+    /* 横パンであることをブラウザに明示し、慣性スクロールを有効化（操作の引っかかり対策） */
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
   }
 
   #mobile-cat-scroll::-webkit-scrollbar { display: none; }

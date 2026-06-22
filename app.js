@@ -993,6 +993,7 @@ function setupSwipe() {
   let startX = 0, startY = 0, currentX = 0;
   let isSwiping = false;
   let isAnimating = false;
+  let swipeDisabled = false; // 上部カテゴリバー等、独自に横スクロールする領域では切替スワイプを止める
 
   function getNextIdx(dx) {
     const scroll = document.getElementById("mobile-cat-scroll");
@@ -1007,6 +1008,9 @@ function setupSwipe() {
 
   document.addEventListener("touchstart", e => {
     if (isAnimating) return;
+    // 上部カテゴリバー・日付ドロップダウン上で始まったタッチは独自スクロールに任せ、
+    // カテゴリ切替スワイプとして拾わない（誤検知で動作が悪くなるのを防ぐ）
+    swipeDisabled = !!(e.target.closest && e.target.closest("#mobile-category-bar, #mob-date-dropdown"));
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
     currentX = 0;
@@ -1014,7 +1018,7 @@ function setupSwipe() {
   }, { passive: true });
 
   document.addEventListener("touchmove", e => {
-    if (isAnimating) return;
+    if (isAnimating || swipeDisabled) return;
     const dx = e.touches[0].clientX - startX;
     const dy = e.touches[0].clientY - startY;
 
@@ -1033,7 +1037,7 @@ function setupSwipe() {
   }, { passive: true });
 
   document.addEventListener("touchend", e => {
-    if (!isSwiping || isAnimating) {
+    if (!isSwiping || isAnimating || swipeDisabled) {
       container.style.transform = "";
       container.style.transition = "";
       container.style.opacity = "";
