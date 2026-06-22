@@ -181,7 +181,6 @@ const CAT_COLORS = {
   "info-mgmt":        "#6366f1",
   "ai-tech":          "#06b6d4",
   "side-business":    "#eab308",
-  "trend":            "#f97316",
   "official":         "#6b7280",
   "other":            "#6b7280",
 };
