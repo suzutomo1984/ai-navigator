@@ -748,7 +748,7 @@ function renderDateAsPaper(dateStr, filtered, paperEl) {
       if (chSide.length > 0) {
         const side = document.createElement("div");
         side.className = "paper-side";
-        chSide.forEach(a => side.appendChild(makeCell(a, "small", "paper-cell-onside")));
+        chSide.forEach(a => side.appendChild(makeCell(a, "mid", "paper-cell-onside")));
         top.appendChild(side);
       }
       paperEl.appendChild(top);

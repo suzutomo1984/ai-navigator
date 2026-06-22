@@ -1437,6 +1437,8 @@ body {
     padding: 11px 4px !important;
     border-top: 1px solid var(--border) !important;
   }
+  /* デスクトップでは非表示の章トップ右サイドのサムネを、スマホの横並びカードでは表示する */
+  .paper-chapter-top .paper-cell-onside .paper-cell-thumb { display: block; }
 }
 
 /* =============================================
