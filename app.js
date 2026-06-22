@@ -49,6 +49,10 @@ let allArticles = [];
 let allDates = [];
 let allCategories = [];
 let searchTimer = null;
+// ピック件数はデータ更新時にのみ変化するため、loadData()で一度だけ集計して保持する
+// （render()のたびに全件スキャンするのを避ける）
+let mustCount = 0;
+let checkCount = 0;
 
 // =============================================
 // データ読み込み
@@ -62,6 +66,10 @@ async function loadData() {
   allArticles = data.articles || [];
   allDates = data.dates || [];
   allCategories = data.categories || [];
+
+  // ピック件数を一度だけ集計（以降のrender()では再計算しない）
+  mustCount = allArticles.filter(a => a.isPick && a.pickPriority === "must-read").length;
+  checkCount = allArticles.filter(a => a.isPick && a.pickPriority !== "must-read").length;
 
   markVisited(); // データ読み込み成功後に訪問時刻を記録
   buildSidebarFilters();
@@ -769,8 +777,7 @@ function render(resetScroll = false) {
   // 統計バー
   const todayStr = allDates.length > 0 ? allDates[0].date : null;
   const todayCount = todayStr ? filtered.filter(a => a.date === todayStr).length : 0;
-  const mustCount = allArticles.filter(a => a.isPick && a.pickPriority === "must-read").length;
-  const checkCount = allArticles.filter(a => a.isPick && a.pickPriority !== "must-read").length;
+  // mustCount / checkCount は loadData() で集計済み（グローバル変数を参照）
   const statsEl = document.getElementById("stats-bar");
   statsEl.innerHTML = `
     <span class="stats-item">📰 ${filtered.length}件表示中</span>

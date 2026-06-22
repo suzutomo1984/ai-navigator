@@ -1,0 +1,19 @@
+# Cloudflare Pages キャッシュ設定
+# articles.json は GitHub Actions が1日2回更新するため、30分のエッジキャッシュで
+# リピーターの重複ダウンロードを抑えつつ、更新の遅延は最大30分に収める。
+# stale-while-revalidate でキャッシュ切れ直後も古い内容を即返しつつ裏で更新する。
+/articles.json
+  Cache-Control: public, max-age=300, s-maxage=1800, stale-while-revalidate=600
+
+# 静的アセット（ファイル名にハッシュが付かないため長期キャッシュは禁物）。
+# 更新時に古いJS/CSSが残ると表示が壊れるので、短め＋再検証で安全側に倒す。
+/app.js
+  Cache-Control: public, max-age=300, s-maxage=600, stale-while-revalidate=600
+/official.js
+  Cache-Control: public, max-age=300, s-maxage=600, stale-while-revalidate=600
+/style.css
+  Cache-Control: public, max-age=300, s-maxage=600, stale-while-revalidate=600
+
+# HTML は常に最新を取りに行く（中身が軽く、古いと配信構成がズレるため）。
+/*.html
+  Cache-Control: public, max-age=0, s-maxage=300, must-revalidate
