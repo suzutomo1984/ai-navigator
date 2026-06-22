@@ -670,13 +670,15 @@ function renderDateAsPaper(dateStr, filtered, paperEl) {
   }
 
   // --- 下段: カテゴリ別の章立て（01 営業・マーケ … 長いリストを章で割る） ---
-  if (smallArticles.length > 0) {
+  // 全カテゴリの章見出しを必ず出す（その日の記事が上段に吸われた／0件でも見出しは出す）
+  {
     // カテゴリごとにグルーピング（allCategoriesの並び順を尊重）
     const knownIds = new Set(allCategories.map(c => c.id));
-    const orderedCats = allCategories.filter(
-      c => c.id !== "official" && smallArticles.some(a => a.category === c.id)
-    );
-    const hasOther = smallArticles.some(a => !knownIds.has(a.category));
+    // official と other を除く全カテゴリを章立て対象にする（記事の有無でフィルタしない）
+    // ※other は固定章として常出しせず、未知カテゴリ記事が実在する日だけ hasOther 経由で出す
+    const orderedCats = allCategories.filter(c => c.id !== "official" && c.id !== "other");
+    // 「その他」は、その日に未知カテゴリの記事が実在する時だけ出す（空の箱を増やさない）
+    const hasOther = dayArticles.some(a => !knownIds.has(a.category));
 
     // 章トップ記事（面トップ / 中サイズの大記事: サムネ中＋見出し中＋リード2行）
     const makeChapterLead = article => {
@@ -704,22 +706,28 @@ function renderDateAsPaper(dateStr, filtered, paperEl) {
     const CH_SIDE = 4;        // 章トップの右に並べる中記事数
     const CH_MIN_FEATURE = 6; // この本数以上なら面トップ構成、未満は均一グリッド
     const buildChapter = (catId, emoji, label) => {
-      const items = smallArticles.filter(a =>
-        catId === "__other__" ? !knownIds.has(a.category) : a.category === catId
-      );
-      if (items.length === 0) return;
+      const match = a => catId === "__other__" ? !knownIds.has(a.category) : a.category === catId;
+      const items = smallArticles.filter(match);
+      // 下段に記事が無くても見出しは必ず出す。
+      // ただし上段（大・中記事）に同カテゴリが居るなら「配信なし」は誤りなので状態を出し分ける。
+      const inTopOnly = items.length === 0 && dayArticles.some(match);
       chapterNo += 1;
       const no = String(chapterNo).padStart(2, "0");
 
       const head = document.createElement("div");
-      head.className = "paper-chapter-head";
+      head.className = "paper-chapter-head" + (items.length === 0 ? " paper-chapter-empty" : "");
+      const countHtml = items.length > 0
+        ? `<span class="paper-chapter-count">${items.length}</span>`
+        : `<span class="paper-chapter-note">${inTopOnly ? "注目記事に掲載" : "本日の配信なし"}</span>`;
       head.innerHTML = `
         <span class="paper-chapter-no">${no}</span>
         <span class="paper-chapter-emoji">${emoji || ""}</span>
         <span class="paper-chapter-label">${escHtml(label)}</span>
-        <span class="paper-chapter-count">${items.length}</span>
+        ${countHtml}
       `;
       paperEl.appendChild(head);
+      // 記事が無い章は見出しのみで終了
+      if (items.length === 0) return;
 
       // 記事が少ない章は均一グリッドのみ（面トップを作ると空白が出るため）
       if (items.length < CH_MIN_FEATURE) {

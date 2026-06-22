@@ -1238,6 +1238,20 @@ body {
   margin-left: auto;
 }
 
+/* 記事ゼロの章: 見出しは出すが控えめにしてメリハリを保つ */
+.paper-chapter-empty {
+  margin-top: 18px;
+  opacity: 0.55;
+  border-bottom-style: dashed;
+}
+
+.paper-chapter-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+  font-style: italic;
+}
+
 /* --- 章トップブロック: 面トップ（中サイズの大記事）＋右に中記事 --- */
 .paper-chapter-top {
   display: grid;
