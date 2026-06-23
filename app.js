@@ -608,7 +608,7 @@ function renderDateAsPaper(dateStr, filtered, paperEl) {
     cell.className = "paper-cell paper-cell-" + tier + (extraClass ? " " + extraClass : "");
     cell.href = article.url || "#";
     if (article.isPick) cell.classList.add(article.pickPriority === "must-read" ? "row-must" : "row-check");
-    const thumb = (tier === "mid" && article.thumbnail)
+    const thumb = ((tier === "mid" || tier === "small") && article.thumbnail)
       ? `<div class="paper-cell-thumb"><img src="${article.thumbnail}" alt="" loading="lazy" onerror="onThumbError(this)"></div>`
       : "";
     cell.innerHTML = `

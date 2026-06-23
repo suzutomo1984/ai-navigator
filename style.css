@@ -1202,6 +1202,9 @@ body {
 }
 .paper-rest .paper-cell-small:nth-child(4n) { border-right: none; }
 .paper-cell-small .paper-cell-title { font-size: 13px; font-weight: 500; }
+/* 下段リストにも小さめサムネを表示（mid より低く、メリハリは保つ） */
+.paper-cell-small .paper-cell-thumb { height: 88px; }
+.paper-cell-small.no-thumb .paper-cell-thumb { display: none; }
 
 /* --- 下段の章見出し（01 営業・マーケ … カテゴリ章立て） --- */
 .paper-chapter-head {
@@ -1357,17 +1360,25 @@ body {
 .paper-chapter-top .paper-side {
   border-left: 1px solid var(--border);
 }
+/* 章トップ右サイドの中記事はサムネ左・テキスト右の横並び（狭いサイドで一覧性優先） */
 .paper-chapter-top .paper-cell-onside {
-  flex-direction: column;
-  gap: 5px;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
   padding: 11px 4px 11px 18px;
   border-top: none !important;
 }
 .paper-chapter-top .paper-cell-onside + .paper-cell-onside {
   border-top: 1px solid var(--border) !important;
 }
-/* 章トップ右サイドの小セルにはサムネ無し（テキスト密度優先） */
-.paper-chapter-top .paper-cell-onside .paper-cell-thumb { display: none; }
+/* サムネは左に小さく固定（48x48） */
+.paper-chapter-top .paper-cell-onside .paper-cell-thumb {
+  display: block;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+}
+.paper-chapter-top .paper-cell-onside .paper-cell-body { flex: 1 1 auto; min-width: 0; }
 
 /* 紙面: タブレット（下段3カラム・中段3カラム維持・サイド狭め） */
 @media (max-width: 1100px) {

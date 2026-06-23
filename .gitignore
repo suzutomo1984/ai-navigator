@@ -3,6 +3,11 @@ __pycache__/
 *.pyc
 .playwright-cli/
 
+# トレンド/ツール自動集計の検証用プロトタイプ（カテゴリ別まとめページ用・2026-06-23）。
+# 次回parse_news.pyへ移植する元。本番ビルドには巻き込まない。
+trend_analyze_prototype.py
+trend_result.txt
+
 # articles.json は parse_news.py が生成する自動生成物。
 # mainで追跡するとPRマージ時にgh-pages(本番)を古い版で上書きする事故の原因になる。
 # 本番(gh-pages)は personal-pick.yml が毎回生成・デプロイするのでmainには不要。
