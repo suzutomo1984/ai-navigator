@@ -1449,7 +1449,13 @@ body {
     border-top: 1px solid var(--border) !important;
   }
   /* デスクトップでは非表示の章トップ右サイドのサムネを、スマホの横並びカードでは表示する */
-  .paper-chapter-top .paper-cell-onside .paper-cell-thumb { display: block; }
+  /* PC用の48px固定指定（詳細度3）がスマホ用88pxを上書きして縦長に潰れるのを、同詳細度で打ち消す */
+  .paper-chapter-top .paper-cell-onside .paper-cell-thumb {
+    display: block;
+    flex: 0 0 88px;
+    width: 88px;
+    height: 88px !important;
+  }
 }
 
 /* =============================================
