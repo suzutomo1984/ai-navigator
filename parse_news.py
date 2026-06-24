@@ -339,7 +339,10 @@ def main():
     url_seen = {}  # URL重複検出用
 
     # 既存のthumbnailキャッシュを読み込む（article url → thumbnail URL）
+    # addedAt も同時にキャッシュする（url → 初回登場時刻）。
+    # これにより既出記事の addedAt は固定され、新規記事だけが今回の NOW を持つ。
     existing_thumbnails = {}
+    existing_added_at = {}
     existing_data = {}
     if OUTPUT_FILE.exists():
         try:
@@ -347,6 +350,8 @@ def main():
             for a in existing_data.get("articles", []):
                 if a.get("thumbnail") and a.get("url"):
                     existing_thumbnails[a["url"]] = a["thumbnail"]
+                if a.get("addedAt") and a.get("url"):
+                    existing_added_at[a["url"]] = a["addedAt"]
         except Exception:
             pass
 
@@ -475,8 +480,29 @@ def main():
 
     print(f"📊 Trending合計: {len(all_trending)}件 (今日{len(today_trending)}件 + 過去{len(past_trending)}件)")
 
+    # addedAt 固定化 + 最新配信バッチ判定
+    # 既出URLは前回の addedAt を引き継ぎ（＝初回登場時刻で固定）、
+    # 今回初登場のURLだけ NOW を持つ。NEW判定はこの「今回バッチ」を基準にする。
+    new_count = 0
+    for a in all_articles:
+        url = a.get("url", "")
+        if url and url in existing_added_at:
+            a["addedAt"] = existing_added_at[url]
+        else:
+            a["addedAt"] = NOW.isoformat()
+            new_count += 1
+
+    # latestBatchAt = 今回の配信バッチ時刻。
+    # 今回新規が1件でもあれば NOW、無ければ前回値を維持（NEW表示を消さない）。
+    if new_count > 0:
+        latest_batch_at = NOW.isoformat()
+    else:
+        latest_batch_at = existing_data.get("latestBatchAt", "")
+    print(f"🆕 今回新規記事: {new_count}件 / latestBatchAt={latest_batch_at}")
+
     output = {
         "generatedAt": datetime.now(JST).isoformat(),
+        "latestBatchAt": latest_batch_at,
         "totalArticles": len(all_articles),
         "officialCount": sum(1 for a in all_articles if a.get("isOfficial")),
         "trendingCount": len(all_trending),

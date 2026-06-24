@@ -3,33 +3,18 @@
    ============================================= */
 
 const PAGE_SIZE = 50;
-const LAST_VISITED_KEY = "ai_nav_last_visited";
 
 // =============================================
-// NEW判定（前回訪問時刻との比較）
+// NEW判定（最新配信バッチとの一致）
 // =============================================
+// 訪問履歴ではなく「最新の配信バッチ(latestBatchAt)で追加された記事」だけをNEWとする。
+// 誰が・いつ見ても同じ表示。次の配信が走ると前回分のNEWは自動的に消える。
 
-let lastVisitedAt = null;
-
-function initNewBadge() {
-  const stored = localStorage.getItem(LAST_VISITED_KEY);
-  if (stored) {
-    const d = new Date(stored);
-    lastVisitedAt = Number.isNaN(d.getTime()) ? null : d;
-  }
-  // localStorage更新はデータ読み込み成功後に行う（loadDataSuccess()で呼ぶ）
-}
-
-function markVisited() {
-  localStorage.setItem(LAST_VISITED_KEY, new Date().toISOString());
-}
+let latestBatchAt = null;
 
 function isNewArticle(article) {
-  if (!lastVisitedAt) return false;
-  if (!article.addedAt) return false;
-  const addedAt = new Date(article.addedAt);
-  if (Number.isNaN(addedAt.getTime())) return false;
-  return addedAt > lastVisitedAt;
+  if (!latestBatchAt || !article.addedAt) return false;
+  return article.addedAt === latestBatchAt;
 }
 
 // =============================================
@@ -59,19 +44,18 @@ let checkCount = 0;
 // =============================================
 
 async function loadData() {
-  initNewBadge();
   const res = await fetch("articles.json");
   const data = await res.json();
 
   allArticles = data.articles || [];
   allDates = data.dates || [];
   allCategories = data.categories || [];
+  latestBatchAt = data.latestBatchAt || null; // 最新配信バッチ時刻（NEW判定の基準）
 
   // ピック件数を一度だけ集計（以降のrender()では再計算しない）
   mustCount = allArticles.filter(a => a.isPick && a.pickPriority === "must-read").length;
   checkCount = allArticles.filter(a => a.isPick && a.pickPriority !== "must-read").length;
 
-  markVisited(); // データ読み込み成功後に訪問時刻を記録
   buildSidebarFilters();
   buildMobileCategoryBar();
   buildMobileDateDropdown();
