@@ -332,6 +332,17 @@ function openModal(article) {
   const categoryLabel = allCategories.find(c => c.id === article.category);
   const catText = categoryLabel ? categoryLabel.label : article.category;
 
+  // GA4: 記事の要約を開いた＝最も濃い関心シグナル。どの記事/カテゴリ/ソースが刺さったかを計測
+  if (typeof gtag === "function") {
+    gtag("event", "select_content", {
+      content_type: "article",
+      item_id: article.url || "",
+      item_name: article.title || "",
+      item_category: catText || article.category || "",
+      item_brand: article.source || "",
+    });
+  }
+
   // サムネイル
   const thumbWrap = document.getElementById("modal-thumb-wrap");
   if (article.thumbnail) {
