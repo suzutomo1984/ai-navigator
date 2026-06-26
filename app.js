@@ -367,6 +367,20 @@ function openModal(article) {
   const readBtn = document.getElementById("modal-read-btn");
   readBtn.href = article.url || "#";
 
+  // GA4: 「読む」=元記事まで読みに行った深い関心シグナル。要約を開いた(select_content)の一段先。
+  // onclickで上書き代入（openModalは記事ごとに呼ばれるためaddEventListenerだと多重登録になる）
+  readBtn.onclick = () => {
+    if (typeof gtag === "function") {
+      gtag("event", "select_item", {
+        content_type: "article_outbound",
+        item_id: article.url || "",
+        item_name: article.title || "",
+        item_category: catText || article.category || "",
+        item_brand: article.source || "",
+      });
+    }
+  };
+
   modal.setAttribute("aria-hidden", "false");
   modal.classList.add("open");
   document.body.style.overflow = "hidden";
