@@ -354,7 +354,7 @@ function openModal(article) {
   }
 
   // メタ情報
-  const officialBadge = article.isOfficial ? `<span class="card-badge official-badge">📢 公式</span>` : "";
+  const officialBadge = article.isOfficial ? `<span class="card-badge official-badge">📦 リリースノート</span>` : "";
   document.getElementById("modal-meta").innerHTML = `
     ${article.source ? `<span class="card-badge">${escHtml(article.source)}</span>` : ""}
     <span class="card-badge">${escHtml(catText)}</span>
@@ -442,7 +442,7 @@ function createCard(article, isRanking = false) {
     : "";
 
   const catBadge = `<span class="card-badge">${escHtml(catText)}</span>`;
-  const officialBadge = article.isOfficial ? `<span class="card-badge official-badge">📢 公式</span>` : "";
+  const officialBadge = article.isOfficial ? `<span class="card-badge official-badge">📦 リリースノート</span>` : "";
   const dateBadge = article.date
     ? `<span class="card-date">${article.date.slice(5).replace("-", "/")}</span>`
     : "";

@@ -4,12 +4,12 @@
 
 const PAGE_SIZE = 50;
 
-// 公式ソース → 会社グループのマッピング（parse_news.py の OFFICIAL_SOURCES と一致させること）
+// リリースノートソース → 会社グループのマッピング（parse_news.py の OFFICIAL_SOURCES と一致させること）
+// 2026-06-28 再設計: 公式ブログ（読み物）は isOfficial=False となりこのページには出ない。リリースノート系のみ。
 const SOURCE_GROUPS = {
-  "OpenAI":     ["OpenAI Blog", "OpenAI SDK Releases", "OpenAI Node.js SDK Releases"],
-  "Google":     ["Google AI Blog", "Google GenAI SDK Releases", "Google DeepMind Blog", "Gemini Blog"],
-  "Anthropic":  ["Claude Code Releases", "Anthropic SDK Releases", "Anthropic TypeScript SDK Releases", "Anthropic News"],
-  "Microsoft":  ["Microsoft Foundry Blog"],
+  "OpenAI":     ["OpenAI SDK Releases", "OpenAI Node.js SDK Releases"],
+  "Google":     ["Google GenAI SDK Releases"],
+  "Anthropic":  ["Claude Code Releases", "Anthropic SDK Releases", "Anthropic TypeScript SDK Releases"],
   "MCP":        ["MCP Specification Releases", "MCP Python SDK Releases"],
   "LangChain":  ["LangChain Releases"],
   "LlamaIndex": ["LlamaIndex Releases"],
@@ -356,7 +356,7 @@ function createCard(article) {
     : "";
 
   const catBadge = `<span class="card-badge">${escHtml(catText)}</span>`;
-  const officialBadge = `<span class="card-badge official-badge">📢 公式</span>`;
+  const officialBadge = `<span class="card-badge official-badge">📦 リリースノート</span>`;
   const dateBadge = article.date
     ? `<span class="card-date">${article.date.slice(5).replace("-", "/")}</span>`
     : "";
@@ -406,7 +406,7 @@ function render() {
     .join(" / ");
   const statsEl = document.getElementById("stats-bar");
   statsEl.innerHTML = `
-    <span class="stats-item">📢 公式リリース <strong>${filtered.length}件</strong></span>
+    <span class="stats-item">📦 リリースノート <strong>${filtered.length}件</strong></span>
     ${companies ? `<span class="stats-sep">|</span><span class="stats-item stats-companies">${companies}</span>` : ""}
   `;
 

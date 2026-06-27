@@ -39,7 +39,7 @@ SEVEN_DAYS_AGO = (NOW - timedelta(days=7)).strftime("%Y-%m-%d")
 
 # カテゴリ正規化マッピング（優先順位順）
 CATEGORY_MAP = [
-    ("official",        "公式リリース",      "📢", ["📢", "公式リリース", "AI企業アップデート"]),
+    ("official",        "リリースノート",    "📦", ["📦", "リリースノート", "公式リリース", "AI企業アップデート"]),
     ("sales-marketing", "営業・マーケ",      "📈", ["📈", "営業", "マーケ", "SEO", "広告", "SNS", "集客", "CRM", "Webマーケティング"]),
     ("back-office",     "経理・総務・管理",  "📋", ["📋", "経理", "総務", "人事", "HR", "採用", "法務", "バックオフィス", "会計"]),
     ("productivity",    "業務効率化",        "⚡", ["⚡", "業務効率化", "DX", "時短", "自動化", "ノーコード", "作業効率"]),
@@ -52,18 +52,14 @@ CATEGORY_MAP = [
 # スキップと見なす固定セクションのキーワード
 SKIP_SECTIONS = ["今日のサマリー", "GitHub Trending", "その他の注目ニュース", "収集ソース"]
 
-# 公式ソース判定リスト（isOfficial: True をセットするソース名）
+# リリースノート判定リスト（isOfficial: True をセットするソース名）
+# 2026-06-27 再設計: 公式ブログ（読み物）はここから除外し、用途カテゴリへ振り分ける。
+# このリストはツールの更新通知（リリースノート）のみ。category="official"（ラベル=リリースノート）に集約する。
 OFFICIAL_SOURCES = [
-    "OpenAI Blog",
-    "Google AI Blog",
     "Claude Code Releases",
     "Anthropic SDK Releases",
-    "Anthropic News",
     "OpenAI SDK Releases",
     "Google GenAI SDK Releases",
-    "Google DeepMind Blog",
-    "Gemini Blog",
-    "Microsoft Foundry Blog",
     "Anthropic TypeScript SDK Releases",
     "OpenAI Node.js SDK Releases",
     "MCP Specification Releases",
@@ -78,6 +74,20 @@ OFFICIAL_SOURCES = [
     "Flowise Releases",
     "Gemini CLI Releases",
     "Codex CLI Releases",
+]
+
+# 公式ブログ（読み物）ソース。isOfficial=False とし、内容に応じて用途カテゴリへ振り分ける対象。
+# 既存データのルールベース再振り分け・分類プロンプトの判定に使う。
+OFFICIAL_BLOG_SOURCES = [
+    "OpenAI Blog",
+    "Google AI Blog",
+    "Google DeepMind Blog",
+    "Gemini Blog",
+    "Microsoft Foundry Blog",
+    "Hugging Face Blog",
+    "Anthropic News",
+    "Anthropic Research",
+    "Claude News",
 ]
 
 # 要約生成スキップ判定（ファイルがほぼ空）
@@ -191,6 +201,20 @@ def parse_tech_news(filepath: Path, date_str: str) -> list[dict]:
                 j += 1
 
             is_official = source in OFFICIAL_SOURCES
+            # カテゴリ決定（2026-06-28 「公式」再設計）。
+            # - リリースノート枠（category="official", ラベル=リリースノート）に入れて良いのは
+            #   OFFICIAL_SOURCES（ツールの更新通知）の記事だけ。
+            # - 公式ブログ（OFFICIAL_BLOG_SOURCES）や一般記事（Zenn/ITmedia等）が、過去mdで
+            #   「📢 公式リリース」セクションに置かれていた名残で current_category_id="official" に
+            #   正規化されることがあるが、それは誤り。リリースノート枠から弾いて用途カテゴリへ戻す。
+            #   用途カテゴリが判別できない（official落ち）ものは一律 ai-tech にフォールバック。
+            if is_official:
+                category = "official"
+            elif current_category_id == "official":
+                # OFFICIAL_SOURCES以外がリリースノート枠に落ちたら再振り分け
+                category = "ai-tech"
+            else:
+                category = current_category_id
             article_num += 1
             articles.append({
                 "id": f"{date_str}_{article_num}",
@@ -198,7 +222,7 @@ def parse_tech_news(filepath: Path, date_str: str) -> list[dict]:
                 "title": title,
                 "url": url,
                 "source": source,
-                "category": "official" if is_official else current_category_id,
+                "category": category,
                 "summary": summary,
                 "section": "main",
                 "isPick": False,
