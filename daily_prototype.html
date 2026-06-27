@@ -1,0 +1,326 @@
+<title>2026年6月22日のAIビジネスニュース | AI Navigator</title>
+<style>
+  :root {
+    --bg-primary: #161a30;
+    --bg-surface: #1e2440;
+    --bg-card: #242a49;
+    --bg-card-hover: #2d3454;
+    --accent: #ff335f;
+    --accent-hover: #ff6680;
+    --accent-subtle: rgba(255, 51, 95, 0.08);
+    --pick: #ff335f;
+    --pick-bg: rgba(255, 51, 95, 0.10);
+    --border-accent: rgba(255, 51, 95, 0.35);
+    --text-primary: #f3f2f1;
+    --text-secondary: #a9b0cf;
+    --text-muted: #6b7299;
+    --border: rgba(255,255,255,0.06);
+    --border-hover: rgba(255,255,255,0.14);
+    --radius: 10px;
+    --radius-sm: 6px;
+    --maxw: 760px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 20px 80px; }
+
+  /* ===== トップバー ===== */
+  .topbar {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-surface);
+    position: sticky; top: 0; z-index: 10;
+    backdrop-filter: blur(8px);
+  }
+  .topbar-inner {
+    max-width: var(--maxw); margin: 0 auto; padding: 0 20px;
+    height: 58px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 0.98rem; text-decoration: none; letter-spacing: -0.01em; }
+  .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+  .back-link { font-size: 0.82rem; color: var(--text-secondary); text-decoration: none; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; transition: .15s; }
+  .back-link:hover { border-color: var(--border-hover); color: var(--text-primary); }
+
+  /* ===== ヘッダー ===== */
+  header.day { padding: 52px 0 32px; }
+  .eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 14px;
+  }
+  h1.day-title {
+    margin: 0 0 18px; font-size: 2.15rem; line-height: 1.32; font-weight: 800;
+    letter-spacing: -0.02em; text-wrap: balance;
+  }
+  .day-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+    font-size: 0.82rem; color: var(--text-muted); font-variant-numeric: tabular-nums;
+  }
+  .day-meta b { color: var(--text-secondary); font-weight: 600; }
+
+  /* ===== 今日の要点（ハイライト） ===== */
+  .highlights {
+    margin: 34px 0; padding: 22px 24px;
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+  }
+  .highlights h2 {
+    margin: 0 0 14px; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent);
+  }
+  .highlights ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 11px; }
+  .highlights li { position: relative; padding-left: 22px; font-size: 0.96rem; line-height: 1.7; color: var(--text-primary); }
+  .highlights li::before { content: "▸"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+
+  /* ===== 編集まとめ（主役） ===== */
+  .lead-block { margin: 40px 0 12px; }
+  .lead-block h2 {
+    margin: 0 0 16px; font-size: 1.28rem; font-weight: 800; letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .lead {
+    margin: 0; font-size: 1.12rem; line-height: 1.95; color: var(--text-primary);
+    letter-spacing: 0.004em;
+  }
+  .lead .drop { color: var(--accent); font-weight: 600; }
+  .editor-note {
+    display: flex; align-items: center; gap: 9px;
+    margin-top: 26px; font-size: 0.78rem; color: var(--text-muted);
+  }
+  .editor-note .line { flex: 1; height: 1px; background: var(--border); }
+
+  /* ===== カテゴリセクション ===== */
+  .cat {
+    margin-top: 48px; padding-top: 8px;
+  }
+  .cat-head {
+    display: flex; align-items: baseline; gap: 10px;
+    margin: 0 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+  }
+  .cat-emoji { font-size: 1.15rem; }
+  .cat-name { font-size: 1.06rem; font-weight: 800; letter-spacing: -0.01em; }
+  .cat-count { font-size: 0.76rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .cat-intro {
+    margin: -4px 0 18px; font-size: 0.92rem; line-height: 1.78; color: var(--text-secondary);
+    padding-left: 13px; border-left: 2px solid var(--border-accent);
+  }
+
+  .feed { display: flex; flex-direction: column; gap: 12px; }
+  .item {
+    display: block; text-decoration: none;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 17px 19px;
+    transition: border-color .16s, background .16s, transform .16s;
+  }
+  .item:hover { background: var(--bg-card-hover); border-color: var(--border-hover); transform: translateY(-1px); }
+  .item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .item-top { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; flex-wrap: wrap; }
+  .pick-badge {
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em;
+    color: var(--pick); background: var(--pick-bg);
+    padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border-accent);
+  }
+  .src { font-size: 0.74rem; color: var(--text-muted); }
+  .item-title { margin: 0 0 6px; font-size: 1.0rem; font-weight: 700; line-height: 1.5; color: var(--text-primary); letter-spacing: -0.01em; }
+  .item-summary { margin: 0; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.72; }
+  .item-cta { margin-top: 10px; font-size: 0.77rem; color: var(--accent); font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+  .item:hover .item-cta { color: var(--accent-hover); }
+
+  /* ===== フッター ===== */
+  footer.site {
+    margin-top: 64px; padding-top: 30px; border-top: 1px solid var(--border);
+    font-size: 0.8rem; color: var(--text-muted); line-height: 1.8;
+  }
+  footer.site h2 { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 12px; }
+  footer.site p { margin: 0 0 10px; }
+  footer.site a.link { color: var(--text-secondary); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--border-hover); }
+  footer.site a.link:hover { color: var(--accent); }
+  .disclaimer { margin-top: 18px; padding: 14px 16px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.76rem; }
+
+  @media (max-width: 560px) {
+    h1.day-title { font-size: 1.58rem; }
+    .lead { font-size: 1.02rem; }
+    .lead-block h2 { font-size: 1.14rem; }
+    .wrap { padding: 0 16px 60px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../index.html"><span class="dot"></span>AI Navigator</a>
+    <a class="back-link" href="../index.html">← ニュース一覧へ</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <header class="day">
+    <p class="eyebrow">Daily Briefing</p>
+    <h1 class="day-title">2026年6月22日のAIビジネスニュース</h1>
+    <div class="day-meta">
+      <span><b>月曜日</b></span>
+      <span>収集記事 <b>39件</b></span>
+      <span>編集：AI Navigator 編集部</span>
+    </div>
+  </header>
+
+  <div class="highlights">
+    <h2>今日の3つの要点</h2>
+    <ul>
+      <li>営業職・公務員などの<b>非エンジニアが「自社専用ツール」を自作</b>する事例が続出。月15時間削減、1年で20リポジトリ構築の報告も。</li>
+      <li>あるAIスタートアップで<b>「トークン代が人件費を超える」逆転現象</b>が発生。コスト配分が「人」から「AIインフラ」へ動き始めた。</li>
+      <li>AWS・Claude が<b>「AIに自社ルールを守らせる」制御機能</b>を相次ぎ投入。自律AIを安全に実務へ載せるフェーズへ。</li>
+    </ul>
+  </div>
+
+  <div class="lead-block">
+    <h2>AIは「導入するもの」から「自作して使い倒すもの」へ</h2>
+    <p class="lead">
+      <span class="drop">今日のニュースからは、</span>AIが「外部の便利な道具」から「現場の担当者が自ら作り上げる武器」へと進化したことが鮮明に読み取れます。プログラミング未経験の営業職や公務員が、AIの頭脳部分（LLM）を駆使して自社専用のツールを開発し、月15時間の削減や20個もの業務アプリ構築を実現する事例が相次いでいます。また、AIスタートアップでは「AIの利用料（トークン代）が人件費を超える」という逆転現象も発生しており、コスト構造そのものが激変しています。もはやAIは「導入するもの」ではなく、現場で「自作して使い倒すもの」へとフェーズが変わりました。
+    </p>
+  </div>
+
+  <div class="editor-note">
+    <span class="line"></span>
+    <span>この日のニュース39件から編集部が抜粋・要約しました</span>
+    <span class="line"></span>
+  </div>
+
+  <!-- ===== 戦略・経営 ===== -->
+  <section class="cat">
+    <div class="cat-head"><span class="cat-emoji">🎯</span><span class="cat-name">戦略・経営</span><span class="cat-count">7件</span></div>
+    <p class="cat-intro">今日の経営テーマは「AIの責任とコスト」。便利さの裏で誰がリスクを負うのか、そしてトークン代が人件費を超える時代に何へ投資すべきか——導入の旗振り役が向き合うべき問いが並びました。</p>
+    <div class="feed">
+      <a class="item" href="https://zenn.dev/continuitymodel/articles/996fbb4695d2e3" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="pick-badge">PICK</span><span class="src">Zenn</span></div>
+        <h3 class="item-title">AIで自動化できます。で、そのリスクは誰が飲むんですか</h3>
+        <p class="item-summary">AIによる自動化が進む中で、AIが誤った判断をした際の責任の所在（リスク管理）について鋭く考察した記事です。経営者や現場責任者が、AIの利便性だけでなく、その裏にある法的・倫理的リスクをどう許容し、管理すべきかという視点を提供しています。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://www.businessinsider.jp/article/2606-ai-startup-mercor-spends-more-on-tokens-than-payroll/" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">Business Insider Japan</span></div>
+        <h3 class="item-title">AIトークンへの支出が人件費を上回った！</h3>
+        <p class="item-summary">あるAIスタートアップにおいて、AIを動かすための利用料（トークン代）が全社員の給与総額を超えたというニュースです。今後の企業のコスト配分が「人」から「AIインフラ」へシフトする可能性を象徴しています。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://www.itmedia.co.jp/business/articles/2606/22/news018.html" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">ITmedia AI+</span></div>
+        <h3 class="item-title">千葉県印西市はなぜ「データセンターの聖地」になったのか</h3>
+        <p class="item-summary">GoogleやMicrosoftが巨大なデータセンターを構える印西市の事例から、AI時代のインフラ戦略を読み解く記事です。長期的な視点での投資や環境整備が、後のビジネスチャンスにどう繋がるかという経営的な示唆に富んでいます。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== 営業・マーケティング ===== -->
+  <section class="cat">
+    <div class="cat-head"><span class="cat-emoji">📣</span><span class="cat-name">営業・マーケティング</span><span class="cat-count">6件</span></div>
+    <p class="cat-intro">「人手が足りない現場ほどAIで回す」が共通項。SNS発信・問い合わせ対応といった属人化しがちな業務を、非エンジニアが数時間で自動化する実例が目立ちました。ChatGPT広告の開始も要チェックです。</p>
+    <div class="feed">
+      <a class="item" href="https://note.com/str_revontulet/n/nbd87cf8696d1" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="pick-badge">PICK</span><span class="src">note</span></div>
+        <h3 class="item-title">ゼロから4時間で動いた。飲食10年の私がSNS完全自動化を組んだ全手順</h3>
+        <p class="item-summary">専門知識がない現場担当者が、自動化ツール「Make」とAI「Claude」を連携させ、SNS投稿の作成から予約までを自動化する仕組みを4時間で構築した事例です。広報工数を9割削減し、人手不足の中小企業でも継続的な情報発信が可能になる実戦的なノウハウです。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://note.com/lofty_knot4165/n/n1f9073277f82" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">note</span></div>
+        <h3 class="item-title">Claude Codeで「問い合わせメールの返信が、もう下書きできている」仕組み</h3>
+        <p class="item-summary">中小企業の現場担当者が、Claude Code を使って問い合わせメールへの返信案を自動生成する仕組みを構築した記録です。月15時間の工数削減に成功しており、技術者でなくても実務に直結する自動化が可能であることを証明しています。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://note.com/ai_aibo/n/n4e48507161dd" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">note</span></div>
+        <h3 class="item-title">ChatGPT広告はいつから？6月22日開始、無料・Goプランが対象</h3>
+        <p class="item-summary">ChatGPTの無料ユーザーおよび一部の低価格プラン向けに、対話画面内での広告表示が開始されました。検索広告とは異なる、ユーザーの悩みや意図に深く刺さる新しいマーケティング手法としての活用が期待されます。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== 業務効率化 ===== -->
+  <section class="cat">
+    <div class="cat-head"><span class="cat-emoji">⚡</span><span class="cat-name">業務効率化</span><span class="cat-count">9件</span></div>
+    <p class="cat-intro">キーワードは「内製化の民主化」。公務員が20リポジトリ、営業課長がChrome拡張——専門職でない人が"自分の困りごと"を自分でツール化する流れが本物になってきました。今日から真似できるノウハウが豊富です。</p>
+    <div class="feed">
+      <a class="item" href="https://zenn.dev/fukukei23/articles/civilservant-20repos-survival" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">Zenn</span></div>
+        <h3 class="item-title">非IT公務員が1年で20リポジトリ作った生存戦略</h3>
+        <p class="item-summary">IT専門職ではない公務員が、AIへの指示出し技術を武器に、1年間で20個もの業務ツールを開発した体験談です。専門知識がなくても「AIにどう指示すれば動くものを作れるか」というコツで、組織内のアナログ業務を次々デジタル化するプロセスが示されています。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://note.com/natty_snake8766/n/nf7db2f66e1f3" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">note</span></div>
+        <h3 class="item-title">知識ゼロの営業課長が生成AIだけでChrome拡張機能を作って公開</h3>
+        <p class="item-summary">プログラミング経験のない営業職の管理職が、AIの助けでブラウザ補助ツールを開発し公式ストア公開まで漕ぎ着けた事例です。現場の「ここが不便だ」を即座に形にする力が、IT部門を持たない中小企業の競争優位になると示唆しています。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://note.com/frontier_d_ai/n/na2b810f5da6b" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">note</span></div>
+        <h3 class="item-title">Gemini×スプレッドシート！爆速レポート作成術</h3>
+        <p class="item-summary">GoogleのAI「Gemini」をスプレッドシートと連携させ、大量データから一瞬で分析レポートを作成する手法です。自然な言葉で指示するだけで要約や傾向分析が完了するため、報告・集計に追われる担当者が本来の「考える仕事」に集中できます。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== 副業・個人開発 ===== -->
+  <section class="cat">
+    <div class="cat-head"><span class="cat-emoji">💰</span><span class="cat-name">副業・個人開発</span><span class="cat-count">5件</span></div>
+    <p class="cat-intro">AIを"共同創業者"に見立てて、個人がサービスを量産・収益化する事例が集まりました。表紙デザインで月1万円、1ヶ月で4サービス——スキル不足をAIで補い、小さく稼ぎ始めるリアルな起点が見えます。</p>
+    <div class="feed">
+      <a class="item" href="https://note.com/ai_biz_labo/n/n3e377c0a2da5" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">note</span></div>
+        <h3 class="item-title">ChatGPTで電子書籍の表紙デザインを始めたら、ココナラで月1万円を超えた話</h3>
+        <p class="item-summary">デザイン未経験者がChatGPTを活用して電子書籍の表紙作成サービスを開始し、クラウドソーシングで収益化した実践記です。AIを「道具」として使いこなし、個人のスキルを補完して稼ぐための再現性の高いステップが学べます。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://zenn.dev/startupjp1/articles/1214ebaf77db68" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">Zenn</span></div>
+        <h3 class="item-title">AIを"共同創業者"にして個人開発を回す「ひとり開発ラボ」</h3>
+        <p class="item-summary">AIを単なるツールではなく一緒に事業を考える「共同創業者」として位置づけ、一人で複数プロジェクトを回す働き方の提案です。個人の限界を超えたアウトプットを出すマインドセットとツール活用術が紹介されています。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== 公式リリース ===== -->
+  <section class="cat">
+    <div class="cat-head"><span class="cat-emoji">🚀</span><span class="cat-name">公式リリース</span><span class="cat-count">7件</span></div>
+    <p class="cat-intro">大手の動きは「AIに自社ルールを守らせる」方向で一致。Claude Code の制御機能、Sakana AI の合議制など、自律AIを"暴走させずに実務へ載せる"ための土台づくりが進んでいます。</p>
+    <div class="feed">
+      <a class="item" href="https://claude.com/ja/blog/steering-claude-code-skills-hooks-rules-subagents-and-more" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="pick-badge">PICK</span><span class="src">Claude News</span></div>
+        <h3 class="item-title">Steering Claude Code: 外部ツール接続と制御の新機能</h3>
+        <p class="item-summary">Claude Codeに、AIが自律的にツールを使いこなすための「スキル」や「ルール」を設定できる新機能が追加。AIに「自社の開発ルール」を学習させ、より安全かつ正確に業務を代行させることが可能になります。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://www.itmedia.co.jp/aiplus/article/2606/22/2000000111/" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">ITmedia AI+</span></div>
+        <h3 class="item-title">Sakana AI、複数モデルの"集合知"を活用した「AIの合議制」を提供</h3>
+        <p class="item-summary">日本発のAIスタートアップSakana AIが、複数のAIモデルを組み合わせて最適な回答を導く「集合知」の新技術を発表。得意分野を持つ複数のAIが議論するように答えを出すことで、特定タスクで世界最高水準の性能を発揮します。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+    </div>
+  </section>
+
+  <footer class="site">
+    <h2>このサイトについて</h2>
+    <p>AI Navigator は、AIビジネス活用に関する記事を毎日自動で収集し、中小企業・非エンジニアの実務目線で要約・整理して配信する個人運営のニュースメディアです。各記事の要約は当サイトが独自に作成しており、著作権は元記事の各著者・媒体に帰属します。</p>
+    <p>運営: AI Navigator 編集部　／　お問い合わせ・掲載削除のご依頼: <a class="link" href="mailto:example@example.com">example@example.com</a>（※プロト：実アドレスに差し替え）</p>
+    <div class="disclaimer">
+      掲載記事の著作権は各権利者に帰属します。要約はあくまで紹介を目的としたものです。掲載の取り下げをご希望の権利者の方は、上記窓口までご連絡いただければ速やかに対応いたします。
+    </div>
+  </footer>
+
+</div>

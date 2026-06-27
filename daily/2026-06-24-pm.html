@@ -1,0 +1,206 @@
+<title>2026-06-24 夕刊｜AI Navigator</title>
+<link rel="stylesheet" href="../style.css">
+<style>
+  body { background: var(--bg-primary); color: var(--text-primary); }
+  .daily-wrap { max-width: 760px; margin: 0 auto; padding: 0 20px 80px; }
+  .daily-topbar { border-bottom: 1px solid var(--border); background: var(--bg-surface); position: sticky; top: 0; z-index: 10; }
+  .daily-topbar-inner { max-width: 760px; margin: 0 auto; padding: 0 20px; height: 58px; display: flex; align-items: center; justify-content: space-between; }
+  .daily-brand { display: flex; align-items: center; gap: 9px; font-weight: 700; text-decoration: none; color: var(--text-primary); }
+  .daily-brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+  .daily-back { font-size: 0.82rem; color: var(--text-secondary); text-decoration: none; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; }
+  .daily-back:hover { border-color: var(--border-hover); color: var(--text-primary); }
+  .daily-head { padding: 48px 0 30px; }
+  .daily-eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; }
+  .daily-title { margin: 0 0 16px; font-size: 2.0rem; line-height: 1.32; font-weight: 800; letter-spacing: -0.02em; }
+  .daily-meta { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 0.82rem; color: var(--text-muted); }
+  .daily-meta b { color: var(--text-secondary); font-weight: 600; }
+  .lead-block { margin: 36px 0 12px; }
+  .lead-block .lead { margin: 0; font-size: 1.1rem; line-height: 1.95; color: var(--text-primary); }
+  .editor-note { display: flex; align-items: center; gap: 9px; margin: 24px 0; font-size: 0.78rem; color: var(--text-muted); }
+  .editor-note .line { flex: 1; height: 1px; background: var(--border); }
+  .cat { margin-top: 44px; }
+  .cat-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .cat-emoji { font-size: 1.15rem; }
+  .cat-name { font-size: 1.04rem; font-weight: 800; }
+  .cat-count { font-size: 0.76rem; color: var(--text-muted); }
+  .feed { display: flex; flex-direction: column; gap: 12px; }
+  .item { display: block; text-decoration: none; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 17px 19px; transition: border-color .16s, background .16s; }
+  .item:hover { background: var(--bg-card-hover); border-color: var(--border-hover); }
+  .item-top { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; flex-wrap: wrap; }
+  .pick-badge { font-size: 0.62rem; font-weight: 700; color: var(--accent); background: var(--accent-subtle); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border-accent); }
+  .src { font-size: 0.74rem; color: var(--text-muted); }
+  .item-title { margin: 0 0 6px; font-size: 1.0rem; font-weight: 700; line-height: 1.5; }
+  .item-summary { margin: 0; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.72; }
+  .item-cta { margin-top: 10px; font-size: 0.77rem; color: var(--accent); font-weight: 600; display: inline-block; }
+  .daily-footer { margin-top: 60px; padding-top: 28px; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); line-height: 1.8; }
+  .daily-footer h2 { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 12px; }
+  .daily-footer a { color: var(--text-secondary); }
+  .disclaimer { margin-top: 16px; padding: 14px 16px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.76rem; }
+  @media (max-width: 560px) { .daily-title { font-size: 1.5rem; } }
+</style>
+
+<div class="daily-topbar">
+  <div class="daily-topbar-inner">
+    <a class="daily-brand" href="../index.html"><span class="dot"></span>AI Navigator</a>
+    <a class="daily-back" href="../index.html">← ニュース一覧へ</a>
+  </div>
+</div>
+
+<div class="daily-wrap">
+  <header class="daily-head">
+    <p class="daily-eyebrow">Evening Edition</p>
+    <h1 class="daily-title">2026年6月24日の夕刊</h1>
+    <div class="daily-meta">
+      <span><b>WED</b></span>
+      <span>掲載 <b>16件</b></span>
+      <span>編集：AI Navigator 編集部</span>
+    </div>
+  </header>
+
+  <div class="lead-block">
+    <p class="lead">今日のAIニュースは、AIが単なる「検索ツール」から、Slackで自律的に動く「同僚」や、複雑なコードを書き上げる「開発パートナー」へと進化したことを象徴しています。特にAnthropicの「Claude Tag」やCursorの独自モデル発表は、非エンジニアでもAIを実務に組み込むハードルが劇的に下がったことを示しています。また、セキュリティ分野でのAI活用も加速しており、攻撃を防ぐ「守りのAI」も経営課題として重要性を増しています。</p>
+  </div>
+
+  <div class="editor-note">
+    <span class="line"></span><span>この夕刊は編集部がその配信回の新着から抜粋・要約しました</span><span class="line"></span>
+  </div>
+
+  <section class="cat">
+    <div class="cat-head"><span class="cat-emoji">🎯</span><span class="cat-name">戦略・経営</span><span class="cat-count">3件</span></div>
+    <div class="feed">
+      <a class="item" href="https://ainow.ai/2026/06/24/278201/" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">AINOW</span></div>
+        <h3 class="item-title">失敗しない生成AIベンダー選定。7つの評価ポイントと手順</h3>
+        <p class="item-summary">AI導入を検討する経営者向けに、開発会社やツール提供会社を選ぶ際の基準を解説しています。単なる技術力だけでなく、自社の業務理解度やセキュリティ体制、導入後のサポート体制など、ビジネスとして継続的に活用するためのチェックリストが示されており、高額な投資で失敗するリスクを最小限に抑えるための指針となります。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://www.itmedia.co.jp/business/articles/2606/24/news110.html" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">ITmedia AI+</span></div>
+        <h3 class="item-title">AIブームの鍵を握る「半導体メモリ」とキオクシアの動向解説</h3>
+        <p class="item-summary">AIの進化に不可欠な「記憶装置（メモリ）」の重要性と、日本企業キオクシアの立ち位置を解説しています。AIが賢くなるほど膨大なデータを高速で処理するメモリが必要になるという業界構造を理解することで、今後のAI市場のトレンドや投資判断、さらにはデバイスの買い替え時期などのビジネス戦略を立てる上での教養が得られます。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://ainow.ai/2026/06/24/278201/" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">AINOW</span></div>
+        <h3 class="item-title">生成AIベンダーの選定で失敗しない7つの評価ポイント</h3>
+        <p class="item-summary">多くのAIツールや開発会社の中から、自社に最適なパートナーを選ぶための具体的な基準をまとめています。セキュリティ、コスト、サポート体制、そして「自社の業務にどれだけカスタマイズできるか」といった視点で評価することで、導入後の「使いこなせない」という失敗を防ぎ、投資対効果を最大化させます。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="cat">
+    <div class="cat-head"><span class="cat-emoji">📣</span><span class="cat-name">営業・マーケティング</span><span class="cat-count">2件</span></div>
+    <div class="feed">
+      <a class="item" href="https://zenn.dev/joemike/articles/canva-mcp-japanese-text-broken-2026" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="pick-badge">PICK</span><span class="src">Zenn</span></div>
+        <h3 class="item-title">Canvaの外部ツール連携（MCP）で見えた日本語生成の課題と対策</h3>
+        <p class="item-summary">デザインツールCanvaとAIを直接つないでバナー等を自動生成する際、日本語タイトルが文字化けする現象が発生しています。AIにデザインを丸投げするのではなく、テキストデータは別途流し込むなどの工夫が必要であることが示されており、自動化ツールを導入する際の「一歩手前の手作業」の重要性を教えてくれる実践的な記録です。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://note.com/marketlinks/n/n4ce86b0ac617" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">Note</span></div>
+        <h3 class="item-title">AI検索時代の流入変化：3年間のデータが示す「質の変容」</h3>
+        <p class="item-summary">AIによる検索回答（SGE等）の普及により、Webサイトへの流入数は減ると思われがちですが、実際には「とりあえず知りたい」層が減り、より購買意欲の高い「深く知りたい」層の流入比率が高まっているという分析です。量より質を重視したコンテンツ制作へシフトすることで、成約率の高い顧客を効率的に獲得できるチャンスが生まれています。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="cat">
+    <div class="cat-head"><span class="cat-emoji">⚡</span><span class="cat-name">業務効率化</span><span class="cat-count">4件</span></div>
+    <div class="feed">
+      <a class="item" href="https://zenn.dev/dr_h_dx/articles/96a554c24fca3a" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="pick-badge">PICK</span><span class="src">Zenn</span></div>
+        <h3 class="item-title">【医療DX】Python×ORCA連携でオンライン診療の事務作業を「スタッフゼロ」にした自動化録</h3>
+        <p class="item-summary">オンライン診療における予約確認、電子カルテ入力、会計処理をAIとプログラムで連携させ、事務スタッフの手を借りずに完結させた実例です。専門的な医療事務作業を自動化することで、人手不足の解消だけでなく、ヒューマンエラーの防止と患者の待ち時間短縮を同時に実現しており、他業種の事務自動化にも応用可能です。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://zenn.dev/dr_h_dx/articles/96a554c24fca3a" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">Zenn</span></div>
+        <h3 class="item-title">医療現場の事務を「ゼロ」に。Pythonと既存システムの連携自動化</h3>
+        <p class="item-summary">オンライン診療における予約から電子カルテ入力、会計までの事務作業を、プログラミングを活用して完全自動化した事例です。専門的なシステム（ORCA等）であっても、AIの助けを借りてコードを書けば、スタッフの手を介さずに業務を完結できることを証明しており、人手不足に悩むあらゆるサービス業に応用可能なモデルです。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://note.com/joyous_hyssop77/na624fe74f24b" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">Note</span></div>
+        <h3 class="item-title">財務PL分析を3時間から25分へ。AI活用プロンプト集の公開</h3>
+        <p class="item-summary">損益計算書（PL）の数値をAIに読み込ませ、異常値の発見や改善提案を自動で行うための具体的な指示文（プロンプト）が紹介されています。専門知識が必要な財務分析をAIがサポートすることで、経営判断のスピードを劇的に高めることができ、経理担当者がより付加価値の高い提案業務に集中できる環境を構築できます。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://the-decoder.com/mistrals-new-ocr-model-beats-competitors-in-72-percent-of-blind-test-cases-company-says/" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">The Decoder</span></div>
+        <h3 class="item-title">Mistral社の新型「文字読み取りAI」が精度72%で競合を圧倒</h3>
+        <p class="item-summary">欧州のAI大手Mistralが、手書き文字や複雑なレイアウトの書類を正確にデジタル化する新しいAIモデルを発表しました。従来のツールでは読み取りが難しかった古い書類や非定型の領収書なども高精度で処理できるため、紙の資料が多い現場のデジタル化（DX）を強力に後押しし、手入力によるミスと時間を大幅に削減します。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="cat">
+    <div class="cat-head"><span class="cat-emoji">💰</span><span class="cat-name">副業・個人開発</span><span class="cat-count">2件</span></div>
+    <div class="feed">
+      <a class="item" href="https://blog.freelance-jp.org/20260612-25792/" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">フリーランス協会</span></div>
+        <h3 class="item-title">フリーランス最新調査2025：年収・満足度・仕事獲得のリアル</h3>
+        <p class="item-summary">日本のフリーランスの現状を網羅した最新の統計データです。どのような経路で案件を獲得しているか、AIの普及が単価にどう影響しているかなど、個人で稼ぎ続けるための市場環境が可視化されています。自身の立ち位置を客観的に把握し、今後のスキルアップや営業戦略を練るための信頼できる一次情報として活用できます。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://note.com/germen_taka1202/n/n694320e2b73a" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">Note</span></div>
+        <h3 class="item-title">ClaudeとNotionを連携させた「週次レポート自動作成」代行の実践</h3>
+        <p class="item-summary">AI（Claude）と情報管理ツール（Notion）を組み合わせ、クライアントの業務報告書を自動生成するサービスを副業として構築した手順です。単なるAIの使い方の紹介ではなく、どのように継続契約（月3万円〜）を獲得したかという営業面の実践記でもあり、AIスキルを具体的な「商品」に変えるための再現性の高いノウハウです。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="cat">
+    <div class="cat-head"><span class="cat-emoji">🤖</span><span class="cat-name">AI技術</span><span class="cat-count">3件</span></div>
+    <div class="feed">
+      <a class="item" href="https://qiita.com/Oyu3m/items/b2d530aa21b6c998370b" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="pick-badge">PICK</span><span class="src">Qiita</span></div>
+        <h3 class="item-title">ブラウザ操作を自動化する「Copilot Cowork」の活用法</h3>
+        <p class="item-summary">MicrosoftのAIがブラウザ上のボタンをクリックしたり、情報を読み取ったりする機能の解説です。これまで人間が手動で行っていた「Webサイトを巡回して情報を集める」「決まったフォームに値を入力する」といったルーチンワークをAIに任せることができ、プログラミング知識がなくても高度な自動化を実現できる可能性を示しています。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://www.reddit.com/r/LocalLLaMA/comments/1ue51uk/unlimitedocr_is_now_on_modelscope_a_33b/" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">Reddit LocalLLaMA</span></div>
+        <h3 class="item-title">無料で使える高性能な文字読み取りAI「Unlimited-OCR」が登場</h3>
+        <p class="item-summary">多言語に対応し、PDFや複数ページの書類を一括で解析できる3.3BサイズのAIモデルが公開されました。オープンソース（MITライセンス）のため、自社サーバー内で安全に利用することができ、機密性の高い書類を外部のクラウドAIに送信することなくデジタル化したい企業にとって、コストとセキュリティを両立する選択肢となります。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://www.reddit.com/r/LocalLLaMA/comments/1ue51uk/unlimitedocr_is_now_on_modelscope_a_33b/" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">Reddit LocalLLaMA</span></div>
+        <h3 class="item-title">Unlimited-OCR: 3.3B multilingual OCR model</h3>
+        <p class="item-summary">画像やPDF、複数ページの書類を一度に読み取り、高精度でテキスト化する新しいAIモデルが登場しました。多言語に対応しており、手書き文字や複雑なレイアウトの書類も正確に解析できるため、紙資料のデジタル化や、大量のPDFからのデータ抽出業務を劇的に効率化します。</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="cat">
+    <div class="cat-head"><span class="cat-emoji">🚀</span><span class="cat-name">公式リリース</span><span class="cat-count">2件</span></div>
+    <div class="feed">
+      <a class="item" href="https://github.com/googleapis/python-genai/releases/tag/v2.10.0" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">Google GenAI SDK Releases</span></div>
+        <h3 class="item-title">Google GenAI SDK v2.10.0 リリース</h3>
+        <p class="item-summary">v2.10.0: PythonからGoogleのAI（Gemini等）を利用するための開発キットが更新されました。内部的な安定性の向上と最新モデルへの対応が含まれており、自社アプリにGoogleの最新AI機能を組み込む際の信頼性が向上しています。[自社専用のAIチャットツールや分析ツールの開発がよりスムーズになります]</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+      <a class="item" href="https://github.com/openai/codex/releases/tag/rust-v0.143.0-alpha.14" target="_blank" rel="nofollow noopener">
+        <div class="item-top"><span class="src">Codex CLI Releases</span></div>
+        <h3 class="item-title">Codex CLI v0.143.0-alpha.10〜14 リリース</h3>
+        <p class="item-summary">v0.143.0-alpha.10〜14: OpenAIのコード生成支援ツールのアルファ版が立て続けに更新されました。Rust言語ベースでのパフォーマンス改善が進んでおり、開発現場でのAIによるコード生成スピードがさらに向上しています。[エンジニアのプログラミング作業をAIがより高速にサポートできるようになります]</p>
+        <span class="item-cta">出典元で読む →</span>
+      </a>
+    </div>
+  </section>
+
+  <footer class="daily-footer">
+    <h2>このサイトについて</h2>
+    <p>AI Navigator は、AIビジネス活用に関する記事を毎日自動で収集し、中小企業・非エンジニアの実務目線で要約・整理して配信する個人運営のニュースメディアです。各記事の要約は当サイトが独自に作成しており、著作権は元記事の各著者・媒体に帰属します。</p>
+    <p>運営: AI Navigator 編集部　／　お問い合わせ・掲載削除のご依頼: <a href="mailto:example@example.com">example@example.com</a>（※プロト）</p>
+    <div class="disclaimer">掲載記事の著作権は各権利者に帰属します。要約は紹介を目的としたものです。掲載取り下げをご希望の権利者の方は上記窓口までご連絡ください。</div>
+  </footer>
+</div>

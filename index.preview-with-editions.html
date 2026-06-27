@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-7JVX326HRP"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-7JVX326HRP');
+  </script>
+  <title>AI Navigator — AIニュースを、現場の言葉に。</title>
+  <meta name="description" content="中小企業の経営者・現場担当者向けAIビジネスニュース。営業・マーケ・総務・経営戦略への活用ヒントを毎日自動配信。難しい技術用語をビジネスの言葉に翻訳。">
+  <meta property="og:title" content="AI Navigator — AIニュースを、現場の言葉に。">
+  <meta property="og:description" content="中小企業の経営者・現場担当者向けAIビジネスニュース。営業・マーケ・総務・経営戦略への活用ヒントを毎日自動配信。難しい技術用語をビジネスの言葉に翻訳。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ai-news-eev.pages.dev/">
+  <meta property="og:image" content="https://ai-news-eev.pages.dev/ogp.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AI Navigator — AIニュースを、現場の言葉に。">
+  <meta name="twitter:description" content="非エンジニアのための AIビジネスニュース。営業・マーケ・総務・経営に使えるAI情報を毎日配信。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="canonical" href="https://ai-news-eev.pages.dev/">
+  <!-- 試作: 朝刊・夕刊導線カードのスタイル -->
+  <style>
+    #editions { margin: 18px 0 6px; }
+    #editions-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 12px; }
+    #editions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .edition-card {
+      display: block; text-decoration: none; position: relative; overflow: hidden;
+      background: var(--bg-card); border: 1px solid var(--border-hover); border-radius: var(--radius);
+      padding: 18px 20px; transition: border-color .16s, background .16s, transform .16s;
+    }
+    .edition-card:hover { background: var(--bg-card-hover); border-color: var(--accent); transform: translateY(-2px); }
+    .edition-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); opacity: .85; }
+    .edition-kind { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .edition-emoji { font-size: 1.25rem; }
+    .edition-name { font-size: 1.04rem; font-weight: 800; letter-spacing: -0.01em; color: var(--text-primary); }
+    .edition-eyebrow { font-size: 0.66rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
+    .edition-date { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 6px; }
+    .edition-lead { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.65; margin: 0;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .edition-cta { margin-top: 11px; font-size: 0.76rem; color: var(--accent); font-weight: 700; }
+    @media (max-width: 560px) { #editions-grid { grid-template-columns: 1fr; } }
+
+    /* 試作: 要約カードを消した分、日付ヘッダーに区切り（余白＋罫線）を補う */
+    #main .date-group { margin-top: 38px; }
+    #main .date-header {
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    #main .date-header .date-label { font-size: 13px; letter-spacing: 0.04em; }
+
+    /* 試作: リード記事の大サムネ見切れ軽減（PC幅のみ240→300px。モバイル190pxは据え置き） */
+    @media (min-width: 821px) {
+      #main .paper-lead-thumb { height: 300px; }
+      /* 横並び小記事サムネ 90→120px（trim1.83→約1.37で潰れ軽減）
+         ※ paper-chapter-top配下の48px正方形サイドは除外（memo 2026-06-23の罠回避） */
+      #main .paper-side:not(.paper-chapter-top .paper-side) .paper-cell-onside .paper-cell-thumb,
+      #main .article-paper > .paper-side .paper-cell-onside .paper-cell-thumb { height: 120px; }
+      #main .paper-chapter-top .paper-side .paper-cell-onside .paper-cell-thumb { height: 48px; }
+      /* 章リードサムネ 200→230px（trim1.59→約1.37） */
+      #main .paper-chlead-thumb { height: 230px; }
+    }
+  </style>
+  <!-- Google Search Console 所有権確認（parse_news.pyのマーカー外に置き永続させる） -->
+  <meta name="google-site-verification" content="sMyt7yNITx-OGEmHm53QLi_ijx-3gliF_lUvUbxhm18" />
+  <!-- JSON_LD:start -->
+  <!-- parse_news.py が WebSite/CollectionPage の JSON-LD をここに自動挿入する -->
+  <!-- JSON_LD:end -->
+</head>
+<body>
+
+  <!-- ヘッダー: ロゴ | タブ | 検索 -->
+  <header id="header">
+    <a href="index.html" id="logo">
+      <span id="logo-icon">Ai</span>
+      <div id="logo-group">
+        <span id="logo-text">AI Navigator</span>
+        <span id="logo-tagline">AIニュースを、現場の言葉に。</span>
+      </div>
+    </a>
+
+    <nav id="tabbar">
+      <button class="tab-btn active" data-tab="latest">📰 AIニュース</button>
+      <a class="tab-btn" href="official.html">📢 公式</a>
+    </nav>
+
+    <div id="search-wrapper">
+      <span id="search-icon">🔍</span>
+      <input
+        type="text"
+        id="search-input"
+        placeholder="記事を検索..."
+        autocomplete="off"
+        spellcheck="false"
+      >
+    </div>
+
+    <!-- モバイル用サイドバートグル -->
+    <button id="sidebar-toggle" aria-label="フィルターを開く">☰</button>
+  </header>
+
+  <!-- アプリレイアウト: サイドバー + メイン -->
+  <!-- モバイル: カテゴリタブバー（上部） -->
+  <div id="mobile-category-bar">
+    <div id="mobile-cat-scroll">
+      <!-- app.js が動的に生成 -->
+    </div>
+    <button id="mob-date-btn">📅 <span id="mob-date-label">日付</span></button>
+  </div>
+  <!-- 日付ドロップダウン -->
+  <div id="mob-date-dropdown">
+    <div id="mob-date-list"></div>
+  </div>
+
+  <!-- ボトムナビ -->
+  <nav id="bottom-nav">
+    <a class="bnav-item active" href="index.html">
+      <span class="bnav-icon">🏠</span>
+      <span class="bnav-label">ホーム</span>
+    </a>
+    <a class="bnav-item" href="official.html">
+      <span class="bnav-icon">📢</span>
+      <span class="bnav-label">公式</span>
+    </a>
+  </nav>
+
+  <div id="app-layout">
+
+    <!-- 左サイドバー: フィルター -->
+    <aside id="sidebar">
+      <section class="sidebar-section">
+        <ul id="category-filter"></ul>
+      </section>
+      <div class="sidebar-divider"></div>
+      <section class="sidebar-section">
+        <ul id="date-filter"></ul>
+      </section>
+    </aside>
+
+    <!-- メインコンテンツ -->
+    <main id="main">
+      <!-- 新聞マストヘッド（発行物メタファー） -->
+      <div id="masthead">
+        <div id="masthead-top">
+          <div id="masthead-brand">
+            <span id="masthead-title">AI NAVIGATOR</span>
+            <span id="masthead-tagline">AIニュースを、現場の言葉に。</span>
+          </div>
+          <div id="masthead-issue">
+            <span id="masthead-issue-label">ISSUE</span>
+            <span id="masthead-issue-no">----</span>
+          </div>
+        </div>
+        <div id="masthead-rule"></div>
+        <div id="masthead-digest">
+          <span id="digest-label">TODAY'S DIGEST</span>
+          <span id="digest-stats">読み込み中...</span>
+        </div>
+      </div>
+      <!-- 試作: 今日の朝刊・夕刊への導線 -->
+      <section id="editions">
+        <p id="editions-label">📰 今日のダイジェスト</p>
+        <div id="editions-grid">
+          <a class="edition-card" href="daily/2026-06-25-am.html">
+            <div class="edition-kind"><span class="edition-emoji">🌅</span><span class="edition-name">朝刊</span><span class="edition-eyebrow">Morning</span></div>
+            <div class="edition-date">6月25日（木）・20件</div>
+            <p class="edition-lead">AIが「考える」段階から「自らPCを操作して実務を完結させる」段階へ。GoogleがPC操作代行を発表、医療事務の完全自動化も。</p>
+            <span class="edition-cta">朝刊を読む →</span>
+          </a>
+          <a class="edition-card" href="daily/2026-06-24-pm.html">
+            <div class="edition-kind"><span class="edition-emoji">🌆</span><span class="edition-name">夕刊</span><span class="edition-eyebrow">Evening</span></div>
+            <div class="edition-date">6月24日（水）・16件</div>
+            <p class="edition-lead">大手企業がAIエージェントを実務投入し、経理工数76%削減などの成果。非エンジニアが業務アプリを数時間で試作する内製化が加速。</p>
+            <span class="edition-cta">夕刊を読む →</span>
+          </a>
+        </div>
+      </section>
+      <div id="stats-bar">読み込み中...</div>
+      <div id="articles-container">
+        <div id="empty-state">
+          <div class="empty-icon">⏳</div>
+          <div>読み込み中...</div>
+        </div>
+      </div>
+      <div id="load-more-wrapper" style="display:none">
+        <button id="load-more-btn">もっと見る</button>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- 記事詳細モーダル -->
+  <div id="article-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close-btn" aria-label="閉じる">✕</button>
+      <div class="modal-thumb-wrap" id="modal-thumb-wrap"></div>
+      <div class="modal-content">
+        <div class="modal-meta" id="modal-meta"></div>
+        <h2 class="modal-title" id="modal-title"></h2>
+        <p class="modal-summary" id="modal-summary"></p>
+        <a class="modal-read-btn" id="modal-read-btn" target="_blank" rel="noopener noreferrer">記事を読む →</a>
+      </div>
+    </div>
+  </div>
+
+  <footer id="site-footer">
+    <p class="footer-title">AI Navigator</p>
+    <p class="footer-desc">中小企業の経営者・現場担当者のためのAIビジネスニュース。主要なAI情報源から記事を毎日自動で収集し、生成AIが要約・分類して配信しています。</p>
+    <p class="footer-meta">運営: ユアカンパニー / 毎日自動更新 / <a href="official.html">公式リリース</a></p>
+  </footer>
+
+  <script src="app.preview.js"></script>
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "899bb0ef97f74baa90f5584bb37ff9c4"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>
