@@ -1819,6 +1819,27 @@ body {
     min-width: 0;
   }
 
+  /* メイン下段の小記事カード(paper-rest): スマホで1列に潰れると、PC用の
+     全幅サムネ(縦並び)のままサムネが横長バナー化して崩れる。
+     サイド小記事と同じ「左テキスト＋右72pxサムネ」の横並びに統一する */
+  .paper-rest .paper-cell-small {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .paper-rest .paper-cell-small .paper-cell-thumb {
+    flex: 0 0 72px;
+    width: 72px;
+    height: 72px;
+    border-radius: 6px;
+    order: 2;   /* サイド小記事と同じく、サムネはテキストの右に置く（DOM順はthumb→bodyのためorderで反転） */
+  }
+  .paper-rest .paper-cell-small .paper-cell-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    order: 1;
+  }
+
   .date-group { padding: 0 12px; }
 
   .card-thumb { height: 150px; }
