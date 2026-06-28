@@ -397,6 +397,7 @@ body {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
+  align-items: start;   /* 各カードを自身の高さに保つ。未指定(stretch)だと行内の最も高いカードに引き伸ばされ、件数増加時に空白の穴が生じる */
 }
 
 /* =============================================
@@ -1799,6 +1800,24 @@ body {
   }
 
   .article-cards-grid { grid-template-columns: 1fr; }
+
+  /* 章サイドの小記事カード: サムネ有無で高さが不揃いになる崩れを防ぐ。
+     横並び固定＋サムネを72px正方形に固定し、サムネ無しカードと高さを揃える */
+  .paper-side .paper-cell-onside {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .paper-side .paper-cell-onside .paper-cell-thumb {
+    flex: 0 0 72px;
+    width: 72px;
+    height: 72px;
+    border-radius: 6px;
+  }
+  .paper-side .paper-cell-onside .paper-cell-body {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
 
   .date-group { padding: 0 12px; }
 
