@@ -62,6 +62,39 @@ python parse_news.py
 # articles.json の記事数・最新日付・サムネ率を確認してから本番反映すること
 ```
 
+### 「修正したのに本番の見た目が変わらない」
+→ **キャッシュと結論する前に実物を見て切り分けろ**（思い込みで「キャッシュ」と断定しない）。
+- まず本番に修正が届いているか: `curl -sf "https://ai-news-eev.pages.dev/style.css?nc=$(date +%s)" | grep "<修正の目印>"`
+- 届いている → ブラウザ/エッジのキャッシュ。スマホはシークレットタブ / `?v=xxx` 付きURL / サイトデータ削除で新版を確認。
+- 届いていない → デプロイ未完了（Cloudflareビルド待ち20〜60秒）か、そもそも別カードが未修正（実機スクショ/動画のフレームを実際に見て、どのカードタイプが崩れているか特定する。CSSは `.paper-cell-onside`(サイド) と `.paper-cell-small`(メイン下段) で別物。片方直してももう片方は残る）。
+
+---
+
+## フロント（CSS / app.js / レスポンシブ）を改修したとき
+
+`parse_news.py` ではなく見た目（HTML/CSS/JS）を触った場合の検証・反映手順。
+
+### ローカル検証（本番に出す前に必ず）
+1. **no-cache サーバーで配信**。`python -m http.server` はブラウザがキャッシュして古い版を掴むので不可。`Cache-Control: no-store` を返す簡易サーバーを別ポート（例8799）で立てる。
+2. **本番同等データで確認**したいなら gh-pages の articles.json を落とす: `curl -sf "https://ai-news-eev.pages.dev/articles.json" -o articles.json`（gitignore対象なのでコミットされない）。
+3. **レスポンシブ確認は Playwright CLI を使う**（Claude-in-Chrome は viewport が効かず `@media` が発火しない）。
+   ```bash
+   playwright-cli open && playwright-cli resize 390 844   # スマホ幅
+   playwright-cli goto "http://localhost:8799/?v=test"
+   playwright-cli eval "getComputedStyle(...).flexDirection" # 計測
+   playwright-cli screenshot --filename=check.png            # 見た目も必ず目視
+   ```
+4. **数値（getComputedStyle）だけで判断しない**。向き・左右配置のミスは数値に出ない（例: `order` 忘れでサムネが左右逆になる。サイドカードは `body=order:1 / thumb=order:2` でサムネを右に置いている）。スクショで実際の見た目を確認する。
+5. **友也（ユーザー）にもローカルで確認してもらい、OKが出てから本番へ**。
+
+### 本番反映（必ずユーザーの明示GOを取ってから実行）
+本番への push / デプロイは「OK / 反映して」を取ってから。確認なしで反映しない。
+1. `git add <file> && git commit && git push origin HEAD:main`（このリポ ai-navigator）
+2. 新SHAがリモートに在るか確認: `gh api repos/suzutomo1984/ai-navigator/commits/<sha> --jq '.sha'`（未pushのSHAを親が参照するとCIが `not our ref` で死ぬ）
+3. my-vault でサブモジュール参照更新 → commit → `git pull --rebase origin master && git push`
+4. `gh workflow run 229227365`（personal-pick）→ gh-pages へデプロイ → Cloudflare が自動ビルド（20〜60秒）
+5. 反映確認: personal-pick の success、gh-pages のデプロイ時刻、本番 Cloudflare に curl で修正が届いたか、を確認（緑だけ信じない）。
+
 ---
 
 ## 変更後に必ず確認すること
@@ -69,3 +102,5 @@ python parse_news.py
 - [ ] ローカル生成で記事数・最新日付が想定通り（前回から激減していないか）
 - [ ] サムネ率が大きく落ちていないか（OGP関連を触った場合）
 - [ ] カテゴリを足したなら上記「3点同期」が揃っているか
+- [ ] フロント（CSS/JS/HTML）を触ったなら、Playwright で PC幅・スマホ幅(390px)の両方をスクショ目視したか
+- [ ] 本番反映は、ユーザーの明示GOを取ってから実行したか（確認なしで本番に出さない）
