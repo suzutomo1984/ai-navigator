@@ -527,6 +527,7 @@ def main():
     output = {
         "generatedAt": datetime.now(JST).isoformat(),
         "latestBatchAt": latest_batch_at,
+        "batchNewCount": new_count,
         "totalArticles": len(all_articles),
         "officialCount": sum(1 for a in all_articles if a.get("isOfficial")),
         "trendingCount": len(all_trending),
