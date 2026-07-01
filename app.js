@@ -592,8 +592,14 @@ function renderDateAsPaper(dateStr, filtered, paperEl) {
   const dayArticles = filtered.filter(a => a.date === dateStr);
   if (dayArticles.length === 0) return;
 
-  // トップ記事を選定: PICK最上位(must-read) > PICK(check) > 先頭
-  const score = a => (a.isPick ? (a.pickPriority === "must-read" ? 2 : 1) : 0);
+  // トップ記事を選定: NEW最優先 > PICK最上位(must-read) > PICK(check) > 先頭
+  // 夕方配信の新記事はMD末尾に追記されるため配列後方に来る。NEWを最優先にして
+  // 「最新の配信で追加された記事」が必ず面トップに立つようにする（更新感を出す）。
+  const score = a => {
+    const newBonus = isNewArticle(a) ? 100 : 0;
+    const pickBonus = a.isPick ? (a.pickPriority === "must-read" ? 2 : 1) : 0;
+    return newBonus + pickBonus;
+  };
   let leadIdx = 0;
   let best = -1;
   dayArticles.forEach((a, i) => {
