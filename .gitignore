@@ -20,3 +20,10 @@ articles.local-backup.json
 # 本番(gh-pages)は personal-pick.yml が parse 実行後に生成・デプロイする。
 robots.txt
 sitemap.xml
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
