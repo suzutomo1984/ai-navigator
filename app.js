@@ -18,6 +18,16 @@ function isNewArticle(article) {
 }
 
 // =============================================
+// データ検証（パース失敗などで壊れた記事を除外）
+// =============================================
+// urlが空 = ソース行のパースに失敗した不完全な記事。表示すると
+// タイトル欠けやリンク切れの見た目になるため一覧から除外する。
+
+function isValidArticle(article) {
+  return !!article.url;
+}
+
+// =============================================
 // 状態管理
 // =============================================
 
@@ -47,7 +57,7 @@ async function loadData() {
   const res = await fetch("articles.json");
   const data = await res.json();
 
-  allArticles = data.articles || [];
+  allArticles = (data.articles || []).filter(isValidArticle);
   allDates = data.dates || [];
   allCategories = data.categories || [];
   latestBatchAt = data.latestBatchAt || null; // 最新配信バッチ時刻（NEW判定の基準）
