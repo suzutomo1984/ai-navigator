@@ -311,10 +311,10 @@ function sortArticles(articles) {
     });
   }
   return [...articles].sort((a, b) => {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
     const aNew = isNewArticle(a);
     const bNew = isNewArticle(b);
     if (aNew !== bNew) return aNew ? -1 : 1;
-    if (a.date !== b.date) return b.date.localeCompare(a.date);
     if (a.isPick && !b.isPick) return -1;
     if (!a.isPick && b.isPick) return 1;
     if (a.pickPriority === "must-read" && b.pickPriority !== "must-read") return -1;
