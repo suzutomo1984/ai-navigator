@@ -31,6 +31,7 @@ AUDIT_FILE = Path(__file__).parent / "audit_report.txt"
 SITEMAP_FILE = Path(__file__).parent / "sitemap.xml"
 ROBOTS_FILE = Path(__file__).parent / "robots.txt"
 INDEX_FILE = Path(__file__).parent / "index.html"
+ABOUT_FILE = Path(__file__).parent / "about.html"
 BASE_URL = "https://ai-news-eev.pages.dev"
 
 # 基準日（直近7日ボーナス判定用）
@@ -614,6 +615,86 @@ def main():
 
     # SEO基礎工事（robots.txt / sitemap.xml / 構造化データ）を自動生成
     generate_seo_assets(all_articles)
+
+    # about.html の実測値ブロックを更新（「全自動」を謳うページの数字が
+    # 手動更新では自己矛盾になるため、記事収集のたびに毎回上書きする）
+    update_about_stats(output, dates_meta)
+
+
+def update_about_stats(meta: dict, dates_meta: list[dict]) -> None:
+    """about.html の ABOUT_STATS マーカー間を最新の実測値で置き換える。
+
+    数字はこのサイトの「全自動で動いている」という主張の裏付けなので、
+    古い値が残ると主張そのものが嘘になる。マーカーが見つからない場合は
+    黙って素通りせずFail loudさせる（静かに古い数字が残る方が有害）。
+    """
+    if not ABOUT_FILE.exists():
+        print("⚠️ about.html が無いのでスキップ")
+        return
+
+    html = ABOUT_FILE.read_text(encoding="utf-8")
+    start_marker = "<!-- ABOUT_STATS:start"
+    end_marker = "<!-- ABOUT_STATS:end -->"
+    start = html.find(start_marker)
+    end = html.find(end_marker)
+    if start == -1 or end == -1:
+        raise RuntimeError(
+            "about.html の ABOUT_STATS マーカーが見つかりません。"
+            "マーカーを消すと数字が更新されず、実測値という主張が嘘になります。"
+        )
+    # マーカー行自体は残し、その内側だけ差し替える
+    start_line_end = html.find("-->", start) + len("-->")
+
+    total = meta.get("totalArticles", 0)
+    official = meta.get("officialCount", 0)
+    days = len(dates_meta)
+    date_from = dates_meta[-1]["date"] if dates_meta else ""
+    date_to = dates_meta[0]["date"] if dates_meta else ""
+    # 「2026/1/31〜8/4」形式（1行に収めるため年は開始側のみ）
+    def _short(d: str, with_year: bool) -> str:
+        try:
+            y, m, dd = d.split("-")
+            return f"{y}/{int(m)}/{int(dd)}" if with_year else f"{int(m)}/{int(dd)}"
+        except ValueError:
+            return d
+
+    period = f"({_short(date_from, True)}〜{_short(date_to, False)})" if date_from else ""
+
+    cards = f"""
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-value">{total:,}<small>本</small></div>
+          <div class="stat-label">累計記事数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{official:,}<small>本</small></div>
+          <div class="stat-label">うち公式リリース</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{days}<small>日分</small></div>
+          <div class="stat-label">カバー期間<br>{period}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">1日2回</div>
+          <div class="stat-label">更新頻度（全自動）<br>JST 5:45 / 15:45</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">0<small>分/日</small></div>
+          <div class="stat-label">人の運用作業</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">0<small>円/月</small></div>
+          <div class="stat-label">運営コスト</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">ほぼ0<small>行</small></div>
+          <div class="stat-label">手書きしたコード</div>
+        </div>
+      </div>
+      """
+
+    ABOUT_FILE.write_text(html[:start_line_end] + cards + html[end:], encoding="utf-8")
+    print(f"✅ about.html の数字を更新: {total:,}本 / {official:,}本 / {days}日分")
 
 
 def generate_seo_assets(all_articles: list[dict]) -> None:
