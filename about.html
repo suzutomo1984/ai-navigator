@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-7JVX326HRP"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-7JVX326HRP');
+  </script>
+  <title>作り方 | AI Navigator — 非エンジニアがAIと言葉だけで作った全自動サイト</title>
+  <meta name="description" content="AI Navigatorは、非エンジニアがAIとの対話だけで作り、月0円・全自動で毎日更新されているサイトです。仕組みと数字をそのまま公開しています。">
+  <meta property="og:title" content="作り方 | AI Navigator — 非エンジニアがAIと言葉だけで作った全自動サイト">
+  <meta property="og:description" content="AI Navigatorは、非エンジニアがAIとの対話だけで作り、月0円・全自動で毎日更新されているサイトです。仕組みと数字をそのまま公開しています。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ai-news-eev.pages.dev/about.html">
+  <meta property="og:image" content="https://ai-news-eev.pages.dev/ogp.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="作り方 | AI Navigator">
+  <meta name="twitter:description" content="非エンジニアがAIとの対話だけで作り、月0円・全自動で毎日更新されているサイトの仕組みを公開。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="canonical" href="https://ai-news-eev.pages.dev/about.html">
+
+  <style>
+    /* about.html 専用スタイル（style.cssのCSS変数・トーンを踏襲、サイドバー非使用の単カラムページ） */
+    #about-main {
+      margin-top: var(--header-h);
+      min-height: calc(100vh - var(--header-h));
+      max-width: 760px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0 22px 80px;
+    }
+
+    .about-hero {
+      padding: 56px 0 36px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .about-hero-eyebrow {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--accent-hover);
+      margin: 0 0 14px;
+    }
+    .about-hero h1 {
+      font-size: 26px;
+      line-height: 1.55;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 14px;
+    }
+    .about-hero h1 .hl {
+      color: var(--accent-hover);
+    }
+    .about-hero p {
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .about-section {
+      padding: 40px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .about-section:last-of-type { border-bottom: none; }
+
+    .about-section-label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin: 0 0 6px;
+    }
+    .about-section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 20px;
+    }
+
+    /* 2階: 数字グリッド */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 14px;
+      text-align: center;
+    }
+    .stat-value {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent-hover);
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+    .stat-value small {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+    .stat-note {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.7;
+      margin-top: 18px;
+    }
+
+    /* 3階: 3ステップ翻訳 */
+    .step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--accent-subtle);
+      color: var(--accent-hover);
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-text {
+      font-size: 13.5px;
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+    .step-text b { color: var(--accent-hover); }
+    .step-arrow {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+      margin: -2px 0;
+    }
+
+    .evidence-figure {
+      margin-top: 8px;
+    }
+    .evidence-figure img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+    .evidence-caption {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 8px;
+      line-height: 1.6;
+    }
+
+    /* 4階: note導線 */
+    .note-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .note-link-card {
+      display: block;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      text-decoration: none;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .note-link-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-hover);
+    }
+    .note-link-card .note-kicker {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      margin: 0 0 4px;
+    }
+    .note-link-card .note-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+    .note-link-card .note-arrow {
+      color: var(--accent-hover);
+      font-size: 12px;
+      margin-left: 4px;
+    }
+    .note-profile-link {
+      display: inline-block;
+      margin-top: 14px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+    .note-profile-link:hover { color: var(--accent-hover); }
+
+    @media (max-width: 600px) {
+      .about-hero { padding: 40px 0 28px; }
+      .about-hero h1 { font-size: 21px; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .stat-value { font-size: 19px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ヘッダー: ロゴ | タブ | 検索（他ページと共通構造。about.htmlに検索対象コンテンツは無いため検索窓のみ非表示） -->
+  <header id="header">
+    <a href="index.html" id="logo">
+      <span id="logo-icon">Ai</span>
+      <div id="logo-group">
+        <span id="logo-text">AI Navigator</span>
+        <span id="logo-tagline">AIニュースを、現場の言葉に。</span>
+      </div>
+    </a>
+
+    <nav id="tabbar">
+      <a class="tab-btn" href="index.html">📰 AIニュース</a>
+      <a class="tab-btn" href="official.html">📦 リリースノート</a>
+      <a class="tab-btn active" href="about.html">🛠️ 作り方</a>
+    </nav>
+
+    <div style="flex-shrink:0; width:1px;"></div>
+  </header>
+
+  <!-- ボトムナビ -->
+  <nav id="bottom-nav">
+    <a class="bnav-item" href="index.html">
+      <span class="bnav-icon">🏠</span>
+      <span class="bnav-label">ホーム</span>
+    </a>
+    <a class="bnav-item" href="official.html">
+      <span class="bnav-icon">📦</span>
+      <span class="bnav-label">リリース</span>
+    </a>
+    <a class="bnav-item active" href="about.html">
+      <span class="bnav-icon">🛠️</span>
+      <span class="bnav-label">作り方</span>
+    </a>
+  </nav>
+
+  <main id="about-main">
+
+    <!-- 1階：つかみ -->
+    <section class="about-hero">
+      <p class="about-hero-eyebrow">HOW THIS SITE IS MADE</p>
+      <h1>このサイト、<span class="hl">エンジニアじゃない人間</span>がAIに喋っただけで作って、<br>
+        月0円・全自動で毎日勝手に更新されています。</h1>
+      <p>AI Navigatorの運営者は、コードをほとんど書けません。それでもAIとの対話だけでサイトを立ち上げ、日々のニュース収集から公開まで人の作業ゼロで回っています。ここでは、その仕組みをそのまま見せます。</p>
+    </section>
+
+    <!-- 2階：数字で殴る -->
+    <section class="about-section">
+      <p class="about-section-label">02 / NUMBERS</p>
+      <h2 class="about-section-title">数字で見る、このサイトの中身</h2>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-value">6,462<small>本</small></div>
+          <div class="stat-label">累計記事数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">584<small>本</small></div>
+          <div class="stat-label">うち公式リリース</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">68<small>本</small></div>
+          <div class="stat-label">うちGitHub Trending</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">185<small>日分</small></div>
+          <div class="stat-label">カバー期間<br>(2026/1/31〜8/4)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">1日2回</div>
+          <div class="stat-label">更新頻度（全自動）<br>JST 5:45 / 15:45</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">0<small>分/日</small></div>
+          <div class="stat-label">人の運用作業</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">0<small>円/月</small></div>
+          <div class="stat-label">運営コスト</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">ほぼ0<small>行</small></div>
+          <div class="stat-label">手書きしたコード</div>
+        </div>
+      </div>
+
+      <p class="stat-note">
+        ※月額0円は、Gemini APIの無料枠・GitHub Actions（publicリポジトリ）の無料枠・Cloudflare Pagesの無料プランの範囲内で運用できている現時点の実態です。記事数の増加やAPI仕様の変更により、この条件は将来変わる可能性があります。<br>
+        ※「手書きコードほぼ0行」は運営者本人の実感ベースです。実装のほとんどをAIとの対話で組み立てています。
+      </p>
+    </section>
+
+    <!-- 3階：証拠（やさしい翻訳→図） -->
+    <section class="about-section">
+      <p class="about-section-label">03 / HOW IT WORKS</p>
+      <h2 class="about-section-title">「全自動」の中身を、やさしく翻訳すると</h2>
+
+      <div class="step-list">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-text"><b>集める</b> — 毎朝・毎夕、AI企業の公式発表やニュースサイトを自動で巡回します。</div>
+        </div>
+        <div class="step-arrow">↓</div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-text"><b>AIが要約する</b> — 集めた記事をAI（Gemini）が読んで、日本語でわかりやすく要約・分類します。</div>
+        </div>
+        <div class="step-arrow">↓</div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-text"><b>勝手に公開される</b> — 要約結果が自動でサイトに反映され、人が触らなくても公開されます。</div>
+        </div>
+      </div>
+
+      <div class="evidence-figure">
+        <img src="AI_Navigator_全自動フロー.drawio.png" alt="AI Navigator 全自動デプロイフローの図解" loading="lazy">
+        <p class="evidence-caption">実際の処理フロー図。「本当に全自動なのか」の裏付けとして、内部の仕組みをそのまま公開しています。</p>
+      </div>
+    </section>
+
+    <!-- 4階：note導線 -->
+    <section class="about-section">
+      <p class="about-section-label">04 / MORE STORIES</p>
+      <h2 class="about-section-title">このサイトの作り方をnoteに書いています</h2>
+
+      <div class="note-list">
+        <a class="note-link-card" href="https://note.com/fresh_ixora3727/n/nfb9515e7ff0c?utm_source=ainavigator&utm_medium=about&utm_campaign=howto" target="_blank" rel="noopener noreferrer">
+          <p class="note-kicker">note</p>
+          <p class="note-title">コードが1行も読めない私が、AIと言葉だけで155日動くサイトを育てた話<span class="note-arrow">→</span></p>
+        </a>
+        <a class="note-link-card" href="https://note.com/fresh_ixora3727/n/n1bf62249f3c2?utm_source=ainavigator&utm_medium=about&utm_campaign=howto" target="_blank" rel="noopener noreferrer">
+          <p class="note-kicker">note</p>
+          <p class="note-title">毎日のAIニュース47日分を、ウェブサイトにしてみた<span class="note-arrow">→</span></p>
+        </a>
+      </div>
+
+      <a class="note-profile-link" href="https://note.com/fresh_ixora3727?utm_source=ainavigator&utm_medium=about&utm_campaign=howto" target="_blank" rel="noopener noreferrer">note プロフィールで他の記事も見る →</a>
+    </section>
+
+  </main>
+
+  <footer id="site-footer">
+    <p class="footer-title">AI Navigator</p>
+    <p class="footer-desc">中小企業の経営者・現場担当者のためのAIビジネスニュース。主要なAI情報源から記事を毎日自動で収集し、生成AIが要約・分類して配信しています。</p>
+    <p class="footer-meta">運営: tomomo / 毎日自動更新 / <a href="official.html">リリースノート</a> / <a href="about.html">作り方</a></p>
+  </footer>
+
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "899bb0ef97f74baa90f5584bb37ff9c4"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>
