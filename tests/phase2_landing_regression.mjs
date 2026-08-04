@@ -61,7 +61,9 @@ for (const id of [
   assert.equal((indexSource.match(new RegExp(`id=["']${id}["']`, "g")) || []).length, 1, `${id} must exist exactly once`);
 }
 assert.equal((indexSource.match(/<footer\b/gi) || []).length, 1);
-for (const marker of ["TOP_STATS_BAR", "TOP_STATS_GRID"]) {
+// TOP_STATS_COUNT はサイト説明バーの記事数。ここが欠けると指標バー・数字グリッドだけが
+// 更新され、同一ページに新旧2つの記事数が並ぶ（2026-08-05 レビュー指摘）。
+for (const marker of ["TOP_STATS_BAR", "TOP_STATS_GRID", "TOP_STATS_COUNT"]) {
   assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:start -->`, "g")) || []).length, 1);
   assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:end -->`, "g")) || []).length, 1);
 }
