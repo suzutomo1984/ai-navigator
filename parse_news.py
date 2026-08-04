@@ -715,10 +715,15 @@ def update_top_stats(meta: dict, dates_meta: list[dict]) -> None:
             f'<span>{stat["label"]}{grid_detail}</span></div>'
         )
 
-    # 片方だけ更新された状態を作らないため、両ブロックを検証・置換してから1回だけ書く。
+    # サイト説明バーの記事数。ここを固定値のままにすると、指標バー・数字グリッドだけが
+    # 更新され、同一ページに新旧2つの記事数が並ぶ（2026-08-05 レビュー指摘）。
+    info_line = f"        <dd>{total:,}本</dd>"
+
+    # 一部だけ更新された状態を作らないため、全ブロックを検証・置換してから1回だけ書く。
     html = INDEX_FILE.read_text(encoding="utf-8")
     updated = _replace_exact_marker_block(html, "TOP_STATS_BAR", "\n".join(bar_lines))
     updated = _replace_exact_marker_block(updated, "TOP_STATS_GRID", "\n".join(grid_lines))
+    updated = _replace_exact_marker_block(updated, "TOP_STATS_COUNT", info_line)
     INDEX_FILE.write_text(updated, encoding="utf-8")
     print(f"✅ index.html の数字を更新: {total:,}本 / {official:,}本 / {days}日分")
 

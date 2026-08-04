@@ -86,7 +86,8 @@
     </a>
   </nav>
 
-  <main id="landing-main">
+  <!-- ランディング部。可視の main ランドマークは記事一覧側(#main)の1個だけにするため div にする -->
+  <div id="landing-main">
     <section class="top-hero" aria-labelledby="top-hero-title">
       <div class="top-hero-orbit" aria-hidden="true"></div>
       <div class="top-hero-content">
@@ -220,9 +221,13 @@
 
     <section class="top-site-info" aria-label="AI Navigator サイト情報">
       <div><strong>AI Navigator</strong><p>中小企業の経営者・現場担当者のためのAIビジネスニュース。</p></div>
-      <dl><div><dt>運営</dt><dd>完全自動</dd></div><div><dt>記事数</dt><dd>6,489本</dd></div><div><dt>運営開始</dt><dd>2026.01</dd></div></dl>
+      <!-- 記事数は parse_news.py が TOP_STATS_COUNT マーカー間を自動更新する。手で編集しない -->
+      <dl><div><dt>運営</dt><dd>完全自動</dd></div><div><dt>記事数</dt>
+        <!-- TOP_STATS_COUNT:start -->
+        <dd>6,489本</dd>
+<!-- TOP_STATS_COUNT:end --></div><div><dt>運営開始</dt><dd>2026.01</dd></div></dl>
     </section>
-  </main>
+  </div><!-- /#landing-main -->
 
   <div id="article-list-start"></div>
   <!-- モバイル: 記事一覧に到達してから sticky 表示する絞り込みバー -->
