@@ -648,8 +648,12 @@ def update_about_stats(meta: dict, dates_meta: list[dict]) -> None:
     total = meta.get("totalArticles", 0)
     official = meta.get("officialCount", 0)
     days = len(dates_meta)
-    date_from = dates_meta[-1]["date"] if dates_meta else ""
-    date_to = dates_meta[0]["date"] if dates_meta else ""
+    # 配列の並び順に依存すると期間が反転する（実際に本番で 8/4〜1/31 と出た）。
+    # min/max で確定させ、dateRange があればそれを優先する。
+    all_dates = [d.get("date", "") for d in dates_meta if d.get("date")]
+    date_range = meta.get("dateRange") or {}
+    date_from = date_range.get("from") or (min(all_dates) if all_dates else "")
+    date_to = date_range.get("to") or (max(all_dates) if all_dates else "")
     # 「2026/1/31〜8/4」形式（1行に収めるため年は開始側のみ）
     def _short(d: str, with_year: bool) -> str:
         try:
