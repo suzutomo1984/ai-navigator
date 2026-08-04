@@ -34,6 +34,22 @@ INDEX_FILE = Path(__file__).parent / "index.html"
 ABOUT_FILE = Path(__file__).parent / "about.html"
 BASE_URL = "https://ai-news-eev.pages.dev"
 
+# 記事データからは算出できない運用方針の固定値。
+# トップの指標バー／数字グリッド（および about.html）は必ずここから生成し、
+# HTMLへ同じ値を重複して直書きしない。
+TOP_STATS_FIXED = (
+    {
+        "value": "1日2回",
+        "unit": "",
+        "label": "更新頻度",
+        "about_label": "更新頻度（全自動）",
+        "detail": "JST 5:45 / 15:45",
+    },
+    {"value": "0", "unit": "分/日", "label": "人の運用作業", "detail": ""},
+    {"value": "0", "unit": "円/月", "label": "運営コスト", "detail": ""},
+    {"value": "ほぼ0", "unit": "行", "label": "手書きしたコード", "detail": ""},
+)
+
 # 基準日（直近7日ボーナス判定用）
 NOW = datetime.now(JST)
 SEVEN_DAYS_AGO = (NOW - timedelta(days=7)).strftime("%Y-%m-%d")
@@ -608,6 +624,104 @@ def main():
     # 手動更新では自己矛盾になるため、記事収集のたびに毎回上書きする）
     update_about_stats(output, dates_meta)
 
+    # トップページの2か所にある統計も、同じ実測値・固定値から毎回生成する。
+    update_top_stats(output, dates_meta)
+
+
+def _format_stat_value(value: str, unit: str = "") -> str:
+    """統計値と単位を、各統計ブロックで共通のHTMLへ整形する。"""
+    return f"{value}<small>{unit}</small>" if unit else value
+
+
+def _stats_context(meta: dict, dates_meta: list[dict]) -> tuple[int, int, int, str]:
+    """動的統計値と正順の期間文字列を返す。"""
+    total = int(meta.get("totalArticles", 0) or 0)
+    official = int(meta.get("officialCount", 0) or 0)
+    dates = meta.get("dates")
+    if not isinstance(dates, list):
+        dates = dates_meta
+    days = len(dates)
+
+    # dateRange.from/to が真実源。無い場合だけ日付群の min/max へ縮退する。
+    all_dates = [d.get("date", "") for d in dates if isinstance(d, dict) and d.get("date")]
+    fallback_from = min(all_dates) if all_dates else ""
+    fallback_to = max(all_dates) if all_dates else ""
+    date_range = meta.get("dateRange")
+    if not isinstance(date_range, dict):
+        date_range = {}
+    date_from = date_range.get("from") or fallback_from
+    date_to = date_range.get("to") or fallback_to
+
+    def _short(d: str, with_year: bool) -> str:
+        try:
+            y, m, dd = d.split("-")
+            return f"{y}/{int(m)}/{int(dd)}" if with_year else f"{int(m)}/{int(dd)}"
+        except (AttributeError, ValueError):
+            return d
+
+    period = (
+        f"{_short(date_from, True)}〜{_short(date_to, False)}"
+        if date_from and date_to
+        else ""
+    )
+    return total, official, days, period
+
+
+def _replace_exact_marker_block(html: str, marker: str, content: str) -> str:
+    """指定マーカーが開始・終了とも各1個のときだけ内側を置換する。"""
+    start_marker = f"<!-- {marker}:start -->"
+    end_marker = f"<!-- {marker}:end -->"
+    start_count = html.count(start_marker)
+    end_count = html.count(end_marker)
+    if start_count != 1 or end_count != 1:
+        raise RuntimeError(
+            f"index.html の {marker} マーカー数が不正です "
+            f"(start={start_count}, end={end_count})。開始・終了を各1個にしてください。"
+        )
+
+    start = html.index(start_marker) + len(start_marker)
+    end = html.index(end_marker)
+    if end < start:
+        raise RuntimeError(f"index.html の {marker} マーカーの順序が不正です。")
+    return html[:start] + "\n" + content + "\n" + html[end:]
+
+
+def update_top_stats(meta: dict, dates_meta: list[dict]) -> None:
+    """index.html の指標バーと数字グリッドを最新値で厳格に更新する。"""
+    if not INDEX_FILE.exists():
+        raise RuntimeError("index.html が無いためトップ統計を更新できません。")
+
+    total, official, days, period = _stats_context(meta, dates_meta)
+    dynamic = (
+        {"value": f"{total:,}", "unit": "本", "label": "累計記事数", "detail": ""},
+        {"value": f"{official:,}", "unit": "本", "label": "うち公式リリース", "detail": ""},
+        {"value": str(days), "unit": "日分", "label": "カバー期間", "detail": period},
+    )
+    stats = dynamic + TOP_STATS_FIXED
+
+    bar_lines = []
+    grid_lines = []
+    for index, stat in enumerate(stats):
+        value_html = _format_stat_value(stat["value"], stat.get("unit", ""))
+        detail = stat.get("detail", "")
+        bar_detail = f"<br>{detail}" if detail and index >= len(dynamic) else ""
+        grid_detail = f"<br>{detail}" if detail else ""
+        bar_lines.append(
+            f'        <div class="top-stat"><strong>{value_html}</strong>'
+            f'<span>{stat["label"]}{bar_detail}</span></div>'
+        )
+        grid_lines.append(
+            f'        <div class="top-number-card"><strong>{value_html}</strong>'
+            f'<span>{stat["label"]}{grid_detail}</span></div>'
+        )
+
+    # 片方だけ更新された状態を作らないため、両ブロックを検証・置換してから1回だけ書く。
+    html = INDEX_FILE.read_text(encoding="utf-8")
+    updated = _replace_exact_marker_block(html, "TOP_STATS_BAR", "\n".join(bar_lines))
+    updated = _replace_exact_marker_block(updated, "TOP_STATS_GRID", "\n".join(grid_lines))
+    INDEX_FILE.write_text(updated, encoding="utf-8")
+    print(f"✅ index.html の数字を更新: {total:,}本 / {official:,}本 / {days}日分")
+
 
 def update_about_stats(meta: dict, dates_meta: list[dict]) -> None:
     """about.html の ABOUT_STATS マーカー間を最新の実測値で置き換える。
@@ -633,57 +747,30 @@ def update_about_stats(meta: dict, dates_meta: list[dict]) -> None:
     # マーカー行自体は残し、その内側だけ差し替える
     start_line_end = html.find("-->", start) + len("-->")
 
-    total = meta.get("totalArticles", 0)
-    official = meta.get("officialCount", 0)
-    days = len(dates_meta)
-    # 配列の並び順に依存すると期間が反転する（実際に本番で 8/4〜1/31 と出た）。
-    # min/max で確定させ、dateRange があればそれを優先する。
-    all_dates = [d.get("date", "") for d in dates_meta if d.get("date")]
-    date_range = meta.get("dateRange") or {}
-    date_from = date_range.get("from") or (min(all_dates) if all_dates else "")
-    date_to = date_range.get("to") or (max(all_dates) if all_dates else "")
-    # 「2026/1/31〜8/4」形式（1行に収めるため年は開始側のみ）
-    def _short(d: str, with_year: bool) -> str:
-        try:
-            y, m, dd = d.split("-")
-            return f"{y}/{int(m)}/{int(dd)}" if with_year else f"{int(m)}/{int(dd)}"
-        except ValueError:
-            return d
-
-    period = f"({_short(date_from, True)}〜{_short(date_to, False)})" if date_from else ""
-
-    cards = f"""
-      <div class="stat-grid">
-        <div class="stat-card">
-          <div class="stat-value">{total:,}<small>本</small></div>
-          <div class="stat-label">累計記事数</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{official:,}<small>本</small></div>
-          <div class="stat-label">うち公式リリース</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{days}<small>日分</small></div>
-          <div class="stat-label">カバー期間<br>{period}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">1日2回</div>
-          <div class="stat-label">更新頻度（全自動）<br>JST 5:45 / 15:45</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">0<small>分/日</small></div>
-          <div class="stat-label">人の運用作業</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">0<small>円/月</small></div>
-          <div class="stat-label">運営コスト</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">ほぼ0<small>行</small></div>
-          <div class="stat-label">手書きしたコード</div>
-        </div>
-      </div>
-      """
+    total, official, days, period = _stats_context(meta, dates_meta)
+    dynamic = (
+        {"value": f"{total:,}", "unit": "本", "label": "累計記事数", "detail": ""},
+        {"value": f"{official:,}", "unit": "本", "label": "うち公式リリース", "detail": ""},
+        {
+            "value": str(days),
+            "unit": "日分",
+            "label": "カバー期間",
+            "detail": f"({period})" if period else "",
+        },
+    )
+    card_lines = ['      <div class="stat-grid">']
+    for stat in dynamic + TOP_STATS_FIXED:
+        value_html = _format_stat_value(stat["value"], stat.get("unit", ""))
+        label = stat.get("about_label", stat["label"])
+        detail = f'<br>{stat["detail"]}' if stat.get("detail") else ""
+        card_lines.extend((
+            '        <div class="stat-card">',
+            f'          <div class="stat-value">{value_html}</div>',
+            f'          <div class="stat-label">{label}{detail}</div>',
+            '        </div>',
+        ))
+    card_lines.append("      </div>")
+    cards = "\n" + "\n".join(card_lines) + "\n      "
 
     ABOUT_FILE.write_text(html[:start_line_end] + cards + html[end:], encoding="utf-8")
     print(f"✅ about.html の数字を更新: {total:,}本 / {official:,}本 / {days}日分")

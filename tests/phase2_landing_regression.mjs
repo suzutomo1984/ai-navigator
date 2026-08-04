@@ -48,7 +48,7 @@ assert.ok(expected.recentReleases.every(article => article.isOfficial));
 assert.equal(expected.topCategories.length, 6);
 assert.match(landingThumbnail({ thumbnail: "" }, "test-thumb"), /top-thumb-placeholder/);
 
-// Phase 2の静的構造と禁止事項。
+// Phase 2の静的構造と、Phase 4で追加した統計更新契約。
 for (const id of [
   "landing-main",
   "top-pickup",
@@ -61,8 +61,10 @@ for (const id of [
   assert.equal((indexSource.match(new RegExp(`id=["']${id}["']`, "g")) || []).length, 1, `${id} must exist exactly once`);
 }
 assert.equal((indexSource.match(/<footer\b/gi) || []).length, 1);
-assert.ok(!indexSource.includes("TOP_STATS_BAR"));
-assert.ok(!indexSource.includes("TOP_STATS_GRID"));
+for (const marker of ["TOP_STATS_BAR", "TOP_STATS_GRID"]) {
+  assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:start -->`, "g")) || []).length, 1);
+  assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:end -->`, "g")) || []).length, 1);
+}
 assert.equal((indexSource.match(/id=["']top-github-trending["']/g) || []).length, 1);
 
 console.log(JSON.stringify({
