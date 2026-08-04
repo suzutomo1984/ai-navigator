@@ -70,19 +70,6 @@
     <button id="sidebar-toggle" aria-label="フィルターを開く">☰</button>
   </header>
 
-  <!-- アプリレイアウト: サイドバー + メイン -->
-  <!-- モバイル: カテゴリタブバー（上部） -->
-  <div id="mobile-category-bar">
-    <div id="mobile-cat-scroll">
-      <!-- app.js が動的に生成 -->
-    </div>
-    <button id="mob-date-btn">📅 <span id="mob-date-label">日付</span></button>
-  </div>
-  <!-- 日付ドロップダウン -->
-  <div id="mob-date-dropdown">
-    <div id="mob-date-list"></div>
-  </div>
-
   <!-- ボトムナビ -->
   <nav id="bottom-nav">
     <a class="bnav-item active" href="index.html">
@@ -99,7 +86,142 @@
     </a>
   </nav>
 
+  <main id="landing-main">
+    <section class="top-hero" aria-labelledby="top-hero-title">
+      <div class="top-hero-orbit" aria-hidden="true"></div>
+      <div class="top-hero-content">
+        <p class="top-eyebrow">AI BUSINESS NEWS / UPDATED TWICE DAILY</p>
+        <h1 id="top-hero-title">AIと共に、<br>ビジネスの未来をナビゲート。</h1>
+        <p class="top-hero-lead">AI Navigatorは、生成AI・LLM・自動化の最新ニュースや活用事例、リリース情報を日本語で毎日お届けするメディアです。</p>
+        <div class="top-hero-actions">
+          <a class="top-action top-action-primary" href="#article-list-start">最新のAIニュースを読む</a>
+          <a class="top-action top-action-secondary" href="about.html">このサイトの作り方</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="top-stats-bar" aria-labelledby="top-stats-title">
+      <div class="top-section-heading top-stats-heading">
+        <p class="top-section-kicker">LIVE SNAPSHOT</p>
+        <h2 id="top-stats-title">AI Navigator の今</h2>
+      </div>
+      <div class="top-stats-row">
+        <div class="top-stat"><strong>6,489<small>本</small></strong><span>累計記事数</span></div>
+        <div class="top-stat"><strong>586<small>本</small></strong><span>うち公式リリース</span></div>
+        <div class="top-stat"><strong>185<small>日分</small></strong><span>カバー期間</span></div>
+        <div class="top-stat"><strong>1日2回</strong><span>更新頻度<br>JST 5:45 / 15:45</span></div>
+        <div class="top-stat"><strong>0<small>分/日</small></strong><span>人の運用作業</span></div>
+        <div class="top-stat"><strong>0<small>円/月</small></strong><span>運営コスト</span></div>
+        <div class="top-stat"><strong>ほぼ0<small>行</small></strong><span>手書きしたコード</span></div>
+      </div>
+    </section>
+
+    <div class="top-editorial-layout">
+      <div class="top-editorial-main">
+        <section class="top-section" aria-labelledby="pickup-title">
+          <div class="top-section-heading">
+            <p class="top-section-kicker">EDITOR'S PICK</p>
+            <h2 id="pickup-title">おすすめ記事 <span>PICK UP</span></h2>
+          </div>
+          <div id="top-pickup" class="top-pickup" aria-live="polite">
+            <p class="top-loading">記事を読み込み中...</p>
+          </div>
+        </section>
+
+        <section class="top-section" aria-labelledby="latest-news-title">
+          <div class="top-section-heading top-section-heading-row">
+            <div>
+              <p class="top-section-kicker">LATEST STORIES</p>
+              <h2 id="latest-news-title">最新のAIニュース</h2>
+            </div>
+            <a class="top-text-link" href="#article-list-start">すべて見る →</a>
+          </div>
+          <div id="top-latest-news" class="top-news-grid" aria-live="polite">
+            <p class="top-loading">記事を読み込み中...</p>
+          </div>
+        </section>
+
+        <section class="top-section" aria-labelledby="category-explore-title">
+          <div class="top-section-heading">
+            <p class="top-section-kicker">EXPLORE BY TOPIC</p>
+            <h2 id="category-explore-title">カテゴリから探す</h2>
+          </div>
+          <div id="top-category-tiles" class="top-category-grid" aria-live="polite"></div>
+        </section>
+      </div>
+
+      <aside class="top-release-sidebar" aria-labelledby="recent-releases-title">
+        <!-- Phase 3: GitHub Trending はこの上に追加する。Phase 2ではダミーを置かない。 -->
+        <div class="top-section-heading">
+          <p class="top-section-kicker">OFFICIAL UPDATES</p>
+          <h2 id="recent-releases-title">最近のリリース</h2>
+        </div>
+        <div id="top-recent-releases" class="top-release-list" aria-live="polite">
+          <p class="top-loading">リリースを読み込み中...</p>
+        </div>
+        <a class="top-text-link top-release-all" href="official.html">リリースノートをすべて見る →</a>
+      </aside>
+    </div>
+
+    <section class="top-section top-numbers-section" aria-labelledby="top-numbers-title">
+      <div class="top-section-heading top-centered-heading">
+        <p class="top-section-kicker">BY THE NUMBERS</p>
+        <h2 id="top-numbers-title">数字で見る、このサイトの中身</h2>
+      </div>
+      <div class="top-number-grid">
+        <div class="top-number-card"><strong>6,489<small>本</small></strong><span>累計記事数</span></div>
+        <div class="top-number-card"><strong>586<small>本</small></strong><span>うち公式リリース</span></div>
+        <div class="top-number-card"><strong>185<small>日分</small></strong><span>カバー期間<br>2026/1/31〜8/4</span></div>
+        <div class="top-number-card"><strong>1日2回</strong><span>更新頻度<br>JST 5:45 / 15:45</span></div>
+        <div class="top-number-card"><strong>0<small>分/日</small></strong><span>人の運用作業</span></div>
+        <div class="top-number-card"><strong>0<small>円/月</small></strong><span>運営コスト</span></div>
+        <div class="top-number-card"><strong>ほぼ0<small>行</small></strong><span>手書きしたコード</span></div>
+      </div>
+    </section>
+
+    <section class="top-section top-how-section" aria-labelledby="top-how-title">
+      <div class="top-section-heading top-centered-heading">
+        <p class="top-section-kicker">HOW IT WORKS</p>
+        <h2 id="top-how-title">ニュースが届くまで</h2>
+      </div>
+      <div class="top-step-list">
+        <div class="top-step"><span>1</span><div><h3>集める</h3><p>毎朝・毎夕、AI企業の公式発表やニュースサイトを自動で巡回します。</p></div></div>
+        <div class="top-step"><span>2</span><div><h3>AIが要約する</h3><p>集めた記事をAI（Gemini）が読んで、日本語でわかりやすく要約・分類します。</p></div></div>
+        <div class="top-step"><span>3</span><div><h3>勝手に公開される</h3><p>要約結果が自動でサイトに反映され、人が触らなくても公開されます。</p></div></div>
+      </div>
+      <p class="top-centered-action"><a class="top-action top-action-secondary" href="about.html">このサイトの作り方を見る</a></p>
+    </section>
+
+    <section class="top-section top-note-section" aria-labelledby="top-note-title">
+      <div class="top-section-heading top-centered-heading">
+        <p class="top-section-kicker">MORE ON NOTE</p>
+        <h2 id="top-note-title">noteで詳しく</h2>
+      </div>
+      <div class="top-note-grid">
+        <a class="top-note-card" href="https://note.com/fresh_ixora3727/n/nfb9515e7ff0c?utm_source=ainavigator&amp;utm_medium=top&amp;utm_campaign=about" target="_blank" rel="noopener noreferrer"><span>note / STORY 01</span><h3>コードが1行も読めない私が、AIと言葉だけで155日動くサイトを育てた話</h3><b>読む →</b></a>
+        <a class="top-note-card" href="https://note.com/fresh_ixora3727/n/n1bf62249f3c2?utm_source=ainavigator&amp;utm_medium=top&amp;utm_campaign=about" target="_blank" rel="noopener noreferrer"><span>note / STORY 02</span><h3>毎日のAIニュース47日分を、ウェブサイトにしてみた</h3><b>読む →</b></a>
+      </div>
+    </section>
+
+    <section class="top-site-info" aria-label="AI Navigator サイト情報">
+      <div><strong>AI Navigator</strong><p>中小企業の経営者・現場担当者のためのAIビジネスニュース。</p></div>
+      <dl><div><dt>運営</dt><dd>完全自動</dd></div><div><dt>記事数</dt><dd>6,489本</dd></div><div><dt>運営開始</dt><dd>2026.01</dd></div></dl>
+    </section>
+  </main>
+
   <div id="article-list-start"></div>
+  <!-- モバイル: 記事一覧に到達してから sticky 表示する絞り込みバー -->
+  <div id="mobile-category-bar">
+    <div id="mobile-cat-scroll">
+      <!-- app.js が動的に生成 -->
+    </div>
+    <button id="mob-date-btn">📅 <span id="mob-date-label">日付</span></button>
+  </div>
+  <div id="mob-date-dropdown">
+    <div id="mob-date-list"></div>
+  </div>
+
+  <!-- アプリレイアウト: サイドバー + メイン -->
   <div id="app-layout">
 
     <!-- 左サイドバー: フィルター -->
@@ -161,10 +283,15 @@
     </div>
   </div>
 
-  <footer id="site-footer">
-    <p class="footer-title">AI Navigator</p>
-    <p class="footer-desc">中小企業の経営者・現場担当者のためのAIビジネスニュース。主要なAI情報源から記事を毎日自動で収集し、生成AIが要約・分類して配信しています。</p>
-    <p class="footer-meta">運営: tomomo / 毎日自動更新 / <a href="official.html">リリースノート</a> / <a href="about.html">作り方</a></p>
+  <footer id="site-footer" class="top-site-footer">
+    <div class="footer-column footer-brand-column">
+      <a href="index.html" class="footer-brand">AI Navigator</a>
+      <p>AIニュースを、現場の言葉に。</p>
+      <div class="footer-social"><a href="https://x.com/AINavigatorJP" target="_blank" rel="noopener noreferrer">X</a><a href="https://note.com/fresh_ixora3727" target="_blank" rel="noopener noreferrer">note</a></div>
+    </div>
+    <div class="footer-column"><h2>コンテンツ</h2><a href="#article-list-start">AIニュース</a><a href="official.html">リリースノート</a><a href="about.html">作り方</a><a href="https://note.com/fresh_ixora3727" target="_blank" rel="noopener noreferrer">note</a></div>
+    <div class="footer-column"><h2>カテゴリ</h2><div id="footer-categories" class="footer-category-links"></div></div>
+    <div class="footer-column"><h2>その他</h2><a href="about.html">このサイトについて</a></div>
   </footer>
 
   <script src="app.js"></script>

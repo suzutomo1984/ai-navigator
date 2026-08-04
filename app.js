@@ -95,11 +95,11 @@ function isNewArticle(article) {
 // =============================================
 // データ検証（パース失敗などで壊れた記事を除外）
 // =============================================
-// urlが空 = ソース行のパースに失敗した不完全な記事。表示すると
-// タイトル欠けやリンク切れの見た目になるため一覧から除外する。
+// urlが空、または http(s) URL でない = ソース行のパースに失敗した不完全な記事。
+// リンク切れの導線を生成しないよう、描画対象から除外する。
 
 function isValidArticle(article) {
-  return !!article.url;
+  return /^https?:\/\/[^/\s]+/i.test(article.url || "");
 }
 
 // =============================================
@@ -144,6 +144,7 @@ async function loadData() {
   buildSidebarFilters();
   buildMobileCategoryBar();
   buildMobileDateDropdown();
+  renderLanding();
   render();
 }
 
@@ -395,6 +396,32 @@ function filterArticles() {
 // ソート
 // =============================================
 
+// ランディングのPICK・最新ニュース・公式リリースで共用する。
+// articles.json の入力順に依存せず、同日の追加順も確定させる。
+function compareArticlesNewestFirst(a, b) {
+  const dateOrder = String(b.date || "").localeCompare(String(a.date || ""));
+  if (dateOrder !== 0) return dateOrder;
+  const addedAtOrder = String(b.addedAt || "").localeCompare(String(a.addedAt || ""));
+  if (addedAtOrder !== 0) return addedAtOrder;
+  return String(a.id || "").localeCompare(String(b.id || ""));
+}
+
+function getLandingContent(articles, categories) {
+  const newest = items => [...items].sort(compareArticlesNewestFirst);
+  const categoryOrder = new Map(categories.map((category, index) => [category.id, index]));
+  const categoryCount = category => Number(category.articleCount ?? category.count ?? 0);
+
+  return {
+    pickup: newest(articles.filter(article => article.isPick))[0] || null,
+    latestNews: newest(articles.filter(article => !article.isOfficial)).slice(0, 4),
+    recentReleases: newest(articles.filter(article => article.isOfficial)).slice(0, 5),
+    topCategories: categories
+      .filter(category => category.id !== "official" && categoryCount(category) > 0)
+      .sort((a, b) => categoryCount(b) - categoryCount(a) || categoryOrder.get(a.id) - categoryOrder.get(b.id))
+      .slice(0, 6),
+  };
+}
+
 function sortArticles(articles) {
   if (state.tab === "ranking") {
     return [...articles].sort((a, b) => {
@@ -413,6 +440,139 @@ function sortArticles(articles) {
     if (a.pickPriority !== "must-read" && b.pickPriority === "must-read") return 1;
     return a.id.localeCompare(b.id);
   });
+}
+
+// =============================================
+// トップランディング
+// =============================================
+
+function getOptionalById(id) {
+  return document.getElementById(id);
+}
+
+function topCategoryLabel(article) {
+  const category = allCategories.find(item => item.id === article.category);
+  return category ? `${category.emoji || ""} ${category.label}`.trim() : article.category || "AIニュース";
+}
+
+function formatTopDate(date) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) return "";
+  return date.replace(/-/g, ".");
+}
+
+function safeExternalUrl(value) {
+  const url = String(value || "");
+  return /^https?:\/\//i.test(url) ? url : "#";
+}
+
+function escAttr(value) {
+  return escHtml(String(value || "")).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function landingThumbnail(article, className) {
+  if (!article.thumbnail) {
+    return `<div class="${className} top-thumb-placeholder" aria-hidden="true"><span>AI</span></div>`;
+  }
+  return `<div class="${className}"><img src="${escAttr(safeExternalUrl(article.thumbnail))}" alt="" loading="lazy" onerror="onLandingThumbError(this)"></div>`;
+}
+
+function onLandingThumbError(img) {
+  const wrap = img.parentElement;
+  if (!wrap) return;
+  wrap.classList.add("top-thumb-placeholder");
+  wrap.innerHTML = "<span>AI</span>";
+}
+
+function selectLandingCategory(categoryId) {
+  state.tab = "latest";
+  state.category = categoryId;
+  state.date = "all";
+  state.page = 1;
+
+  document.querySelectorAll("#tabbar .tab-btn[data-tab]").forEach(button => {
+    button.classList.toggle("active", button.dataset.tab === "latest");
+  });
+  document.querySelectorAll("#category-filter .sidebar-item").forEach(item => {
+    item.classList.toggle("active", item.dataset.cat === categoryId);
+  });
+  const mobileScroll = getOptionalById("mobile-cat-scroll");
+  if (mobileScroll) {
+    mobileScroll.querySelectorAll(".mob-cat-btn").forEach(button => {
+      button.classList.toggle("active", button.dataset.cat === categoryId);
+    });
+  }
+
+  buildDateFilter();
+  render(true);
+}
+
+function renderLanding() {
+  const pickupEl = getOptionalById("top-pickup");
+  const latestEl = getOptionalById("top-latest-news");
+  const releasesEl = getOptionalById("top-recent-releases");
+  const categoriesEl = getOptionalById("top-category-tiles");
+  const footerCategoriesEl = getOptionalById("footer-categories");
+  if (!pickupEl && !latestEl && !releasesEl && !categoriesEl && !footerCategoriesEl) return;
+
+  const content = getLandingContent(allArticles, allCategories);
+
+  if (pickupEl) {
+    const article = content.pickup;
+    pickupEl.innerHTML = article ? `
+      <a class="top-pickup-card" href="${escAttr(safeExternalUrl(article.url))}" target="_blank" rel="noopener noreferrer">
+        ${landingThumbnail(article, "top-pickup-thumb")}
+        <div class="top-pickup-body">
+          <div class="top-article-meta"><span>${escHtml(topCategoryLabel(article))}</span><time datetime="${escAttr(article.date)}">${escHtml(formatTopDate(article.date))}</time></div>
+          <h3>${escHtml(article.title)}</h3>
+          <p>${escHtml(article.summary || "")}</p>
+          <b>続きを読む →</b>
+        </div>
+      </a>` : `<p class="top-empty">おすすめ記事はありません。</p>`;
+  }
+
+  if (latestEl) {
+    latestEl.innerHTML = content.latestNews.map(article => `
+      <a class="top-news-card" href="${escAttr(safeExternalUrl(article.url))}" target="_blank" rel="noopener noreferrer">
+        ${landingThumbnail(article, "top-news-thumb")}
+        <div class="top-news-body">
+          <div class="top-article-meta"><span>${escHtml(topCategoryLabel(article))}</span></div>
+          <h3>${escHtml(article.title)}</h3>
+          <time datetime="${escAttr(article.date)}">${escHtml(formatTopDate(article.date))}</time>
+        </div>
+      </a>`).join("");
+  }
+
+  if (releasesEl) {
+    releasesEl.innerHTML = content.recentReleases.map(article => `
+      <a class="top-release-item" href="${escAttr(safeExternalUrl(article.url))}" target="_blank" rel="noopener noreferrer">
+        <div><span>${escHtml(article.source || "公式リリース")}</span><time datetime="${escAttr(article.date)}">${escHtml(formatTopDate(article.date))}</time></div>
+        <h3>${escHtml(article.title)}</h3>
+      </a>`).join("");
+  }
+
+  if (categoriesEl) {
+    categoriesEl.innerHTML = content.topCategories.map(category => `
+      <button class="top-category-tile" type="button" data-category="${escAttr(category.id)}">
+        <span class="top-category-icon">${escHtml(category.emoji || "📰")}</span>
+        <span><strong>${escHtml(category.label)}</strong><small>${Number(category.articleCount ?? category.count ?? 0).toLocaleString("ja-JP")}本</small></span>
+        <b aria-hidden="true">→</b>
+      </button>`).join("");
+    categoriesEl.querySelectorAll(".top-category-tile").forEach(tile => {
+      tile.addEventListener("click", () => selectLandingCategory(tile.dataset.category));
+    });
+  }
+
+  if (footerCategoriesEl) {
+    footerCategoriesEl.innerHTML = content.topCategories.slice(0, 5).map(category =>
+      `<a href="#article-list-start" data-category="${escAttr(category.id)}">${escHtml(category.label)}</a>`
+    ).join("");
+    footerCategoriesEl.querySelectorAll("a[data-category]").forEach(link => {
+      link.addEventListener("click", event => {
+        event.preventDefault();
+        selectLandingCategory(link.dataset.category);
+      });
+    });
+  }
 }
 
 // =============================================
