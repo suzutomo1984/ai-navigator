@@ -628,7 +628,8 @@ def generate_seo_assets(all_articles: list[dict]) -> None:
         encoding="utf-8",
     )
 
-    # --- sitemap.xml（個別記事URLは存在しないのでトップとofficialの2ページのみ）---
+    # --- sitemap.xml（個別記事URLは存在しないので固定ページのみ）---
+    # about.html は毎日更新されないので changefreq を monthly にする。
     sitemap = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
@@ -642,6 +643,12 @@ def generate_seo_assets(all_articles: list[dict]) -> None:
     <lastmod>{lastmod}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>{BASE_URL}/about.html</loc>
+    <lastmod>{lastmod}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
 </urlset>"""
     SITEMAP_FILE.write_text(sitemap, encoding="utf-8")
