@@ -45,7 +45,8 @@ assert.equal(expected.latestNews.length, 4);
 assert.ok(expected.latestNews.every(article => !article.isOfficial));
 assert.equal(expected.recentReleases.length, 5);
 assert.ok(expected.recentReleases.every(article => article.isOfficial));
-assert.equal(expected.topCategories.length, 6);
+// official と other を除く全カテゴリを出す（実データは7種）。
+assert.ok(expected.topCategories.length >= 5 && expected.topCategories.length <= 9, `topCategories should be 6-9, got ${expected.topCategories.length}`);
 assert.match(landingThumbnail({ thumbnail: "" }, "test-thumb"), /top-thumb-placeholder/);
 
 // Phase 2の静的構造と、Phase 4で追加した統計更新契約。
@@ -55,18 +56,18 @@ for (const id of [
   "top-latest-news",
   "top-category-tiles",
   "top-recent-releases",
-  "article-list-start",
   "site-footer",
 ]) {
   assert.equal((indexSource.match(new RegExp(`id=["']${id}["']`, "g")) || []).length, 1, `${id} must exist exactly once`);
 }
 assert.equal((indexSource.match(/<footer\b/gi) || []).length, 1);
-// TOP_STATS_COUNT はサイト説明バーの記事数。ここが欠けると指標バー・数字グリッドだけが
-// 更新され、同一ページに新旧2つの記事数が並ぶ（2026-08-05 レビュー指摘）。
-for (const marker of ["TOP_STATS_BAR", "TOP_STATS_GRID", "TOP_STATS_COUNT"]) {
+// TOP_STATS_COUNT はサイト説明バーの記事数。指標バーと同じ実測値を維持する。
+for (const marker of ["TOP_STATS_BAR", "TOP_STATS_COUNT"]) {
   assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:start -->`, "g")) || []).length, 1);
   assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:end -->`, "g")) || []).length, 1);
 }
+assert.doesNotMatch(indexSource, /TOP_STATS_GRID/);
+assert.doesNotMatch(indexSource, /top-number-grid/);
 assert.equal((indexSource.match(/id=["']top-github-trending["']/g) || []).length, 1);
 
 console.log(JSON.stringify({

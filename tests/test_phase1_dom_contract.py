@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 APP_JS = (ROOT / "app.js").read_text(encoding="utf-8")
-INDEX_HTML = (ROOT / "index.html").read_text(encoding="utf-8")
+NEWS_HTML = (ROOT / "news.html").read_text(encoding="utf-8")
 
 
 class IdCollector(HTMLParser):
@@ -36,7 +36,7 @@ def required_ids() -> list[str]:
 class Phase1DomContractTests(unittest.TestCase):
     def test_required_ids_exist_exactly_once(self) -> None:
         parser = IdCollector()
-        parser.feed(INDEX_HTML)
+        parser.feed(NEWS_HTML)
         for element_id in required_ids():
             with self.subTest(element_id=element_id):
                 self.assertEqual(parser.ids.count(element_id), 1)

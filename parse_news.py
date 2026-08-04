@@ -687,7 +687,7 @@ def _replace_exact_marker_block(html: str, marker: str, content: str) -> str:
 
 
 def update_top_stats(meta: dict, dates_meta: list[dict]) -> None:
-    """index.html の指標バーと数字グリッドを最新値で厳格に更新する。"""
+    """index.html の指標バーとサイト説明バーを最新値で厳格に更新する。"""
     if not INDEX_FILE.exists():
         raise RuntimeError("index.html が無いためトップ統計を更新できません。")
 
@@ -700,29 +700,21 @@ def update_top_stats(meta: dict, dates_meta: list[dict]) -> None:
     stats = dynamic + TOP_STATS_FIXED
 
     bar_lines = []
-    grid_lines = []
     for index, stat in enumerate(stats):
         value_html = _format_stat_value(stat["value"], stat.get("unit", ""))
         detail = stat.get("detail", "")
         bar_detail = f"<br>{detail}" if detail and index >= len(dynamic) else ""
-        grid_detail = f"<br>{detail}" if detail else ""
         bar_lines.append(
             f'        <div class="top-stat"><strong>{value_html}</strong>'
             f'<span>{stat["label"]}{bar_detail}</span></div>'
         )
-        grid_lines.append(
-            f'        <div class="top-number-card"><strong>{value_html}</strong>'
-            f'<span>{stat["label"]}{grid_detail}</span></div>'
-        )
 
-    # サイト説明バーの記事数。ここを固定値のままにすると、指標バー・数字グリッドだけが
-    # 更新され、同一ページに新旧2つの記事数が並ぶ（2026-08-05 レビュー指摘）。
+    # サイト説明バーの記事数。ここを固定値のままにすると指標バーと値が食い違う。
     info_line = f"        <dd>{total:,}本</dd>"
 
     # 一部だけ更新された状態を作らないため、全ブロックを検証・置換してから1回だけ書く。
     html = INDEX_FILE.read_text(encoding="utf-8")
     updated = _replace_exact_marker_block(html, "TOP_STATS_BAR", "\n".join(bar_lines))
-    updated = _replace_exact_marker_block(updated, "TOP_STATS_GRID", "\n".join(grid_lines))
     updated = _replace_exact_marker_block(updated, "TOP_STATS_COUNT", info_line)
     INDEX_FILE.write_text(updated, encoding="utf-8")
     print(f"✅ index.html の数字を更新: {total:,}本 / {official:,}本 / {days}日分")
@@ -802,6 +794,12 @@ def generate_seo_assets(all_articles: list[dict]) -> None:
     <lastmod>{lastmod}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>{BASE_URL}/news.html</loc>
+    <lastmod>{lastmod}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
     <loc>{BASE_URL}/official.html</loc>

@@ -2014,9 +2014,14 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 310px;
   gap: 48px;
-  align-items: start;
+  /* align-items:start だと左右が独立して伸び、短い方の下に空白が残る
+     （Phase 5で数字グリッドを外し左カラムが短くなって顕在化した）。
+     stretch にして両カラムの高さを揃える。 */
+  align-items: stretch;
 }
 .top-editorial-main { min-width: 0; }
+/* グリッドの align-items:stretch で左カラムと高さが揃う。
+   sticky を付けると stretch が無効化されて空白が戻るので付けない。 */
 .top-section { margin-top: 72px; }
 .top-editorial-main > .top-section:first-child { margin-top: 0; }
 .top-section-heading { margin-bottom: 22px; }

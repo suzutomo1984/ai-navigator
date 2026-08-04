@@ -139,6 +139,13 @@ async function loadData() {
   allTrending = (data.trending || []).slice(0, 5);
   latestBatchAt = data.latestBatchAt || null; // 最新配信バッチ時刻（NEW判定の基準）
 
+  const requestedCategory = window.location
+    ? new URLSearchParams(window.location.search).get("category")
+    : null;
+  if (requestedCategory && allCategories.some(category => category.id === requestedCategory)) {
+    state.category = requestedCategory;
+  }
+
   // ピック件数を一度だけ集計（以降のrender()では再計算しない）
   mustCount = allArticles.filter(a => a.isPick && a.pickPriority === "must-read").length;
   checkCount = allArticles.filter(a => a.isPick && a.pickPriority !== "must-read").length;
@@ -159,13 +166,13 @@ function buildSidebarFilters() {
   // カテゴリフィルター（縦リスト）
   const catList = getDomById("category-filter");
   if (catList) {
-    catList.innerHTML = `<li class="sidebar-item active" data-cat="all">ALL</li>`;
+    catList.innerHTML = `<li class="sidebar-item${state.category === "all" ? " active" : ""}" data-cat="all">ALL</li>`;
 
     allCategories
       .filter(c => c.articleCount > 0 && c.id !== "official")
       .forEach(c => {
         const li = document.createElement("li");
-        li.className = "sidebar-item";
+        li.className = `sidebar-item${state.category === c.id ? " active" : ""}`;
         li.dataset.cat = c.id;
         li.textContent = `${c.emoji} ${c.label}`;
         catList.appendChild(li);
@@ -278,7 +285,7 @@ function buildMobileCategoryBar() {
   scroll.innerHTML = "";
 
   const allBtn = document.createElement("button");
-  allBtn.className = "mob-cat-btn active";
+  allBtn.className = `mob-cat-btn${state.category === "all" ? " active" : ""}`;
   allBtn.dataset.cat = "all";
   allBtn.textContent = "ALL";
   allBtn.style.background = CAT_COLORS["all"];
@@ -288,7 +295,7 @@ function buildMobileCategoryBar() {
     .filter(c => c.articleCount > 0 && c.id !== "official")
     .forEach(c => {
       const btn = document.createElement("button");
-      btn.className = "mob-cat-btn";
+      btn.className = `mob-cat-btn${state.category === c.id ? " active" : ""}`;
       btn.dataset.cat = c.id;
       btn.textContent = `${c.emoji} ${c.label}`;
       btn.style.background = CAT_COLORS[c.id] || "#64748b";
@@ -417,10 +424,14 @@ function getLandingContent(articles, categories) {
     pickup: newest(articles.filter(article => article.isPick))[0] || null,
     latestNews: newest(articles.filter(article => !article.isOfficial)).slice(0, 4),
     recentReleases: newest(articles.filter(article => article.isOfficial)).slice(0, 5),
+    // 6枚だと左カラムが右サイドバー（Trending＋リリース）より短くなり、
+    // 「カテゴリから探す」の下に大きな空白が残るので上限を広げた。
+    // official（リリースノートは専用ページがある）と other（分類できなかった残り）は
+    // 探索の導線として意味が薄いので出さない。
     topCategories: categories
-      .filter(category => category.id !== "official" && categoryCount(category) > 0)
+      .filter(category => !["official", "other"].includes(category.id) && categoryCount(category) > 0)
       .sort((a, b) => categoryCount(b) - categoryCount(a) || categoryOrder.get(a.id) - categoryOrder.get(b.id))
-      .slice(0, 6),
+      .slice(0, 9),
   };
 }
 
@@ -509,29 +520,6 @@ function onLandingThumbError(img) {
   wrap.innerHTML = "<span>AI</span>";
 }
 
-function selectLandingCategory(categoryId) {
-  state.tab = "latest";
-  state.category = categoryId;
-  state.date = "all";
-  state.page = 1;
-
-  document.querySelectorAll("#tabbar .tab-btn[data-tab]").forEach(button => {
-    button.classList.toggle("active", button.dataset.tab === "latest");
-  });
-  document.querySelectorAll("#category-filter .sidebar-item").forEach(item => {
-    item.classList.toggle("active", item.dataset.cat === categoryId);
-  });
-  const mobileScroll = getOptionalById("mobile-cat-scroll");
-  if (mobileScroll) {
-    mobileScroll.querySelectorAll(".mob-cat-btn").forEach(button => {
-      button.classList.toggle("active", button.dataset.cat === categoryId);
-    });
-  }
-
-  buildDateFilter();
-  render(true);
-}
-
 function renderLanding() {
   const pickupEl = getOptionalById("top-pickup");
   const latestEl = getOptionalById("top-latest-news");
@@ -585,26 +573,17 @@ function renderLanding() {
 
   if (categoriesEl) {
     categoriesEl.innerHTML = content.topCategories.map(category => `
-      <button class="top-category-tile" type="button" data-category="${escAttr(category.id)}">
+      <a class="top-category-tile" href="news.html?category=${encodeURIComponent(category.id)}">
         <span class="top-category-icon">${escHtml(category.emoji || "📰")}</span>
         <span><strong>${escHtml(category.label)}</strong><small>${Number(category.articleCount ?? category.count ?? 0).toLocaleString("ja-JP")}本</small></span>
         <b aria-hidden="true">→</b>
-      </button>`).join("");
-    categoriesEl.querySelectorAll(".top-category-tile").forEach(tile => {
-      tile.addEventListener("click", () => selectLandingCategory(tile.dataset.category));
-    });
+      </a>`).join("");
   }
 
   if (footerCategoriesEl) {
     footerCategoriesEl.innerHTML = content.topCategories.slice(0, 5).map(category =>
-      `<a href="#article-list-start" data-category="${escAttr(category.id)}">${escHtml(category.label)}</a>`
+      `<a href="news.html?category=${encodeURIComponent(category.id)}">${escHtml(category.label)}</a>`
     ).join("");
-    footerCategoriesEl.querySelectorAll("a[data-category]").forEach(link => {
-      link.addEventListener("click", event => {
-        event.preventDefault();
-        selectLandingCategory(link.dataset.category);
-      });
-    });
   }
 }
 
