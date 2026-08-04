@@ -465,45 +465,33 @@ def main():
     date_from = min(all_dates) if all_dates else ""
     date_to = max(all_dates) if all_dates else ""
 
-    # GitHub Trending RSS から今日分を取得（毎日25件）
+    # GitHub Trending RSS から今日分を取得（dailyのみ・毎日25件）
     today_str = datetime.now(JST).strftime("%Y-%m-%d")
     today_trending = fetch_github_trending(limit=25)
+    existing_trending = existing_data.get("trending", [])
 
-    # 既存trending（過去分）を引き継ぎ、今日分だけ差し替え
-    past_trending = [r for r in existing_data.get("trending", []) if r.get("date") != today_str]
+    if len(today_trending) < TRENDING_DISPLAY_COUNT:
+        # 取得失敗時は当日分を先に除外しない。直前の表示スナップショットを
+        # そのまま維持し、部分取得したデータでは置き換えない。
+        all_trending, snapshot_status = select_trending_snapshot(
+            today_trending, existing_trending, today_str
+        )
+        print(f"⚠️  GitHub Trending: {snapshot_status}")
+    else:
+        # GitHub APIキャッシュ（owner/repo→repo）を作成してレート制限と
+        # Geminiの再呼び出しを避ける。当日分も含む既存値全体が対象。
+        existing_trending_cache = build_trending_cache(existing_trending)
 
-    # 過去の登場回数をURLごとに集計
-    url_days: dict[str, int] = {}
-    for r in past_trending:
-        url_days[r["url"]] = url_days.get(r["url"], 0) + 1
+        # GitHub APIで今日分の詳細情報を補完（stars・language・description・summary）
+        enrich_trending_with_github_api(today_trending, existing_trending_cache)
 
-    # 今日分に連続日数を付与し、過去分から重複URLを除外（最新=今日分を優先）
-    past_urls_in_today = set()
-    for r in today_trending:
-        days = url_days.get(r["url"], 0) + 1  # 今日含む合計日数
-        r["trendingDays"] = days
-        if days >= 2:
-            past_urls_in_today.add(r["url"])
+        # 画面に出す先頭5件だけを、英語descriptionから日本語要約する。
+        translate_trending_descriptions(today_trending[:TRENDING_DISPLAY_COUNT])
 
-    # 過去分から今日も登場したURLを除去（今日分に統合）
-    past_trending_deduped = [r for r in past_trending if r["url"] not in past_urls_in_today]
-
-    all_trending = today_trending + past_trending_deduped
-
-    # GitHub APIキャッシュ（full_name→repo）を作成してレート制限対策
-    existing_trending_cache = {}
-    for r in past_trending:
-        m = re.match(r"https://github\.com/([^/]+/[^/?#]+)", r.get("url", ""))
-        if m and r.get("stars") is not None:
-            existing_trending_cache[m.group(1).rstrip("/")] = r
-
-    # GitHub APIで今日分の詳細情報を補完（stars・language・description）
-    enrich_trending_with_github_api(today_trending, existing_trending_cache)
-
-    # Gemini APIで英語descriptionを日本語要約に翻訳（summaryが空の全件対象）
-    translate_trending_descriptions(all_trending)
-
-    print(f"📊 Trending合計: {len(all_trending)}件 (今日{len(today_trending)}件 + 過去{len(past_trending)}件)")
+        all_trending, snapshot_status = select_trending_snapshot(
+            today_trending, existing_trending, today_str
+        )
+        print(f"📊 Trending合計: {len(all_trending)}件 ({snapshot_status})")
 
     # addedAt 固定化 + 最新配信バッチ判定
     # 既出URLは前回の addedAt を引き継ぎ（＝初回登場時刻で固定）、
@@ -855,12 +843,94 @@ def parse_trending(filepath: Path, date_str: str) -> list[dict]:
     return repos
 
 
-def fetch_github_trending(limit: int = 25) -> list[dict]:
-    """GitHub Trending RSS (daily + weekly/all) からリポジトリ一覧を取得する（重複除去）"""
-    feed_urls = [
-        "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml",
-        "https://mshibanami.github.io/GitHubTrendingRSS/weekly/all.xml",
+TRENDING_DISPLAY_COUNT = 5
+
+
+def github_repo_key(value: str) -> str:
+    """GitHub URLまたはfull_nameを小文字のowner/repoキーへ正規化する。"""
+    raw = str(value or "").strip()
+    match = re.match(r"https://github\.com/([^/]+/[^/?#]+)", raw, flags=re.IGNORECASE)
+    full_name = match.group(1) if match else raw
+    parts = [part for part in full_name.strip("/").split("/") if part]
+    if len(parts) != 2:
+        return ""
+    return "/".join(parts).lower()
+
+
+def build_trending_cache(repos: list[dict]) -> dict[str, dict]:
+    """既存Trendingを正規化したowner/repoキーでキャッシュする。"""
+    cache = {}
+    for repo in repos:
+        key = github_repo_key(repo.get("url", "") or repo.get("title", ""))
+        if key:
+            # 入力は新しい順なので、同じリポジトリの最初（最新）を優先する。
+            cache.setdefault(key, repo)
+    return cache
+
+
+def has_japanese_summary(repo: dict) -> bool:
+    """画面表示可能な日本語要約（最大5行）があるか判定する。"""
+    summary = str(repo.get("summary", "")).strip()
+    return bool(summary) and len(summary.splitlines()) <= 5 and bool(
+        re.search(r"[ぁ-んァ-ヶ一-龠々ー]", summary)
+    )
+
+
+def merge_trending_history(
+    today_repos: list[dict], existing_repos: list[dict], today: str
+) -> list[dict]:
+    """今日のスナップショットを先頭にし、過去履歴を重複なく引き継ぐ。"""
+    past_repos = [repo for repo in existing_repos if repo.get("date") != today]
+    past_days: dict[str, int] = {}
+    for repo in past_repos:
+        key = github_repo_key(repo.get("url", "") or repo.get("title", ""))
+        if key:
+            past_days[key] = past_days.get(key, 0) + 1
+
+    today_keys = set()
+    for repo in today_repos:
+        key = github_repo_key(repo.get("url", "") or repo.get("title", ""))
+        repo["trendingDays"] = past_days.get(key, 0) + 1
+        if key:
+            today_keys.add(key)
+
+    return today_repos + [
+        repo for repo in past_repos
+        if github_repo_key(repo.get("url", "") or repo.get("title", "")) not in today_keys
     ]
+
+
+def select_trending_snapshot(
+    today_repos: list[dict], existing_repos: list[dict], today: str
+) -> tuple[list[dict], str]:
+    """要約の成否に応じて新規・前回正常値・初回縮退値を選ぶ。"""
+    if len(today_repos) < TRENDING_DISPLAY_COUNT:
+        return (
+            existing_repos,
+            f"取得{len(today_repos)}件 (<{TRENDING_DISPLAY_COUNT})・前回値を維持",
+        )
+
+    merged = merge_trending_history(today_repos, existing_repos, today)
+    current_five = today_repos[:TRENDING_DISPLAY_COUNT]
+    if len(current_five) == TRENDING_DISPLAY_COUNT and all(
+        has_japanese_summary(repo) for repo in current_five
+    ):
+        return merged, "新5件を採用"
+
+    previous_five = existing_repos[:TRENDING_DISPLAY_COUNT]
+    if len(previous_five) == TRENDING_DISPLAY_COUNT and all(
+        has_japanese_summary(repo) for repo in previous_five
+    ):
+        return existing_repos, "要約不足のため前回正常値を維持"
+
+    # 初回など正常値がまだ無い場合は、フロント側が空要約を
+    # 「要約を準備中です」に置き換える。
+    return merged, "正常値なし・準備中表示へ縮退"
+
+
+def fetch_github_trending(limit: int = 25) -> list[dict]:
+    """GitHub Trending RSS (daily/all) からリポジトリ一覧を取得する。"""
+    feed_url = "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml"
     today = datetime.now(JST).strftime("%Y-%m-%d")
     repos = []
     seen_names = set()
@@ -891,39 +961,34 @@ def fetch_github_trending(limit: int = 25) -> list[dict]:
             result.append((full_name, f"https://github.com/{full_name}"))
         return result
 
-    for feed_url in feed_urls:
-        try:
-            items = parse_feed(feed_url)
-            added = 0
-            for full_name, url in items:
-                if full_name in seen_names:
-                    continue
-                seen_names.add(full_name)
-                idx = len(repos) + 1
-                repos.append({
-                    "id": f"{today}_trending_{idx}",
-                    "date": today,
-                    "title": full_name,
-                    "url": url,
-                    "source": "GitHub Trending",
-                    "category": "trending",
-                    "summary": "",
-                    "isTrending": True,
-                    "isPick": False,
-                    "pickPriority": None,
-                    "isOfficial": False,
-                    "rankingTier": 3,
-                    "rankingScore": 0,
-                })
-                added += 1
-                if len(repos) >= limit:
-                    break
-            print(f"📡 RSS取得: +{added}件 ({feed_url.split('/')[-2]})")
-        except Exception as e:
-            print(f"⚠️  RSS取得失敗 ({feed_url.split('/')[-2]}): {e}")
-
-        if len(repos) >= limit:
-            break
+    try:
+        items = parse_feed(feed_url)
+        for full_name, url in items:
+            key = github_repo_key(full_name)
+            if not key or key in seen_names:
+                continue
+            seen_names.add(key)
+            idx = len(repos) + 1
+            repos.append({
+                "id": f"{today}_trending_{idx}",
+                "date": today,
+                "title": full_name,
+                "url": url,
+                "source": "GitHub Trending",
+                "category": "trending",
+                "summary": "",
+                "isTrending": True,
+                "isPick": False,
+                "pickPriority": None,
+                "isOfficial": False,
+                "rankingTier": 3,
+                "rankingScore": 0,
+            })
+            if len(repos) >= limit:
+                break
+        print(f"📡 RSS取得: +{len(repos)}件 (daily)")
+    except Exception as e:
+        print(f"⚠️  RSS取得失敗 (daily): {e}")
 
     print(f"📡 GitHub Trending 合計: {len(repos)}件")
     return repos
@@ -943,16 +1008,19 @@ def enrich_trending_with_github_api(repos: list[dict], existing_cache: dict | No
         if not m:
             continue
         full_name = m.group(1).rstrip("/")
+        cache_key = github_repo_key(full_name)
 
         # 既存キャッシュがあれば再利用（ローカルのレート制限対策）
-        if existing_cache and full_name in existing_cache:
-            cached_repo = existing_cache[full_name]
+        if existing_cache and cache_key in existing_cache:
+            cached_repo = existing_cache[cache_key]
             repo["stars"] = cached_repo.get("stars")
             repo["forks"] = cached_repo.get("forks")
             repo["language"] = cached_repo.get("language", "")
             repo["githubDescription"] = cached_repo.get("githubDescription", "")
+            repo["summary"] = cached_repo.get("summary", "")
             cached += 1
-            continue
+            if repo.get("githubDescription") and repo.get("stars") is not None:
+                continue
 
         api_url = f"https://api.github.com/repos/{full_name}"
         try:
@@ -971,43 +1039,41 @@ def enrich_trending_with_github_api(repos: list[dict], existing_cache: dict | No
 
 
 def translate_trending_descriptions(repos: list[dict]) -> None:
-    """Gemini APIでGitHub Trendingリポジトリの説明文を日本語に一括翻訳する"""
+    """Gemini APIでGitHub Trendingの英語説明を日本語で要約する。"""
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         print("⚠️  GEMINI_API_KEY未設定 - 翻訳スキップ")
         return
 
-    # 翻訳対象（githubDescriptionあり・summaryなし）
+    # 要約対象（githubDescriptionあり・日本語summaryなし）
     targets = [
         r for r in repos
-        if r.get("githubDescription") and not r.get("summary")
+        if r.get("githubDescription") and not has_japanese_summary(r)
     ]
     if not targets:
         print("🌐 翻訳対象なし（全件キャッシュ済み）")
         return
 
-    # 一括翻訳プロンプト
+    # 一括要約プロンプト（入力はGitHub APIの英語1行descriptionのみ）
     lines = "\n".join(
         f"{i+1}. [{r['title']}] {r['githubDescription']}"
         for i, r in enumerate(targets)
     )
-    prompt = f"""以下はGitHubリポジトリの英語説明文です。
-各説明文について、以下の内容を含む日本語説明を書いてください：
-1. このリポジトリが何をするものか（主目的）
-2. 具体的にどんなことができるか・どう使うか
-3. どんな開発者・場面で役立つか
+    prompt = f"""以下はGitHubリポジトリの英語の短い説明です。
+各リポジトリが何をするものか、非エンジニアにも分かる日本語で要約してください。
 
-## ルール（最重要）
-- **100文字以上・180文字以内**で書くこと
-- 改行なし（1行のみ）
-- 説明文のみ出力（番号・タイトルは含めない）
-- 技術用語（AI、LLM、Python等）はそのままでOK
-- 出力は番号付きリスト形式（例: 1. 説明文）
+## ルール
+- 各要約は5行以内
+- 誇張しない
+- 入力から分からないことは書かない
+- 英語説明の翻訳や言い換えに必要な範囲だけを書く
+- 出力は番号付きリスト形式（例: 1. 要約）
+- リポジトリ名は要約に含めない
 
 {lines}"""
 
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
         body = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode("utf-8")
         req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=30) as res:

@@ -118,6 +118,7 @@ const state = {
 let allArticles = [];
 let allDates = [];
 let allCategories = [];
+let allTrending = [];
 let searchTimer = null;
 // ピック件数はデータ更新時にのみ変化するため、loadData()で一度だけ集計して保持する
 // （render()のたびに全件スキャンするのを避ける）
@@ -135,6 +136,7 @@ async function loadData() {
   allArticles = (data.articles || []).filter(isValidArticle);
   allDates = data.dates || [];
   allCategories = data.categories || [];
+  allTrending = (data.trending || []).slice(0, 5);
   latestBatchAt = data.latestBatchAt || null; // 最新配信バッチ時刻（NEW判定の基準）
 
   // ピック件数を一度だけ集計（以降のrender()では再計算しない）
@@ -476,6 +478,30 @@ function landingThumbnail(article, className) {
   return `<div class="${className}"><img src="${escAttr(safeExternalUrl(article.thumbnail))}" alt="" loading="lazy" onerror="onLandingThumbError(this)"></div>`;
 }
 
+function topTrendingSummary(repo) {
+  const summary = String(repo.summary || "").trim();
+  if (!/[ぁ-んァ-ヶ一-龠々ー]/.test(summary)) return "要約を準備中です";
+  return summary.split(/\r?\n/).slice(0, 5).join("\n");
+}
+
+function renderTopTrending(repos) {
+  return repos.slice(0, 5).map((repo, index) => {
+    const stars = Number(repo.stars);
+    const starLabel = Number.isFinite(stars) ? stars.toLocaleString("ja-JP") : "—";
+    const language = String(repo.language || "").trim();
+    return `
+      <a class="top-trending-item" href="${escAttr(safeExternalUrl(repo.url))}" target="_blank" rel="noopener noreferrer">
+        <span class="top-trending-rank" aria-label="${index + 1}位">${index + 1}</span>
+        <span class="top-trending-body">
+          <strong>${escHtml(repo.title || "GitHub repository")}</strong>
+          <span class="top-trending-summary">${escHtml(topTrendingSummary(repo))}</span>
+          <span class="top-trending-meta">★ ${escHtml(starLabel)}${language ? ` · ${escHtml(language)}` : ""}</span>
+        </span>
+        <span class="top-trending-external" aria-hidden="true">↗</span>
+      </a>`;
+  }).join("");
+}
+
 function onLandingThumbError(img) {
   const wrap = img.parentElement;
   if (!wrap) return;
@@ -509,10 +535,11 @@ function selectLandingCategory(categoryId) {
 function renderLanding() {
   const pickupEl = getOptionalById("top-pickup");
   const latestEl = getOptionalById("top-latest-news");
+  const trendingEl = getOptionalById("top-github-trending");
   const releasesEl = getOptionalById("top-recent-releases");
   const categoriesEl = getOptionalById("top-category-tiles");
   const footerCategoriesEl = getOptionalById("footer-categories");
-  if (!pickupEl && !latestEl && !releasesEl && !categoriesEl && !footerCategoriesEl) return;
+  if (!pickupEl && !latestEl && !trendingEl && !releasesEl && !categoriesEl && !footerCategoriesEl) return;
 
   const content = getLandingContent(allArticles, allCategories);
 
@@ -540,6 +567,12 @@ function renderLanding() {
           <time datetime="${escAttr(article.date)}">${escHtml(formatTopDate(article.date))}</time>
         </div>
       </a>`).join("");
+  }
+
+  if (trendingEl) {
+    trendingEl.innerHTML = allTrending.length
+      ? renderTopTrending(allTrending)
+      : `<p class="top-empty">GitHubの情報を取得できませんでした。</p>`;
   }
 
   if (releasesEl) {

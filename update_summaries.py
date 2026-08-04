@@ -22,7 +22,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 ARTICLES_JSON = "articles.json"
 TARGET_DATE = str(date.today())  # 今日の日付
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={GEMINI_API_KEY}"
 BATCH_SIZE = 10  # 1回のAPIコールで処理する記事数
 
 
@@ -44,26 +44,17 @@ def build_prompt(article: dict) -> str:
     # GitHub Trendingリポジトリの場合は専用プロンプト
     if article.get("isTrending") or source == "GitHub Trending":
         github_desc = article.get("githubDescription", "")
-        stars = article.get("stars", "")
-        language = article.get("language", "")
-        return f"""以下のGitHubリポジトリについて、日本語の詳しい説明を書いてください。
+        return f"""以下のGitHubリポジトリが何をするものか、非エンジニアにも分かる日本語で要約してください。
 
-## 内容に含めること
-1. このリポジトリが何をするものか（主目的・一言で）
-2. 具体的にどんなことができるか・主な機能や特徴
-3. なぜ今注目されているか・どんな開発者・場面で役立つか
-
-## 文字数ルール（最重要）
-- **200文字以上・350文字以内**で書くこと
-- 読みやすさのために適宜改行してよい（最大3行まで）
-- 説明文・前置き・番号は不要。説明文のみ出力すること
-- 技術用語（AI、LLM、Python、Claude等）はそのままでOK
+## ルール
+- 5行以内
+- 誇張しない
+- 入力から分からないことは書かない
+- リポジトリ名を文頭に繰り返さない
+- 箇条書きではなく自然な文章で書く
 
 リポジトリ名: {title}
-言語: {language}
-スター数: {stars}
 GitHubの説明文（英語）: {github_desc}
-既存の日本語要約（参考）: {existing}
 """
 
     # 記事タイプ判定
@@ -117,10 +108,10 @@ def main():
         and len(a.get("summary", "")) < 150
     ]
 
-    # trendingの対象: summaryが200文字未満（既存の短い要約も再生成）
+    # trendingの対象: summaryが空のものだけ（要約済みは再利用）
     targets += [
         ("trending", i, a) for i, a in enumerate(trending)
-        if len(a.get("summary", "")) < 200
+        if not a.get("summary", "").strip()
     ]
 
     if not targets:
@@ -145,11 +136,14 @@ def main():
             # 番号付きリスト形式が返ってきた場合の除去
             response_text = re.sub(r"^\d+[\.\)]\s+", "", response_text)
 
-            if response_text and len(response_text) >= 150:
+            valid_response = response_text and (
+                bucket == "trending" or len(response_text) >= 150
+            )
+            if valid_response:
                 if bucket == "articles":
                     articles[orig_idx]["summary"] = response_text
                 else:
-                    trending[orig_idx]["summary"] = response_text
+                    trending[orig_idx]["summary"] = "\n".join(response_text.splitlines()[:5])
                 updated += 1
                 print(f"    ✓ {len(response_text)}文字: {response_text[:60]}...")
             else:

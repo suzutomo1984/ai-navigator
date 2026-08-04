@@ -150,16 +150,27 @@
         </section>
       </div>
 
-      <aside class="top-release-sidebar" aria-labelledby="recent-releases-title">
-        <!-- Phase 3: GitHub Trending はこの上に追加する。Phase 2ではダミーを置かない。 -->
-        <div class="top-section-heading">
-          <p class="top-section-kicker">OFFICIAL UPDATES</p>
-          <h2 id="recent-releases-title">最近のリリース</h2>
-        </div>
-        <div id="top-recent-releases" class="top-release-list" aria-live="polite">
-          <p class="top-loading">リリースを読み込み中...</p>
-        </div>
-        <a class="top-text-link top-release-all" href="official.html">リリースノートをすべて見る →</a>
+      <aside class="top-release-sidebar" aria-label="注目情報と最近のリリース">
+        <section class="top-trending-section" aria-labelledby="top-trending-title">
+          <div class="top-section-heading">
+            <p class="top-section-kicker">GitHub Trending（daily）</p>
+            <h2 id="top-trending-title">今、作る側が注目しているもの</h2>
+          </div>
+          <div id="top-github-trending" class="top-trending-list" aria-live="polite">
+            <p class="top-loading">GitHubの情報を読み込み中...</p>
+          </div>
+        </section>
+
+        <section class="top-release-section" aria-labelledby="recent-releases-title">
+          <div class="top-section-heading">
+            <p class="top-section-kicker">OFFICIAL UPDATES</p>
+            <h2 id="recent-releases-title">最近のリリース</h2>
+          </div>
+          <div id="top-recent-releases" class="top-release-list" aria-live="polite">
+            <p class="top-loading">リリースを読み込み中...</p>
+          </div>
+          <a class="top-text-link top-release-all" href="official.html">リリースノートをすべて見る →</a>
+        </section>
       </aside>
     </div>
 

@@ -63,7 +63,7 @@ for (const id of [
 assert.equal((indexSource.match(/<footer\b/gi) || []).length, 1);
 assert.ok(!indexSource.includes("TOP_STATS_BAR"));
 assert.ok(!indexSource.includes("TOP_STATS_GRID"));
-assert.ok(!indexSource.includes('id="top-github-trending"'));
+assert.equal((indexSource.match(/id=["']top-github-trending["']/g) || []).length, 1);
 
 console.log(JSON.stringify({
   pickup: expected.pickup.id,
