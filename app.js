@@ -5,6 +5,81 @@
 const PAGE_SIZE = 50;
 
 // =============================================
+// DOM互換層
+// =============================================
+
+// Phase 2以降でトップページの構造を変更しても、既存機能が連鎖停止しないように
+// app.jsが依存する必須IDを一元管理する。欠落・重複は初期化時に警告する。
+const REQUIRED_DOM_IDS = Object.freeze([
+  "article-modal",
+  "modal-close-btn",
+  "modal-thumb-wrap",
+  "modal-meta",
+  "modal-title",
+  "modal-summary",
+  "modal-read-btn",
+  "category-filter",
+  "date-filter",
+  "search-input",
+  "load-more-btn",
+  "sidebar",
+  "articles-container",
+  "load-more-wrapper",
+  "mobile-category-bar",
+  "mobile-cat-scroll",
+  "mob-date-btn",
+  "mob-date-label",
+  "mob-date-dropdown",
+  "mob-date-list",
+  "sidebar-toggle",
+  "tabbar",
+  "app-layout",
+  "main",
+  "masthead-issue-no",
+  "digest-stats",
+  "stats-bar",
+  "article-list-start",
+]);
+
+const domContractWarnings = new Set();
+
+function warnDomContract(key, message) {
+  if (domContractWarnings.has(key)) return;
+  domContractWarnings.add(key);
+  console.warn(`[AI Navigator] DOM contract warning: ${message}`);
+}
+
+function getDomById(id) {
+  const element = document.getElementById(id);
+  if (!element) {
+    warnDomContract(`missing:#${id}`, `required element #${id} was not found; dependent feature was skipped.`);
+  }
+  return element;
+}
+
+function validateDomContract() {
+  REQUIRED_DOM_IDS.forEach(id => {
+    const count = document.querySelectorAll(`#${id}`).length;
+    if (count === 0) {
+      warnDomContract(`missing:#${id}`, `required element #${id} was not found; dependent feature was skipped.`);
+    } else if (count > 1) {
+      warnDomContract(`duplicate:#${id}`, `required element #${id} must be unique, but ${count} instances were found.`);
+    }
+  });
+
+  if (document.querySelectorAll("#tabbar .tab-btn[data-tab]").length === 0) {
+    warnDomContract("missing:#tabbar-tab", "no tab control was found in #tabbar; tab switching was skipped.");
+  }
+
+  const modalBoxCount = document.querySelectorAll("#article-modal .modal-box").length;
+  if (modalBoxCount === 0) {
+    warnDomContract("missing:#article-modal-modal-box", "required child .modal-box was not found in #article-modal.");
+  } else if (modalBoxCount > 1) {
+    warnDomContract("duplicate:#article-modal-modal-box", `#article-modal must contain one .modal-box, but ${modalBoxCount} instances were found.`);
+  }
+}
+
+// =============================================
 // NEW判定（最新配信バッチとの一致）
 // =============================================
 // 訪問履歴ではなく「最新の配信バッチ(latestBatchAt)で追加された記事」だけをNEWとする。
@@ -79,18 +154,20 @@ async function loadData() {
 
 function buildSidebarFilters() {
   // カテゴリフィルター（縦リスト）
-  const catList = document.getElementById("category-filter");
-  catList.innerHTML = `<li class="sidebar-item active" data-cat="all">ALL</li>`;
+  const catList = getDomById("category-filter");
+  if (catList) {
+    catList.innerHTML = `<li class="sidebar-item active" data-cat="all">ALL</li>`;
 
-  allCategories
-    .filter(c => c.articleCount > 0 && c.id !== "official")
-    .forEach(c => {
-      const li = document.createElement("li");
-      li.className = "sidebar-item";
-      li.dataset.cat = c.id;
-      li.textContent = `${c.emoji} ${c.label}`;
-      catList.appendChild(li);
-    });
+    allCategories
+      .filter(c => c.articleCount > 0 && c.id !== "official")
+      .forEach(c => {
+        const li = document.createElement("li");
+        li.className = "sidebar-item";
+        li.dataset.cat = c.id;
+        li.textContent = `${c.emoji} ${c.label}`;
+        catList.appendChild(li);
+      });
+  }
 
   buildDateFilter();
 }
@@ -119,7 +196,11 @@ function buildDateFilter() {
   }
 
   // 日付フィルター（月別アコーディオン）再構築
-  const dateContainer = document.getElementById("date-filter");
+  const dateContainer = getDomById("date-filter");
+  if (!dateContainer) {
+    rebuildMobileDateList(validDates);
+    return;
+  }
   dateContainer.innerHTML = `<li class="sidebar-item${state.date === "all" ? " active" : ""}" data-date="all">All</li>`;
 
   // 月ごとにグループ化
@@ -158,7 +239,8 @@ function buildDateFilter() {
 
     monthHeader.addEventListener("click", () => {
       const isOpen = monthDates.classList.toggle("open");
-      monthHeader.querySelector(".date-month-arrow").textContent = isOpen ? "▼" : "▶";
+      const arrow = monthHeader.querySelector(".date-month-arrow");
+      if (arrow) arrow.textContent = isOpen ? "▼" : "▶";
     });
 
     dateContainer.appendChild(monthHeader);
@@ -188,7 +270,7 @@ const CAT_COLORS = {
 };
 
 function buildMobileCategoryBar() {
-  const scroll = document.getElementById("mobile-cat-scroll");
+  const scroll = getDomById("mobile-cat-scroll");
   if (!scroll) return;
   scroll.innerHTML = "";
 
@@ -223,9 +305,9 @@ function buildMobileCategoryBar() {
 }
 
 function buildMobileDateDropdown() {
-  const btn = document.getElementById("mob-date-btn");
-  const dropdown = document.getElementById("mob-date-dropdown");
-  const list = document.getElementById("mob-date-list");
+  const btn = getDomById("mob-date-btn");
+  const dropdown = getDomById("mob-date-dropdown");
+  const list = getDomById("mob-date-list");
   if (!list || !btn || !dropdown) return;
 
   // 開閉イベント（初回のみ登録）
@@ -240,7 +322,7 @@ function buildMobileDateDropdown() {
     if (!item) return;
     state.date = item.dataset.date;
     state.page = 1;
-    const label = document.getElementById("mob-date-label");
+    const label = getDomById("mob-date-label");
     if (label) label.textContent = item.dataset.date === "all" ? "日付" : item.textContent;
     dropdown.classList.remove("open");
     btn.classList.remove("active");
@@ -255,7 +337,7 @@ function buildMobileDateDropdown() {
 
 // モバイル日付リストをvalidDatesで再構築（buildDateFilterから呼ばれる）
 function rebuildMobileDateList(validDates) {
-  const list = document.getElementById("mob-date-list");
+  const list = getDomById("mob-date-list");
   if (!list) return;
 
   list.innerHTML = "";
@@ -276,7 +358,7 @@ function rebuildMobileDateList(validDates) {
   });
 
   // ラベル更新
-  const label = document.getElementById("mob-date-label");
+  const label = getDomById("mob-date-label");
   if (label) {
     if (state.date === "all") {
       label.textContent = "日付";
@@ -338,7 +420,7 @@ function sortArticles(articles) {
 // =============================================
 
 function openModal(article) {
-  const modal = document.getElementById("article-modal");
+  const modal = getDomById("article-modal");
   const categoryLabel = allCategories.find(c => c.id === article.category);
   const catText = categoryLabel ? categoryLabel.label : article.category;
 
@@ -354,43 +436,53 @@ function openModal(article) {
   }
 
   // サムネイル
-  const thumbWrap = document.getElementById("modal-thumb-wrap");
-  if (article.thumbnail) {
-    thumbWrap.innerHTML = `<img src="${article.thumbnail}" alt="" onerror="onThumbError(this)">`;
-    thumbWrap.style.display = "block";
-  } else {
-    thumbWrap.innerHTML = "";
-    thumbWrap.style.display = "none";
+  const thumbWrap = getDomById("modal-thumb-wrap");
+  if (thumbWrap) {
+    if (article.thumbnail) {
+      thumbWrap.innerHTML = `<img src="${article.thumbnail}" alt="" onerror="onThumbError(this)">`;
+      thumbWrap.style.display = "block";
+    } else {
+      thumbWrap.innerHTML = "";
+      thumbWrap.style.display = "none";
+    }
   }
 
   // メタ情報
   const officialBadge = article.isOfficial ? `<span class="card-badge official-badge">📦 リリースノート</span>` : "";
-  document.getElementById("modal-meta").innerHTML = `
-    ${article.source ? `<span class="card-badge">${escHtml(article.source)}</span>` : ""}
-    <span class="card-badge">${escHtml(catText)}</span>
-    ${officialBadge}
-    ${article.date ? `<span class="card-date">${article.date.slice(5).replace("-", "/")}</span>` : ""}
-  `;
+  const modalMeta = getDomById("modal-meta");
+  if (modalMeta) {
+    modalMeta.innerHTML = `
+      ${article.source ? `<span class="card-badge">${escHtml(article.source)}</span>` : ""}
+      <span class="card-badge">${escHtml(catText)}</span>
+      ${officialBadge}
+      ${article.date ? `<span class="card-date">${article.date.slice(5).replace("-", "/")}</span>` : ""}
+    `;
+  }
 
-  document.getElementById("modal-title").textContent = article.title || "";
-  document.getElementById("modal-summary").textContent = article.summary || "（要約なし）";
-  const readBtn = document.getElementById("modal-read-btn");
-  readBtn.href = article.url || "#";
+  const modalTitle = getDomById("modal-title");
+  if (modalTitle) modalTitle.textContent = article.title || "";
+  const modalSummary = getDomById("modal-summary");
+  if (modalSummary) modalSummary.textContent = article.summary || "（要約なし）";
+  const readBtn = getDomById("modal-read-btn");
+  if (readBtn) readBtn.href = article.url || "#";
 
   // GA4: 「読む」=元記事まで読みに行った深い関心シグナル。要約を開いた(select_content)の一段先。
   // onclickで上書き代入（openModalは記事ごとに呼ばれるためaddEventListenerだと多重登録になる）
-  readBtn.onclick = () => {
-    if (typeof gtag === "function") {
-      gtag("event", "select_item", {
-        content_type: "article_outbound",
-        item_id: article.url || "",
-        item_name: article.title || "",
-        item_category: catText || article.category || "",
-        item_brand: article.source || "",
-      });
-    }
-  };
+  if (readBtn) {
+    readBtn.onclick = () => {
+      if (typeof gtag === "function") {
+        gtag("event", "select_item", {
+          content_type: "article_outbound",
+          item_id: article.url || "",
+          item_name: article.title || "",
+          item_category: catText || article.category || "",
+          item_brand: article.source || "",
+        });
+      }
+    };
+  }
 
+  if (!modal) return;
   modal.setAttribute("aria-hidden", "false");
   modal.classList.add("open");
   document.body.style.overflow = "hidden";
@@ -399,7 +491,7 @@ function openModal(article) {
   // スマホのみ: 記事を読む以外のモーダル内タップで閉じる
   if (window.innerWidth <= 768) {
     const box = modal.querySelector(".modal-box");
-    const readBtn = document.getElementById("modal-read-btn");
+    if (!box || !readBtn) return;
     const onTap = e => {
       if (!readBtn.contains(e.target)) {
         closeModal();
@@ -411,9 +503,11 @@ function openModal(article) {
 }
 
 function closeModal() {
-  const modal = document.getElementById("article-modal");
-  modal.classList.remove("open");
-  modal.setAttribute("aria-hidden", "true");
+  const modal = getDomById("article-modal");
+  if (modal) {
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+  }
   document.body.style.overflow = "";
   document.documentElement.style.overflow = "";
 }
@@ -503,14 +597,14 @@ function escHtml(str) {
 
 function updateMasthead(todayStr) {
   // 号数: 最新記事日付 YYYY-MM-DD → MMDD（例: 2026-06-21 → 0621）
-  const issueEl = document.getElementById("masthead-issue-no");
+  const issueEl = getDomById("masthead-issue-no");
   if (issueEl) {
     const m = todayStr && /^\d{4}-(\d{2})-(\d{2})$/.exec(todayStr);
     issueEl.textContent = m ? `${m[1]}${m[2]}` : "----";
   }
 
   // ダイジェスト統計: 本日号「<本日件数> HEADLINES · <本日カテゴリ数> CATEGORIES」
-  const statsEl = document.getElementById("digest-stats");
+  const statsEl = getDomById("digest-stats");
   if (statsEl) {
     const todayArticles = allArticles.filter(
       a => !a.isOfficial && a.date === todayStr
@@ -797,9 +891,16 @@ function renderDateAsPaper(dateStr, filtered, paperEl) {
 // =============================================
 
 function render(resetScroll = false) {
-  // 日付・カテゴリ・タブ・検索の切り替え時はページ最上部に戻す
+  // 日付・カテゴリ・タブ・検索の切り替え時は記事一覧の先頭に戻す
   // （「もっと見る」のページ送りは現在位置を維持するため resetScroll を渡さない）
-  if (resetScroll) window.scrollTo(0, 0);
+  if (resetScroll) {
+    const articleListStart = getDomById("article-list-start");
+    if (articleListStart) {
+      articleListStart.scrollIntoView({ block: "start" });
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }
 
   const filtered = filterArticles();
   const sorted = sortArticles(filtered);
@@ -810,18 +911,21 @@ function render(resetScroll = false) {
   const todayStr = allDates.length > 0 ? allDates[0].date : null;
   const todayCount = todayStr ? filtered.filter(a => a.date === todayStr).length : 0;
   // mustCount / checkCount は loadData() で集計済み（グローバル変数を参照）
-  const statsEl = document.getElementById("stats-bar");
-  statsEl.innerHTML = `
-    <span class="stats-item">📰 ${filtered.length}件表示中</span>
-    <span class="stats-sep">|</span>
-    <span class="stats-item">本日 <strong>${todayCount}件</strong></span>
-    ${mustCount > 0 ? `<span class="stats-sep">|</span><span class="stats-item">🔴マスト <strong>${mustCount}</strong></span>` : ""}
-    ${checkCount > 0 ? `<span class="stats-sep">|</span><span class="stats-item">🟡チェック <strong>${checkCount}</strong></span>` : ""}
-  `;
+  const statsEl = getDomById("stats-bar");
+  if (statsEl) {
+    statsEl.innerHTML = `
+      <span class="stats-item">📰 ${filtered.length}件表示中</span>
+      <span class="stats-sep">|</span>
+      <span class="stats-item">本日 <strong>${todayCount}件</strong></span>
+      ${mustCount > 0 ? `<span class="stats-sep">|</span><span class="stats-item">🔴マスト <strong>${mustCount}</strong></span>` : ""}
+      ${checkCount > 0 ? `<span class="stats-sep">|</span><span class="stats-item">🟡チェック <strong>${checkCount}</strong></span>` : ""}
+    `;
+  }
 
   updateMasthead(todayStr);
 
-  const container = document.getElementById("articles-container");
+  const container = getDomById("articles-container");
+  if (!container) return;
   container.innerHTML = "";
 
   if (visible.length === 0) {
@@ -830,7 +934,8 @@ function render(resetScroll = false) {
         <div class="empty-icon">🔍</div>
         <div>記事が見つかりませんでした</div>
       </div>`;
-    document.getElementById("load-more-wrapper").style.display = "none";
+    const loadMoreWrapper = getDomById("load-more-wrapper");
+    if (loadMoreWrapper) loadMoreWrapper.style.display = "none";
     return;
   }
 
@@ -914,11 +1019,14 @@ function render(resetScroll = false) {
   }
 
   // もっと見るボタン
-  const loadMoreWrapper = document.getElementById("load-more-wrapper");
+  const loadMoreWrapper = getDomById("load-more-wrapper");
+  if (!loadMoreWrapper) return;
   if (hasMore) {
     loadMoreWrapper.style.display = "block";
-    document.getElementById("load-more-btn").textContent =
-      `もっと見る (残り${sorted.length - visible.length}件)`;
+    const loadMoreBtn = getDomById("load-more-btn");
+    if (loadMoreBtn) {
+      loadMoreBtn.textContent = `もっと見る (残り${sorted.length - visible.length}件)`;
+    }
   } else {
     loadMoreWrapper.style.display = "none";
   }
@@ -930,18 +1038,22 @@ function render(resetScroll = false) {
 
 function setupEvents() {
   // モーダル閉じる
-  document.getElementById("modal-close-btn").addEventListener("click", closeModal);
-  document.getElementById("article-modal").addEventListener("click", e => {
-    if (e.target === e.currentTarget) closeModal();
-  });
+  const modalCloseBtn = getDomById("modal-close-btn");
+  if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeModal);
+  const articleModal = getDomById("article-modal");
+  if (articleModal) {
+    articleModal.addEventListener("click", e => {
+      if (e.target === e.currentTarget) closeModal();
+    });
+  }
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") closeModal();
   });
 
   // タブ切替
-  document.querySelectorAll(".tab-btn").forEach(btn => {
+  document.querySelectorAll("#tabbar .tab-btn[data-tab]").forEach(btn => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll("#tabbar .tab-btn[data-tab]").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       state.tab = btn.dataset.tab;
       state.page = 1;
@@ -951,59 +1063,73 @@ function setupEvents() {
   });
 
   // カテゴリフィルター（サイドバー縦リスト）
-  document.getElementById("category-filter").addEventListener("click", e => {
-    const item = e.target.closest(".sidebar-item");
-    if (!item) return;
-    document.querySelectorAll("#category-filter .sidebar-item").forEach(i => i.classList.remove("active"));
-    item.classList.add("active");
-    state.category = item.dataset.cat;
-    state.page = 1;
-    buildDateFilter();
-    render(true);
-  });
+  const categoryFilter = getDomById("category-filter");
+  if (categoryFilter) {
+    categoryFilter.addEventListener("click", e => {
+      const item = e.target.closest(".sidebar-item");
+      if (!item) return;
+      document.querySelectorAll("#category-filter .sidebar-item").forEach(i => i.classList.remove("active"));
+      item.classList.add("active");
+      state.category = item.dataset.cat;
+      state.page = 1;
+      buildDateFilter();
+      render(true);
+    });
+  }
 
   // 日付フィルター（サイドバー縦リスト）
-  document.getElementById("date-filter").addEventListener("click", e => {
-    const item = e.target.closest(".sidebar-item");
-    if (!item) return;
-    document.querySelectorAll("#date-filter .sidebar-item").forEach(i => i.classList.remove("active"));
-    item.classList.add("active");
-    state.date = item.dataset.date;
-    state.page = 1;
-    render(true);
-  });
-
-  // テキスト検索（300ms debounce）
-  document.getElementById("search-input").addEventListener("input", e => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      state.search = e.target.value.trim();
+  const dateFilter = getDomById("date-filter");
+  if (dateFilter) {
+    dateFilter.addEventListener("click", e => {
+      const item = e.target.closest(".sidebar-item");
+      if (!item) return;
+      document.querySelectorAll("#date-filter .sidebar-item").forEach(i => i.classList.remove("active"));
+      item.classList.add("active");
+      state.date = item.dataset.date;
       state.page = 1;
       render(true);
-    }, 300);
-  });
+    });
+  }
+
+  // テキスト検索（300ms debounce）
+  const searchInput = getDomById("search-input");
+  if (searchInput) {
+    searchInput.addEventListener("input", e => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state.search = e.target.value.trim();
+        state.page = 1;
+        render(true);
+      }, 300);
+    });
+  }
 
   // もっと見る
-  document.getElementById("load-more-btn").addEventListener("click", () => {
-    state.page++;
-    render();
-  });
+  const loadMoreBtn = getDomById("load-more-btn");
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener("click", () => {
+      state.page++;
+      render();
+    });
+  }
 
   // モバイルサイドバートグル
-  const sidebarToggle = document.getElementById("sidebar-toggle");
-  const sidebar = document.getElementById("sidebar");
-  if (sidebarToggle) {
+  const sidebarToggle = getDomById("sidebar-toggle");
+  const sidebar = getDomById("sidebar");
+  if (sidebarToggle && sidebar) {
     sidebarToggle.addEventListener("click", () => {
       sidebar.classList.toggle("open");
     });
   }
 
   // サイドバーアイテムクリック後（モバイル）: 自動的にサイドバーを閉じる
-  sidebar.addEventListener("click", e => {
-    if (e.target.closest(".sidebar-item") && window.innerWidth <= 768) {
-      sidebar.classList.remove("open");
-    }
-  });
+  if (sidebar) {
+    sidebar.addEventListener("click", e => {
+      if (e.target.closest(".sidebar-item") && window.innerWidth <= 768) {
+        sidebar.classList.remove("open");
+      }
+    });
+  }
 }
 
 // =============================================
@@ -1013,15 +1139,15 @@ function setupEvents() {
 function setupSwipe() {
   if (window.innerWidth > 768) return;
 
-  const container = document.getElementById("articles-container");
-  const main = document.getElementById("main");
+  const container = getDomById("articles-container");
+  if (!container) return;
   let startX = 0, startY = 0, currentX = 0;
   let isSwiping = false;
   let isAnimating = false;
   let swipeDisabled = false; // 上部カテゴリバー等、独自に横スクロールする領域では切替スワイプを止める
 
   function getNextIdx(dx) {
-    const scroll = document.getElementById("mobile-cat-scroll");
+    const scroll = getDomById("mobile-cat-scroll");
     if (!scroll) return null;
     const btns = [...scroll.querySelectorAll(".mob-cat-btn")];
     const activeIdx = btns.findIndex(b => b.classList.contains("active"));
@@ -1136,14 +1262,19 @@ function setupSwipe() {
 // =============================================
 
 document.addEventListener("DOMContentLoaded", () => {
+  validateDomContract();
   setupEvents();
   setupSwipe();
   loadData().catch(err => {
-    document.getElementById("articles-container").innerHTML = `
-      <div id="empty-state">
-        <div class="empty-icon">⚠️</div>
-        <div>データの読み込みに失敗しました</div>
-        <div style="font-size:12px;margin-top:8px;color:#484f58">${err.message}</div>
-      </div>`;
+    const container = getDomById("articles-container");
+    if (container) {
+      container.innerHTML = `
+        <div id="empty-state">
+          <div class="empty-icon">⚠️</div>
+          <div>データの読み込みに失敗しました</div>
+          <div style="font-size:12px;margin-top:8px;color:#484f58">${err.message}</div>
+        </div>`;
+    }
+    console.error("[AI Navigator] Failed to load article data.", err);
   });
 });
