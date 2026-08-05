@@ -22,7 +22,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 ARTICLES_JSON = "articles.json"
 TARGET_DATE = str(date.today())  # 今日の日付
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={GEMINI_API_KEY}"
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key={GEMINI_API_KEY}"
 BATCH_SIZE = 10  # 1回のAPIコールで処理する記事数
 
 
