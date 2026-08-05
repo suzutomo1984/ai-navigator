@@ -47,6 +47,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    linear-gradient(180deg, rgba(22,26,48,0.06) 0%, rgba(22,26,48,0.30) 60%, rgba(22,26,48,0.60) 100%),
+    url("assets/site-bg.webp") center 62% / cover no-repeat,
+    var(--bg-primary);
+  pointer-events: none;
+}
+
 /* =============================================
    ヘッダー: ロゴ | タブ | 検索
    ============================================= */
@@ -997,6 +1009,12 @@ body {
 .article-paper {
   display: flex;
   flex-direction: column;
+  padding: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: var(--radius);
+  background: rgba(22, 26, 48, 0.58);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
 }
 
 /* --- トップブロック: 大記事＋右に小記事が回り込む --- */
@@ -1906,8 +1924,8 @@ body {
   place-items: center;
   padding: 92px 24px 84px;
   background:
-    radial-gradient(circle at 76% 42%, rgba(255, 51, 95, 0.17), transparent 24%),
-    radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.14), transparent 30%),
+    linear-gradient(90deg, rgba(17,21,42,0.97) 0%, rgba(17,21,42,0.88) 30%, rgba(17,21,42,0.45) 58%, rgba(17,21,42,0.18) 100%),
+    url("assets/hero-compass.webp") center right / cover no-repeat,
     linear-gradient(135deg, #11152a 0%, #1e2440 54%, #161a30 100%);
   border-bottom: 1px solid var(--border);
   isolation: isolate;
@@ -1935,6 +1953,10 @@ body {
   z-index: -1;
 }
 
+.top-hero::before,
+.top-hero::after,
+.top-hero-orbit { display: none; }
+
 .top-hero-content { width: min(1160px, 100%); }
 .top-eyebrow,
 .top-section-kicker {
@@ -1959,6 +1981,9 @@ body {
   font-size: 16px;
   line-height: 1.9;
 }
+.top-hero-content h1 { max-width: none; white-space: nowrap; }
+.top-eyebrow,
+.top-hero-lead { max-width: 620px; }
 .top-hero-actions { display: flex; gap: 12px; margin-top: 34px; }
 .top-action {
   display: inline-flex;
@@ -2222,6 +2247,16 @@ body {
 .top-site-info dt { color: var(--text-muted); font-size: 9px; }
 .top-site-info dd { font-weight: 700; white-space: nowrap; }
 
+.top-stats-bar, .top-section, .top-trending-section,
+.top-release-section, .top-site-info { background: transparent; }
+
+.article-card, .top-pickup-card, .top-news-card, .top-category-tile,
+.top-number-card, .top-step, .top-stat, .top-trending-item, .top-release-item {
+  background: rgba(36, 42, 73, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 #article-list-start { height: 1px; margin-top: 80px; scroll-margin-top: var(--header-h); }
 
 /* フッター（ページ末尾に1個） */
@@ -2279,6 +2314,7 @@ body {
 }
 
 @media (max-width: 900px) {
+  .top-hero-content h1 { white-space: normal; }
   .top-editorial-layout { grid-template-columns: 1fr; }
   .top-release-sidebar { position: static; }
   .top-number-grid { grid-template-columns: repeat(3, 1fr); }
@@ -2287,13 +2323,22 @@ body {
 }
 
 @media (max-width: 768px) {
-  .top-hero { min-height: 510px; padding: 72px 20px 70px; place-items: start center; }
+  .top-hero {
+    min-height: 510px;
+    padding: 72px 20px 70px;
+    place-items: start center;
+    background:
+      linear-gradient(180deg, rgba(17,21,42,0.96) 0%, rgba(17,21,42,0.90) 46%, rgba(17,21,42,0.60) 100%),
+      url("assets/hero-compass.webp") 72% 42% / 190% auto no-repeat,
+      linear-gradient(135deg, #11152a 0%, #1e2440 54%, #161a30 100%);
+  }
   .top-hero::before { width: 280px; height: 280px; right: -90px; top: 110px; }
   .top-hero::after { width: 180px; height: 180px; right: -40px; top: 160px; }
   .top-hero-orbit { display: none; }
   .top-hero h1 { font-size: clamp(32px, 10.5vw, 46px); }
   .top-hero h1 br { display: none; }
   .top-hero-lead { font-size: 14px; }
+  .top-eyebrow, .top-hero-lead { max-width: none; }
   .top-hero-actions { flex-direction: column; }
   .top-action { width: 100%; }
 
