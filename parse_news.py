@@ -789,7 +789,12 @@ def generate_seo_assets(all_articles: list[dict]) -> None:
     )
 
     # --- sitemap.xml（個別記事URLは存在しないので固定ページのみ）---
-    # about.html は毎日更新されないので changefreq を monthly にする。
+    # about は毎日更新されないので changefreq を monthly にする。
+    #
+    # 【重要】拡張子 .html を付けないこと。
+    # Cloudflare Pages は /news.html へのアクセスを /news へ 308 リダイレクトする。
+    # sitemap が .html 付きURLを載せると「sitemapのURLが正規URLでない」状態になり、
+    # Google はインデックスを保留する（2026-08-05、isPending が44日継続した実例）。
     sitemap = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
@@ -799,19 +804,19 @@ def generate_seo_assets(all_articles: list[dict]) -> None:
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>{BASE_URL}/news.html</loc>
+    <loc>{BASE_URL}/news</loc>
     <lastmod>{lastmod}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>{BASE_URL}/official.html</loc>
+    <loc>{BASE_URL}/official</loc>
     <lastmod>{lastmod}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>{BASE_URL}/about.html</loc>
+    <loc>{BASE_URL}/about</loc>
     <lastmod>{lastmod}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
