@@ -90,6 +90,9 @@ OFFICIAL_SOURCES = [
     "Dify Releases",
     "Flowise Releases",
     "Gemini CLI Releases",
+    "Antigravity CLI Releases",
+    "Antigravity SDK Releases",
+    "Kimi CLI Releases",
     "Codex CLI Releases",
 ]
 

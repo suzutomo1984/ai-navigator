@@ -20,6 +20,8 @@ const SOURCE_GROUPS = {
   "Dify":       ["Dify Releases"],
   "Flowise":    ["Flowise Releases"],
   "Gemini CLI": ["Gemini CLI Releases"],
+  "Antigravity": ["Antigravity CLI Releases", "Antigravity SDK Releases"],
+  "Kimi":        ["Kimi CLI Releases"],
   "Codex CLI":  ["Codex CLI Releases"],
 };
 
@@ -161,6 +163,8 @@ const COMPANY_COLORS = {
   "Dify":       "#7c3aed",
   "Flowise":    "#059669",
   "Gemini CLI": "#1a73e8",
+  "Antigravity": "#0891b2",
+  "Kimi":        "#be123c",
   "Codex CLI":  "#00a67e",
 };
 
