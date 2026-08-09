@@ -543,6 +543,10 @@ function renderLanding() {
           <b>続きを読む →</b>
         </div>
       </a>` : `<p class="top-empty">おすすめ記事はありません。</p>`;
+    const pickupCard = pickupEl.querySelector(".top-pickup-card");
+    if (pickupCard && article) {
+      pickupCard.addEventListener("click", e => { e.preventDefault(); openModal(article); });
+    }
   }
 
   if (latestEl) {
@@ -555,6 +559,9 @@ function renderLanding() {
           <time datetime="${escAttr(article.date)}">${escHtml(formatTopDate(article.date))}</time>
         </div>
       </a>`).join("");
+    latestEl.querySelectorAll(".top-news-card").forEach((card, index) => {
+      card.addEventListener("click", e => { e.preventDefault(); openModal(content.latestNews[index]); });
+    });
   }
 
   if (trendingEl) {
