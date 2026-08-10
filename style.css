@@ -319,6 +319,58 @@ body::before {
   max-width: calc(100vw - var(--sidebar-w));
 }
 
+/* 一覧ページの静的な説明本文（記事一覧のDOM契約とは独立） */
+.page-guide {
+  margin: 20px;
+  padding: clamp(24px, 4vw, 48px);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.page-guide > h1 {
+  max-width: 1040px;
+  font-size: clamp(28px, 3.2vw, 44px);
+  line-height: 1.35;
+  letter-spacing: -0.025em;
+}
+
+.page-guide-section {
+  max-width: 1040px;
+  margin-top: 36px;
+}
+
+.page-guide-section h2 {
+  margin-bottom: 14px;
+  font-size: 21px;
+  line-height: 1.4;
+}
+
+.page-guide-section p,
+.page-guide-section li,
+.page-guide-section td,
+.page-guide-section th {
+  font-size: 14px;
+  line-height: 1.85;
+}
+
+.page-guide-section p + p { margin-top: 12px; }
+.page-guide-section ul { padding-left: 1.4em; }
+.page-guide-section li + li { margin-top: 6px; }
+.page-guide-section a { color: var(--accent-hover); }
+
+.page-guide-table-wrap { overflow-x: auto; }
+.page-guide table { width: 100%; border-collapse: collapse; }
+.page-guide th,
+.page-guide td {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.page-guide thead th { background: var(--bg-surface); }
+.page-guide tbody th { width: 220px; white-space: nowrap; }
+
 /* 統計バー */
 #stats-bar {
   display: none;
@@ -1813,6 +1865,15 @@ body::before {
     padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom) + 16px);
     overflow-x: hidden;
   }
+
+  .page-guide {
+    margin: 12px;
+    padding: 24px 18px;
+  }
+
+  .page-guide > h1 { font-size: 26px; }
+  .page-guide-section { margin-top: 30px; }
+  .page-guide-section h2 { font-size: 19px; }
 
   /* スワイプアニメーション用 */
   #articles-container {

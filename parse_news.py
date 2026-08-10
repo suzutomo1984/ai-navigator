@@ -32,6 +32,8 @@ SITEMAP_FILE = Path(__file__).parent / "sitemap.xml"
 ROBOTS_FILE = Path(__file__).parent / "robots.txt"
 INDEX_FILE = Path(__file__).parent / "index.html"
 ABOUT_FILE = Path(__file__).parent / "about.html"
+NEWS_FILE = Path(__file__).parent / "news.html"
+OFFICIAL_FILE = Path(__file__).parent / "official.html"
 BASE_URL = "https://ai-news-eev.pages.dev"
 
 # 記事データからは算出できない運用方針の固定値。
@@ -630,6 +632,9 @@ def main():
     # トップページの2か所にある統計も、同じ実測値・固定値から毎回生成する。
     update_top_stats(output, dates_meta)
 
+    # news / official のページ説明にある掲載件数も、articles 配列の実値から更新する。
+    update_listing_page_stats(output)
+
 
 def _format_stat_value(value: str, unit: str = "") -> str:
     """統計値と単位を、各統計ブロックで共通のHTMLへ整形する。"""
@@ -670,7 +675,9 @@ def _stats_context(meta: dict, dates_meta: list[dict]) -> tuple[int, int, int, s
     return total, official, days, period
 
 
-def _replace_exact_marker_block(html: str, marker: str, content: str) -> str:
+def _replace_exact_marker_block(
+    html: str, marker: str, content: str, target_file_name: str
+) -> str:
     """指定マーカーが開始・終了とも各1個のときだけ内側を置換する。"""
     start_marker = f"<!-- {marker}:start -->"
     end_marker = f"<!-- {marker}:end -->"
@@ -678,14 +685,16 @@ def _replace_exact_marker_block(html: str, marker: str, content: str) -> str:
     end_count = html.count(end_marker)
     if start_count != 1 or end_count != 1:
         raise RuntimeError(
-            f"index.html の {marker} マーカー数が不正です "
+            f"{target_file_name} の {marker} マーカー数が不正です "
             f"(start={start_count}, end={end_count})。開始・終了を各1個にしてください。"
         )
 
     start = html.index(start_marker) + len(start_marker)
     end = html.index(end_marker)
     if end < start:
-        raise RuntimeError(f"index.html の {marker} マーカーの順序が不正です。")
+        raise RuntimeError(
+            f"{target_file_name} の {marker} マーカーの順序が不正です。"
+        )
     return html[:start] + "\n" + content + "\n" + html[end:]
 
 
@@ -717,10 +726,58 @@ def update_top_stats(meta: dict, dates_meta: list[dict]) -> None:
 
     # 一部だけ更新された状態を作らないため、全ブロックを検証・置換してから1回だけ書く。
     html = INDEX_FILE.read_text(encoding="utf-8")
-    updated = _replace_exact_marker_block(html, "TOP_STATS_BAR", "\n".join(bar_lines))
-    updated = _replace_exact_marker_block(updated, "TOP_STATS_COUNT", info_line)
+    updated = _replace_exact_marker_block(
+        html, "TOP_STATS_BAR", "\n".join(bar_lines), "index.html"
+    )
+    updated = _replace_exact_marker_block(
+        updated, "TOP_STATS_COUNT", info_line, "index.html"
+    )
     INDEX_FILE.write_text(updated, encoding="utf-8")
     print(f"✅ index.html の数字を更新: {total:,}本 / {official:,}本 / {days}日分")
+
+
+def update_listing_page_stats(meta: dict) -> None:
+    """news.html / official.html の掲載件数を articles 配列の実値で更新する。"""
+    articles = meta.get("articles")
+    if not isinstance(articles, list):
+        raise RuntimeError("articles が配列ではないため一覧ページの件数を更新できません。")
+    if not NEWS_FILE.exists() or not OFFICIAL_FILE.exists():
+        missing = [
+            path.name for path in (NEWS_FILE, OFFICIAL_FILE) if not path.exists()
+        ]
+        raise RuntimeError(
+            f"一覧ページが無いため掲載件数を更新できません: {', '.join(missing)}"
+        )
+
+    official_count = sum(1 for article in articles if article.get("isOfficial"))
+    news_count = len(articles) - official_count
+    news_content = (
+        "          <p>AI Navigator は、生成AI・LLM・業務自動化に関する記事を毎日自動で収集し、"
+        f"AIが要約・分類して一覧にしているページです。現在 <strong>{news_count:,}本</strong> を掲載しています。</p>"
+    )
+    official_content = (
+        "          <p>AI開発ツール・SDKの<strong>公式リリースノートだけ</strong>を集めたページです。"
+        f"現在 <strong>{official_count:,}本</strong> を掲載しています。</p>"
+    )
+
+    # 両ページのマーカーを検証・置換してから書き出し、片方だけ古い状態を避ける。
+    news_html = NEWS_FILE.read_text(encoding="utf-8")
+    official_html = OFFICIAL_FILE.read_text(encoding="utf-8")
+    updated_news = _replace_exact_marker_block(
+        news_html, "NEWS_ARTICLE_COUNT", news_content, "news.html"
+    )
+    updated_official = _replace_exact_marker_block(
+        official_html,
+        "OFFICIAL_ARTICLE_COUNT",
+        official_content,
+        "official.html",
+    )
+    NEWS_FILE.write_text(updated_news, encoding="utf-8")
+    OFFICIAL_FILE.write_text(updated_official, encoding="utf-8")
+    print(
+        "✅ 一覧ページの件数を更新: "
+        f"news.html {news_count:,}本 / official.html {official_count:,}本"
+    )
 
 
 def update_about_stats(meta: dict, dates_meta: list[dict]) -> None:
