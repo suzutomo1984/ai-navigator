@@ -610,7 +610,9 @@ def main():
         )
         print(msg)
         if os.environ.get("FAIL_ON_SHRINK") == "1":
-            raise SystemExit(f"❌ 記事数激減のため中断（FAIL_ON_SHRINK=1）: {msg}")
+            print(f"❌ 記事数激減のため中断（FAIL_ON_SHRINK=1）: {msg}")
+            # Workflow 側が通常の実行エラーと区別して ::error:: を出すための専用終了コード。
+            raise SystemExit(42)
 
     # JSON出力
     OUTPUT_FILE.write_text(
