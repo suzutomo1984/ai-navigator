@@ -107,7 +107,19 @@
     <main id="main">
       <section class="page-guide" aria-labelledby="official-page-title">
         <h1 id="official-page-title">AIリリースノート一覧｜Claude Code・Codex CLI・Gemini CLI・Ollamaの更新を毎日収集</h1>
+      </section>
+      <div id="stats-bar">読み込み中...</div>
+      <div id="articles-container">
+        <div id="empty-state">
+          <div class="empty-icon">⏳</div>
+          <div>読み込み中...</div>
+        </div>
+      </div>
+      <div id="load-more-wrapper" style="display:none">
+        <button id="load-more-btn">もっと見る</button>
+      </div>
 
+      <div class="page-guide">
         <section class="page-guide-section">
           <h2>このページについて</h2>
           <!-- OFFICIAL_ARTICLE_COUNT:start -->
@@ -133,22 +145,6 @@
             <li><strong>カードをタップ</strong> — 更新内容の要約が開き、公式リリースページへ移動できます</li>
           </ul>
         </section>
-      </section>
-
-      <div id="trending-info-banner">
-        <div class="trending-info-item">📦 主要AI企業のSDK・ツールのリリースノート（更新通知）を毎日自動収集</div>
-        <div class="trending-info-item">🛠️ LangChain・MCP・Ollama等のSDK・フレームワーク情報も網羅</div>
-        <div class="trending-info-item">⚡ ニュース記事と分離して一次情報だけを素早くチェック</div>
-      </div>
-      <div id="stats-bar">読み込み中...</div>
-      <div id="articles-container">
-        <div id="empty-state">
-          <div class="empty-icon">⏳</div>
-          <div>読み込み中...</div>
-        </div>
-      </div>
-      <div id="load-more-wrapper" style="display:none">
-        <button id="load-more-btn">もっと見る</button>
       </div>
     </main>
 
