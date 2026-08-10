@@ -328,6 +328,11 @@ body::before {
   border-radius: 12px;
 }
 
+/* news の上部見出しは記事一覧をファーストビューに収めるため余白を抑える */
+.page-guide.page-guide--compact-heading {
+  padding: clamp(16px, 2vw, 24px);
+}
+
 .page-guide > h1 {
   max-width: 1040px;
   font-size: clamp(28px, 3.2vw, 44px);
