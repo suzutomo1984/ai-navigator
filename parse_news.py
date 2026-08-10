@@ -36,6 +36,10 @@ NEWS_FILE = Path(__file__).parent / "news.html"
 OFFICIAL_FILE = Path(__file__).parent / "official.html"
 BASE_URL = "https://ai-news-eev.pages.dev"
 
+# app.js の isValidArticle と同じURL検証。描画件数と掲載件数が再びずれないよう、
+# どちらかの仕様を変更するときは両方を同期すること。
+ARTICLE_URL_PATTERN = re.compile(r"^https?://[^/\s]+", re.IGNORECASE)
+
 # 記事データからは算出できない運用方針の固定値。
 # トップの指標バー／数字グリッド（および about.html）は必ずここから生成し、
 # HTMLへ同じ値を重複して直書きしない。
@@ -741,6 +745,8 @@ def update_listing_page_stats(meta: dict) -> None:
     articles = meta.get("articles")
     if not isinstance(articles, list):
         raise RuntimeError("articles が配列ではないため一覧ページの件数を更新できません。")
+    if not articles:
+        raise RuntimeError("articles が空のため一覧ページの件数を更新できません。")
     if not NEWS_FILE.exists() or not OFFICIAL_FILE.exists():
         missing = [
             path.name for path in (NEWS_FILE, OFFICIAL_FILE) if not path.exists()
@@ -749,8 +755,18 @@ def update_listing_page_stats(meta: dict) -> None:
             f"一覧ページが無いため掲載件数を更新できません: {', '.join(missing)}"
         )
 
-    official_count = sum(1 for article in articles if article.get("isOfficial"))
-    news_count = len(articles) - official_count
+    # app.js の isValidArticle を通り、実際に描画される記事だけを数える。
+    valid_articles = [
+        article
+        for article in articles
+        if ARTICLE_URL_PATTERN.search(str(article.get("url") or ""))
+    ]
+    official_count = sum(
+        1 for article in valid_articles if article.get("isOfficial")
+    )
+    news_count = sum(
+        1 for article in valid_articles if not article.get("isOfficial")
+    )
     news_content = (
         "          <p>AI Navigator は、生成AI・LLM・業務自動化に関する記事を毎日自動で収集し、"
         f"AIが要約・分類して一覧にしているページです。現在 <strong>{news_count:,}本</strong> を掲載しています。</p>"

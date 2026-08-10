@@ -361,6 +361,7 @@ body::before {
 
 .page-guide-section p + p { margin-top: 12px; }
 .page-guide-section ul { padding-left: 1.4em; }
+.page-guide-section ul > li { list-style: disc; }
 .page-guide-section li + li { margin-top: 6px; }
 .page-guide-section a { color: var(--accent-hover); }
 
