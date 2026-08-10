@@ -328,16 +328,20 @@ body::before {
   border-radius: 12px;
 }
 
-/* news の上部見出しは記事一覧をファーストビューに収めるため余白を抑える */
-.page-guide.page-guide--compact-heading {
-  padding: clamp(16px, 2vw, 24px);
+/* 一覧上部の h1 はカード化せず、記事一覧の控えめなラベルとして扱う */
+.page-guide.page-guide--list-heading {
+  margin: 16px 20px 6px;
+  padding: 0 4px;
+  background: none;
+  border: 0;
+  border-radius: 0;
 }
 
-.page-guide > h1 {
+.page-guide--list-heading > h1 {
   max-width: 1040px;
-  font-size: clamp(28px, 3.2vw, 44px);
-  line-height: 1.35;
-  letter-spacing: -0.025em;
+  font-size: 21px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
 }
 
 .page-guide-section {
