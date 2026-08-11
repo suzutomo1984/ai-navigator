@@ -279,6 +279,19 @@ const CAT_COLORS = {
   "other":            "#6b7280",
 };
 
+// トップの重要記事で、カテゴリを読者にとっての利点へ言い換える。
+const CAT_LABELS = Object.freeze({
+  "productivity":    "【仕事が速くなる】",
+  "strategy":        "【経営の判断材料】",
+  "sales-marketing": "【売上につながる】",
+  "back-office":     "【事務が楽になる】",
+  "info-mgmt":       "【情報整理に効く】",
+  "side-business":   "【個人で稼ぐ】",
+  "ai-tech":         "【新しい道具】",
+  "official":        "【道具の更新】",
+  "other":           "【今週の話題】",
+});
+
 function buildMobileCategoryBar() {
   const scroll = getDomById("mobile-cat-scroll");
   if (!scroll) return;
@@ -419,9 +432,21 @@ function getLandingContent(articles, categories) {
   const newest = items => [...items].sort(compareArticlesNewestFirst);
   const categoryOrder = new Map(categories.map((category, index) => [category.id, index]));
   const categoryCount = category => Number(category.articleCount ?? category.count ?? 0);
+  const pickup = [
+    ...newest(articles.filter(article => article.pickPriority === "must-read")),
+    ...newest(articles.filter(article => article.isPick && article.pickPriority !== "must-read")),
+  ];
+
+  // PICKが4本未満の日も、重複を避けながら最新記事で枠を埋める。
+  if (pickup.length < 4) {
+    for (const article of newest(articles)) {
+      if (!pickup.includes(article)) pickup.push(article);
+      if (pickup.length === 4) break;
+    }
+  }
 
   return {
-    pickup: newest(articles.filter(article => article.isPick))[0] || null,
+    pickup: pickup.slice(0, 4),
     latestNews: newest(articles.filter(article => !article.isOfficial)).slice(0, 4),
     recentReleases: newest(articles.filter(article => article.isOfficial)).slice(0, 5),
     // 6枚だと左カラムが右サイドバー（Trending＋リリース）より短くなり、
@@ -466,6 +491,10 @@ function getOptionalById(id) {
 function topCategoryLabel(article) {
   const category = allCategories.find(item => item.id === article.category);
   return category ? `${category.emoji || ""} ${category.label}`.trim() : article.category || "AIニュース";
+}
+
+function topBenefitLabel(article) {
+  return CAT_LABELS[article.category] || CAT_LABELS.other;
 }
 
 function formatTopDate(date) {
@@ -532,21 +561,20 @@ function renderLanding() {
   const content = getLandingContent(allArticles, allCategories);
 
   if (pickupEl) {
-    const article = content.pickup;
-    pickupEl.innerHTML = article ? `
+    pickupEl.innerHTML = content.pickup.length ? content.pickup.map(article => `
       <a class="top-pickup-card" href="${escAttr(safeExternalUrl(article.url))}" target="_blank" rel="noopener noreferrer">
         ${landingThumbnail(article, "top-pickup-thumb")}
         <div class="top-pickup-body">
+          <strong class="top-pickup-label">${escHtml(topBenefitLabel(article))}</strong>
           <div class="top-article-meta"><span>${escHtml(topCategoryLabel(article))}</span><time datetime="${escAttr(article.date)}">${escHtml(formatTopDate(article.date))}</time></div>
           <h3>${escHtml(article.title)}</h3>
           <p>${escHtml(article.summary || "")}</p>
           <b>続きを読む →</b>
         </div>
-      </a>` : `<p class="top-empty">おすすめ記事はありません。</p>`;
-    const pickupCard = pickupEl.querySelector(".top-pickup-card");
-    if (pickupCard && article) {
-      pickupCard.addEventListener("click", e => { e.preventDefault(); openModal(article); });
-    }
+      </a>`).join("") : `<p class="top-empty">おすすめ記事はありません。</p>`;
+    pickupEl.querySelectorAll(".top-pickup-card").forEach((card, index) => {
+      card.addEventListener("click", e => { e.preventDefault(); openModal(content.pickup[index]); });
+    });
   }
 
   if (latestEl) {

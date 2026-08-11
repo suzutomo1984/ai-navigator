@@ -10,6 +10,7 @@ const appSource = read("app.js");
 const indexSource = read("index.html");
 const newsSource = read("news.html");
 const pages = ["index.html", "news.html", "official.html", "about.html"];
+const pageRoutes = ["/", "/news", "/official", "/about"];
 
 const contractMatch = appSource.match(/const REQUIRED_DOM_IDS = Object\.freeze\(\[(.*?)\]\);/s);
 assert.ok(contractMatch, "REQUIRED_DOM_IDS must exist");
@@ -21,12 +22,12 @@ for (const id of requiredIds) {
 }
 
 assert.doesNotMatch(indexSource, /TOP_STATS_GRID|top-number-grid/);
-for (const marker of ["TOP_STATS_BAR", "TOP_STATS_COUNT"]) {
+for (const marker of ["TOP_STATS_BAR", "TOP_STATS_COUNT", "TOP_HERO_STATS", "JSON_LD"]) {
   assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:start -->`, "g")) || []).length, 1);
   assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:end -->`, "g")) || []).length, 1);
 }
-assert.match(indexSource, /href=["']news\.html["'][^>]*>最新のAIニュースを読む/);
-assert.match(indexSource, /href=["']news\.html["'][^>]*>すべて見る →/);
+assert.match(indexSource, /href=["']\/news["'][^>]*>今日の全\d+本を見る/);
+assert.match(indexSource, /href=["']\/news["'][^>]*>すべて見る →/);
 assert.match(appSource, /new URLSearchParams\(window\.location\.search\)\.get\("category"\)/);
 assert.match(appSource, /news\.html\?category=\$\{encodeURIComponent\(category\.id\)\}/);
 
@@ -37,8 +38,8 @@ for (const page of pages) {
   const footer = source.match(/<footer\b[^>]*>(.*?)<\/footer>/s)?.[1] || "";
   assert.equal((tabbar.match(/class="tab-btn(?: active)?"/g) || []).length, 4, `${page} tabbar`);
   assert.equal((bottomNav.match(/class="bnav-item(?: active)?"/g) || []).length, 4, `${page} bottom nav`);
-  for (const href of pages) {
-    assert.match(footer, new RegExp(`href=["']${href.replace(".", "\\.")}["']`), `${page} footer must link ${href}`);
+  for (const href of pageRoutes) {
+    assert.match(footer, new RegExp(`href=["']${href}["']`), `${page} footer must link ${href}`);
   }
 }
 

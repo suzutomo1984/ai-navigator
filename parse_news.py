@@ -704,8 +704,43 @@ def _replace_exact_marker_block(
     return html[:start] + "\n" + content + "\n" + html[end:]
 
 
+def _top_hero_context(meta: dict) -> tuple[str, int, int]:
+    """最新日の有効記事数と、トップに選抜されるPICK数を返す。"""
+    articles = meta.get("articles")
+    if not isinstance(articles, list):
+        raise RuntimeError("articles が配列ではないためヒーローの数字を更新できません。")
+
+    valid_articles = [
+        article
+        for article in articles
+        if ARTICLE_URL_PATTERN.search(str(article.get("url") or ""))
+        and str(article.get("date") or "")
+    ]
+    if not valid_articles:
+        raise RuntimeError("有効記事が無いためヒーローの数字を更新できません。")
+
+    latest_date = max(str(article["date"]) for article in valid_articles)
+    latest_articles = [
+        article for article in valid_articles if str(article.get("date")) == latest_date
+    ]
+    # app.js のトップPICK条件と同じく must-read を優先対象に含め、表示上限4件を守る。
+    pick_count = min(
+        4,
+        sum(
+            1
+            for article in latest_articles
+            if article.get("pickPriority") == "must-read"
+            or (
+                article.get("isPick")
+                and article.get("pickPriority") != "must-read"
+            )
+        ),
+    )
+    return latest_date, len(latest_articles), pick_count
+
+
 def update_top_stats(meta: dict, dates_meta: list[dict]) -> None:
-    """index.html の指標バーとサイト説明バーを最新値で厳格に更新する。"""
+    """index.html のヒーロー、指標バー、サイト説明バーを厳格に更新する。"""
     if not INDEX_FILE.exists():
         raise RuntimeError("index.html が無いためトップ統計を更新できません。")
 
@@ -729,6 +764,13 @@ def update_top_stats(meta: dict, dates_meta: list[dict]) -> None:
 
     # サイト説明バーの記事数。ここを固定値のままにすると指標バーと値が食い違う。
     info_line = f"        <dd>{total:,}本</dd>"
+    latest_date, daily_count, pick_count = _top_hero_context(meta)
+    hero_lines = [
+        f'      <p class="top-pick-summary">毎日2回、{daily_count}本のAI記事を集めて、{pick_count}本を選びました。</p>',
+        '      <div class="top-pick-actions">',
+        f'        <a class="top-action top-action-primary" href="/news">今日の全{daily_count}本を見る</a>',
+        "      </div>",
+    ]
 
     # 一部だけ更新された状態を作らないため、全ブロックを検証・置換してから1回だけ書く。
     html = INDEX_FILE.read_text(encoding="utf-8")
@@ -738,8 +780,14 @@ def update_top_stats(meta: dict, dates_meta: list[dict]) -> None:
     updated = _replace_exact_marker_block(
         updated, "TOP_STATS_COUNT", info_line, "index.html"
     )
+    updated = _replace_exact_marker_block(
+        updated, "TOP_HERO_STATS", "\n".join(hero_lines), "index.html"
+    )
     INDEX_FILE.write_text(updated, encoding="utf-8")
-    print(f"✅ index.html の数字を更新: {total:,}本 / {official:,}本 / {days}日分")
+    print(
+        f"✅ index.html の数字を更新: {total:,}本 / {official:,}本 / {days}日分 / "
+        f"{latest_date} は{daily_count}本・PICK {pick_count}本"
+    )
 
 
 def update_listing_page_stats(meta: dict) -> None:
