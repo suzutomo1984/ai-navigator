@@ -147,6 +147,32 @@ def is_skip_section(h2_text: str) -> bool:
     return False
 
 
+def build_official_summary(title: str, source: str) -> str:
+    """タイトルとソース名だけで、検証可能な公式リリース定型文を作る。"""
+    clean_title = re.sub(r"\s+", " ", title).strip()
+    tool_name = re.sub(r"\s+Releases$", "", source).strip()
+    subject = f"{tool_name}の新しいバージョン" if tool_name else "新しいバージョン"
+    return (
+        f"{clean_title}: {subject}が公開されました。"
+        "変更内容はリンク先の公式リリースノートを参照してください。"
+    )
+
+
+def replace_official_summaries(articles: list[dict]) -> int:
+    """isOfficialの記事だけを定型文に置換し、変更件数を返す。"""
+    changed = 0
+    for article in articles:
+        if article.get("isOfficial") is not True:
+            continue
+        summary = build_official_summary(
+            str(article.get("title", "")), str(article.get("source", ""))
+        )
+        if article.get("summary") != summary:
+            article["summary"] = summary
+            changed += 1
+    return changed
+
+
 # ============================================================
 # テックニュース.md パーサー
 # ============================================================
@@ -464,6 +490,11 @@ def main():
         })
 
         all_articles.extend(articles)
+
+    # 公式リリースの元データに変更内容が無いため、既存要約も含めて
+    # Gemini生成文を引き継がず、検証可能な定型文へ一括置換する。
+    official_summaries_changed = replace_official_summaries(all_articles)
+    print(f"📦 公式リリース定型文置換: {official_summaries_changed}件")
 
     # カテゴリ集計
     category_counts = {}
