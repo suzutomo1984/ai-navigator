@@ -158,19 +158,24 @@ def build_official_summary(title: str, source: str) -> str:
     )
 
 
-def replace_official_summaries(articles: list[dict]) -> int:
-    """isOfficialの記事だけを定型文に置換し、変更件数を返す。"""
-    changed = 0
+def fill_missing_official_summaries(articles: list[dict]) -> int:
+    """要約が無い公式リリースだけを定型文で補い、補填件数を返す。
+
+    auto_news.py が Atom 本文から生成した要約は上書きしない。
+    （2026-08-12: 全件を無条件に定型文へ置換していたため、本文ベースの
+    要約が毎回消えていた。空・欠落のときだけ補う方式に変更）
+    """
+    filled = 0
     for article in articles:
         if article.get("isOfficial") is not True:
             continue
-        summary = build_official_summary(
+        if str(article.get("summary", "")).strip():
+            continue
+        article["summary"] = build_official_summary(
             str(article.get("title", "")), str(article.get("source", ""))
         )
-        if article.get("summary") != summary:
-            article["summary"] = summary
-            changed += 1
-    return changed
+        filled += 1
+    return filled
 
 
 # ============================================================
@@ -491,10 +496,10 @@ def main():
 
         all_articles.extend(articles)
 
-    # 公式リリースの元データに変更内容が無いため、既存要約も含めて
-    # Gemini生成文を引き継がず、検証可能な定型文へ一括置換する。
-    official_summaries_changed = replace_official_summaries(all_articles)
-    print(f"📦 公式リリース定型文置換: {official_summaries_changed}件")
+    # 公式リリースで要約が無いものだけ定型文で補う。
+    # auto_news.py が Atom 本文から生成した要約はそのまま残す。
+    official_summaries_filled = fill_missing_official_summaries(all_articles)
+    print(f"📦 公式リリース定型文の補填: {official_summaries_filled}件")
 
     # カテゴリ集計
     category_counts = {}
