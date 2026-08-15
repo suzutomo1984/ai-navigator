@@ -319,7 +319,9 @@ function openModal(article) {
 
   document.getElementById("modal-title").textContent = article.title || "";
   document.getElementById("modal-summary").textContent = article.summary || "（要約なし）";
-  document.getElementById("modal-read-btn").href = article.url || "#";
+  const readBtn = document.getElementById("modal-read-btn");
+  readBtn.href = article.url || "#";
+  const consultCard = window.AiConsult?.render(article, readBtn);
 
   modal.setAttribute("aria-hidden", "false");
   modal.classList.add("open");
@@ -329,9 +331,8 @@ function openModal(article) {
   // スマホのみ: 記事を読む以外のモーダル内タップで閉じる
   if (window.innerWidth <= 768) {
     const box = modal.querySelector(".modal-box");
-    const readBtn = document.getElementById("modal-read-btn");
     const onTap = e => {
-      if (!readBtn.contains(e.target)) {
+      if (!readBtn.contains(e.target) && !consultCard?.contains(e.target)) {
         closeModal();
         box.removeEventListener("click", onTap);
       }

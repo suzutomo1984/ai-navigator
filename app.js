@@ -689,6 +689,9 @@ function openModal(article) {
     };
   }
 
+  // ai-consult.jsはapp.jsの後に読み込まれるが、ユーザー操作時には初期化済み。
+  const consultCard = window.AiConsult?.render(article, readBtn);
+
   if (!modal) return;
   modal.setAttribute("aria-hidden", "false");
   modal.classList.add("open");
@@ -700,7 +703,7 @@ function openModal(article) {
     const box = modal.querySelector(".modal-box");
     if (!box || !readBtn) return;
     const onTap = e => {
-      if (!readBtn.contains(e.target)) {
+      if (!readBtn.contains(e.target) && !consultCard?.contains(e.target)) {
         closeModal();
         box.removeEventListener("click", onTap);
       }

@@ -4,166 +4,191 @@ import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 
-
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = fs.readFileSync(path.join(rootDir, "ai-consult.js"), "utf8");
+const appSource = fs.readFileSync(path.join(rootDir, "app.js"), "utf8");
+const officialSource = fs.readFileSync(path.join(rootDir, "official.js"), "utf8");
 const style = fs.readFileSync(path.join(rootDir, "style.css"), "utf8");
-
 
 class MockElement {
   constructor(tagName) {
     this.tagName = tagName.toUpperCase();
     this.children = [];
     this.attributes = new Map();
-    this.handlers = new Map();
     this.hidden = false;
-    this._className = "";
-    this._innerHTML = "";
-    this.classList = {
-      add: name => this._setClasses([...this._classes(), name]),
-      remove: name => this._setClasses([...this._classes()].filter(value => value !== name)),
-      contains: name => this._classes().has(name),
-    };
+    this.className = "";
   }
-
-  _classes() { return new Set(this._className.split(/\s+/).filter(Boolean)); }
-  _setClasses(values) { this._className = [...new Set(values)].join(" "); }
-  set className(value) { this._className = value; }
-  get className() { return this._className; }
 
   set innerHTML(value) {
     this._innerHTML = value;
-    if (this.className !== "ai-consult") return;
-    const menu = new MockElement("div");
-    menu.className = "ai-consult-menu";
-    menu.hidden = true;
+    if (this.className !== "ai-consult-card") return;
     const services = new MockElement("div");
     services.className = "ai-consult-services";
-    menu.appendChild(services);
-    const button = new MockElement("button");
-    button.className = "ai-consult-button";
-    button.setAttribute("aria-expanded", "false");
+    const copy = new MockElement("button");
+    copy.className = "ai-consult-copy";
     const toast = new MockElement("div");
     toast.className = "ai-consult-toast";
     toast.hidden = true;
-    this.appendChild(menu);
-    this.appendChild(button);
+    this.appendChild(services);
+    this.appendChild(copy);
     this.appendChild(toast);
   }
-  get innerHTML() { return this._innerHTML; }
 
-  appendChild(child) { this.children.push(child); child.parent = this; return child; }
+  get innerHTML() { return this._innerHTML || ""; }
+  get parentElement() { return this.parent || null; }
+
+  appendChild(child) {
+    this.children.push(child);
+    child.parent = this;
+    return child;
+  }
+
+  insertAdjacentElement(position, child) {
+    assert.equal(position, "afterend");
+    const index = this.parent.children.indexOf(this);
+    this.parent.children.splice(index + 1, 0, child);
+    child.parent = this.parent;
+    return child;
+  }
+
+  remove() {
+    if (!this.parent) return;
+    this.parent.children = this.parent.children.filter(child => child !== this);
+    this.parent = null;
+  }
+
   querySelector(selector) {
-    const className = selector.startsWith(".") ? selector.slice(1) : null;
+    const wantedClass = selector.startsWith(".") ? selector.slice(1) : null;
     for (const child of this.children) {
-      if (className && child.classList.contains(className)) return child;
+      if (wantedClass && child.className.split(/\s+/).includes(wantedClass)) return child;
       const nested = child.querySelector(selector);
       if (nested) return nested;
     }
     return null;
   }
+
   setAttribute(name, value) { this.attributes.set(name, String(value)); }
   getAttribute(name) { return this.attributes.get(name) ?? null; }
-  addEventListener(type, callback) { this.handlers.set(type, callback); }
-  dispatch(type, event = {}) { return this.handlers.get(type)?.({ target: this, ...event }); }
   contains(target) { return target === this || this.children.some(child => child.contains(target)); }
-  focus() { this.focused = true; }
 }
 
-
-const documentHandlers = new Map();
-const document = {
-  body: new MockElement("body"),
-  createElement: tagName => new MockElement(tagName),
-  addEventListener(type, callback) { documentHandlers.set(type, callback); },
-};
 const analytics = [];
 const clipboardWrites = [];
+const document = { createElement: tagName => new MockElement(tagName) };
 const context = {
   URL,
-  clearTimeout,
   document,
   location: { pathname: "/news" },
   navigator: { clipboard: { writeText: async value => clipboardWrites.push(value) } },
-  setTimeout,
   gtag: (...args) => analytics.push(args),
   window: { clearTimeout() {}, setTimeout() { return 1; } },
 };
+context.window.window = context.window;
 vm.createContext(context);
 vm.runInContext(source, context, { filename: "ai-consult.js" });
 
-const widget = document.body.children[0];
-const menu = widget.querySelector(".ai-consult-menu");
-const button = widget.querySelector(".ai-consult-button");
-const toast = widget.querySelector(".ai-consult-toast");
-const services = widget.querySelector(".ai-consult-services").children;
+const { AI_SERVICES, buildAiUrl, buildConsultPrompt, render } = context.window.AiConsult;
+assert.equal(AI_SERVICES.length, 4);
+assert.deepEqual(Array.from(AI_SERVICES, service => service.id), ["chatgpt", "google_ai_mode", "claude", "perplexity"]);
 
-assert.equal(services.length, 4);
-assert.deepEqual(services.map(item => item.target), ["_blank", "_blank", "_blank", "_blank"]);
-assert.ok(services.every(item => item.rel === "noopener noreferrer"));
-assert.ok(services.every(item => item.getAttribute("role") === "menuitem"));
+const articleA = {
+  title: "テスト記事A",
+  url: "https://external.example/article-a",
+  summary: "プロンプトに含めてはいけない要約",
+};
+const articleB = {
+  title: "別の記事B",
+  url: "https://external.example/article-b",
+  summary: "別の要約",
+};
+const promptA = buildConsultPrompt(articleA);
+const promptB = buildConsultPrompt(articleB);
 
-const prompt = `AI Navigator（ai-navigator.dev）で、最新のAIニュースを調べて要約してください。
-知りたいテーマ：
-期間：`;
-for (const index of [0, 2, 3]) {
-  const url = new URL(services[index].href);
-  assert.equal(url.searchParams.get("q"), prompt);
+assert.ok(promptA.startsWith("【前提】AIに入力する情報は、利用者自身の責任で選別します。"));
+assert.match(promptA, /ai-navigator\.dev/);
+assert.match(promptA, /テスト記事A/);
+assert.doesNotMatch(promptA, /external\.example|プロンプトに含めてはいけない要約/);
+assert.notEqual(promptA, promptB, "記事を切り替えたらプロンプトも変わること");
+assert.match(promptB, /別の記事B/);
+
+for (const service of AI_SERVICES) {
+  const url = new URL(buildAiUrl(service, promptA));
+  assert.equal(url.searchParams.get("q"), promptA, `${service.id} must receive the prompt`);
 }
-assert.equal(services[1].href, "https://gemini.google.com/app");
-assert.equal(new URL(services[1].href).searchParams.has("q"), false);
+const googleUrl = new URL(buildAiUrl(AI_SERVICES[1], promptA));
+assert.equal(googleUrl.searchParams.get("udm"), "50");
+assert.equal(googleUrl.searchParams.get("q"), promptA);
 
-button.dispatch("click");
-assert.equal(menu.hidden, false);
-assert.equal(button.getAttribute("aria-expanded"), "true");
-assert.equal(widget.classList.contains("is-open"), true);
-documentHandlers.get("click")({ target: new MockElement("main") });
-assert.equal(menu.hidden, true);
+const modalContent = new MockElement("div");
+const readBtn = new MockElement("a");
+modalContent.appendChild(readBtn);
+const cardA = render(articleA, readBtn);
+assert.equal(modalContent.children.length, 2);
+assert.equal(modalContent.children[1], cardA, "card must be inserted immediately after the read button");
 
-button.dispatch("click");
-documentHandlers.get("keydown")({ key: "Escape" });
-assert.equal(menu.hidden, true);
-assert.equal(button.focused, true);
+const servicesA = cardA.querySelector(".ai-consult-services").children;
+assert.equal(servicesA.length, 4);
+assert.ok(servicesA.every(link => link.target === "_blank"));
+assert.ok(servicesA.every(link => link.rel === "noopener noreferrer"));
+assert.ok(servicesA.every(link => link.getAttribute("aria-label")?.includes("相談")));
+assert.ok(servicesA.every(link => new URL(link.href).searchParams.get("q") === promptA));
 
-button.dispatch("click");
-services[0].dispatch("click");
-assert.equal(menu.hidden, true);
-assert.equal(JSON.stringify(analytics.at(-1)), JSON.stringify(["event", "ai_consult_click", { ai_service: "chatgpt", page_path: "/news" }]));
+let propagationStopped = false;
+servicesA[0].onclick({ stopPropagation() { propagationStopped = true; } });
+assert.equal(propagationStopped, true);
+assert.equal(JSON.stringify(analytics.at(-1)), JSON.stringify(["event", "ai_consult_click", {
+  ai_service: "chatgpt",
+  item_name: articleA.title,
+  page_path: "/news",
+}]));
 
-button.dispatch("click");
-services[1].dispatch("click");
-await new Promise(resolve => setTimeout(resolve, 0));
-assert.equal(clipboardWrites.at(-1), prompt);
-assert.equal(menu.hidden, true);
-assert.equal(toast.hidden, false);
-assert.match(toast.textContent, /相談内容をコピーしました。Gemini に貼り付けて送信してください/);
-assert.equal(JSON.stringify(analytics.at(-1)), JSON.stringify(["event", "ai_consult_click", { ai_service: "gemini", page_path: "/news" }]));
+const copyA = cardA.querySelector(".ai-consult-copy");
+await copyA.onclick({ stopPropagation() {} });
+assert.equal(clipboardWrites.at(-1), promptA);
+assert.equal(cardA.querySelector(".ai-consult-toast").hidden, false);
+assert.match(cardA.querySelector(".ai-consult-toast").textContent, /コピーしました/);
+assert.equal(analytics.at(-1)[2].ai_service, "copy");
+
+const cardB = render(articleB, readBtn);
+assert.equal(modalContent.children.length, 2, "previous card must be removed rather than duplicated");
+assert.equal(modalContent.children[1], cardB);
+assert.notEqual(cardA, cardB);
+assert.ok(cardB.querySelector(".ai-consult-services").children.every(link => new URL(link.href).searchParams.get("q") === promptB));
 
 context.navigator.clipboard.writeText = async () => { throw new Error("clipboard unavailable"); };
-button.dispatch("click");
-services[1].dispatch("click");
-await new Promise(resolve => setTimeout(resolve, 0));
-assert.match(toast.textContent, /Gemini を開きました。相談内容を入力してください/);
+await cardB.querySelector(".ai-consult-copy").onclick({ stopPropagation() {} });
+assert.match(cardB.querySelector(".ai-consult-toast").textContent, /コピーできませんでした/);
 
 delete context.gtag;
-button.dispatch("click");
-services[2].dispatch("click");
-assert.equal(menu.hidden, true, "service click must work without gtag");
+servicesA[2].onclick({ stopPropagation() {} });
 
 for (const htmlFile of ["index.html", "news.html", "official.html", "about.html"]) {
   const html = fs.readFileSync(path.join(rootDir, htmlFile), "utf8");
   assert.equal((html.match(/<script src="ai-consult\.js"><\/script>/g) || []).length, 1, `${htmlFile} must load ai-consult.js once`);
 }
 
-const consultCss = style.slice(style.indexOf("/* =============================================\n   AI相談"), style.indexOf(".top-section-heading h2 span"));
-assert.match(consultCss, /\.ai-consult\s*\{[^}]*position:\s*fixed;[^}]*right:\s*16px;[^}]*bottom:\s*calc\(16px \+ env\(safe-area-inset-bottom\)\);[^}]*z-index:\s*10001;/s);
-assert.match(consultCss, /\.ai-consult-button\s*\{[^}]*height:\s*48px;/s);
-assert.match(consultCss, /\.ai-consult-menu\s*\{[^}]*bottom:\s*calc\(100% \+ 12px\);[^}]*width:\s*min\(256px, calc\(100vw - 32px\)\);/s);
-assert.match(consultCss, /@media print\s*\{\s*\.ai-consult\s*\{\s*display:\s*none;/s);
-assert.doesNotMatch(consultCss, /#[0-9a-f]{3,8}\b|rgba?\(/i, "AI consult CSS must use existing color variables");
-assert.match(source, /aria-haspopup="menu"/);
-assert.match(source, /role="menu"/);
+assert.match(appSource, /window\.AiConsult\?\.render\(article, readBtn\)/);
+assert.match(officialSource, /window\.AiConsult\?\.render\(article, readBtn\)/);
+assert.doesNotMatch(source, /document\.body\.appendChild/);
+assert.match(source, /new URL\(service\.baseUrl\)/);
+assert.match(source, /role="status" aria-live="polite"/);
 assert.match(source, /aria-hidden="true"/);
-assert.match(source, /普段使ってるAIに最新AIニュースを聞けます/);
+assert.match(source, /リンク先で入力した内容を当サイトが取得することはありません/);
 
-console.log(JSON.stringify({ services: services.length, clipboardWrites: clipboardWrites.length, analyticsEvents: analytics.length, pages: 4, responsiveMenuWidth: "min(256px, calc(100vw - 32px))" }, null, 2));
+const consultCssStart = style.indexOf("/* =============================================\n   AI相談");
+const consultCssEnd = style.indexOf(".top-section-heading h2 span", consultCssStart);
+const consultCss = style.slice(consultCssStart, consultCssEnd);
+assert.match(consultCss, /\.ai-consult-card\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;/s);
+assert.match(consultCss, /\.ai-consult-services\s*\{[^}]*flex-direction:\s*column;/s);
+assert.match(consultCss, /@media \(max-width:\s*375px\)/);
+assert.doesNotMatch(consultCss, /position:\s*fixed/);
+assert.doesNotMatch(consultCss, /#[0-9a-f]{3,8}\b|rgba?\(/i, "AI consult CSS must use existing color variables");
+
+console.log(JSON.stringify({
+  services: AI_SERVICES.length,
+  googleParams: Array.from(googleUrl.searchParams.keys()),
+  cardCountAfterArticleSwitch: modalContent.children.length - 1,
+  clipboardSuccessAndFailure: true,
+  pagesLoadingScript: 4,
+  responsiveWidth: 375,
+}, null, 2));
