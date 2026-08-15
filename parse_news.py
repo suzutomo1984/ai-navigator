@@ -34,7 +34,7 @@ INDEX_FILE = Path(__file__).parent / "index.html"
 ABOUT_FILE = Path(__file__).parent / "about.html"
 NEWS_FILE = Path(__file__).parent / "news.html"
 OFFICIAL_FILE = Path(__file__).parent / "official.html"
-BASE_URL = "https://ai-news-eev.pages.dev"
+BASE_URL = "https://ai-navigator.dev"
 
 # app.js の isValidArticle と同じURL検証。描画件数と掲載件数が再びずれないよう、
 # どちらかの仕様を変更するときは両方を同期すること。

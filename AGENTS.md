@@ -14,7 +14,7 @@ AI・自動化ニュースを毎日自動収集して表示するニュースサ
   - `.github/scripts/auto_news.py`: RSS収集 → Gemini要約 → MD生成
   - `.github/workflows/auto-news.yml`（収集）→ `personal-pick.yml`（変換+デプロイ）
 
-このリポは my-vault の**サブモジュール**。本番配信は `gh-pages` ブランチ → Cloudflare Pages（https://ai-news-eev.pages.dev）。
+このリポは my-vault の**サブモジュール**。本番配信は `gh-pages` ブランチ → Cloudflare Pages（https://ai-navigator.dev）。
 
 ---
 
@@ -64,7 +64,7 @@ python parse_news.py
 
 ### 「修正したのに本番の見た目が変わらない」
 → **キャッシュと結論する前に実物を見て切り分けろ**（思い込みで「キャッシュ」と断定しない）。
-- まず本番に修正が届いているか: `curl -sf "https://ai-news-eev.pages.dev/style.css?nc=$(date +%s)" | grep "<修正の目印>"`
+- まず本番に修正が届いているか: `curl -sf "https://ai-navigator.dev/style.css?nc=$(date +%s)" | grep "<修正の目印>"`
 - 届いている → ブラウザ/エッジのキャッシュ。スマホはシークレットタブ / `?v=xxx` 付きURL / サイトデータ削除で新版を確認。
 - 届いていない → デプロイ未完了（Cloudflareビルド待ち20〜60秒）か、そもそも別カードが未修正（実機スクショ/動画のフレームを実際に見て、どのカードタイプが崩れているか特定する。CSSは `.paper-cell-onside`(サイド) と `.paper-cell-small`(メイン下段) で別物。片方直してももう片方は残る）。
 
@@ -76,7 +76,7 @@ python parse_news.py
 
 ### ローカル検証（本番に出す前に必ず）
 1. **no-cache サーバーで配信**。`python -m http.server` はブラウザがキャッシュして古い版を掴むので不可。`Cache-Control: no-store` を返す簡易サーバーを別ポート（例8799）で立てる。
-2. **本番同等データで確認**したいなら gh-pages の articles.json を落とす: `curl -sf "https://ai-news-eev.pages.dev/articles.json" -o articles.json`（gitignore対象なのでコミットされない）。
+2. **本番同等データで確認**したいなら gh-pages の articles.json を落とす: `curl -sf "https://ai-navigator.dev/articles.json" -o articles.json`（gitignore対象なのでコミットされない）。
 3. **レスポンシブ確認は Playwright CLI を使う**（Claude-in-Chrome は viewport が効かず `@media` が発火しない）。
    ```bash
    playwright-cli open && playwright-cli resize 390 844   # スマホ幅

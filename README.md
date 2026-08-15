@@ -2,7 +2,7 @@
 
 AI・自動化・開発ツール領域のニュースを自動収集し、ブラウザで閲覧できるパーソナルニュースリーダー。
 
-**本番URL**: https://ai-news-eev.pages.dev
+**本番URL**: https://ai-navigator.dev
 
 ---
 

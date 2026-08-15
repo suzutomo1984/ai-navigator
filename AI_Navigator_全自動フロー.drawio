@@ -67,7 +67,7 @@
         <mxCell id="e10" edge="1" parent="1" source="10" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;strokeWidth=2;" target="21" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="70" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ff8000;strokeColor=#cc6600;fontColor=#1a1a1a;fontSize=11;" value="&lt;b&gt;Cloudflare Pages&lt;/b&gt;&lt;br&gt;gh-pagesの変更を検知して&lt;br&gt;Webサイトを自動ビルド&amp;amp;公開&lt;br&gt;ai-news-eev.pages.dev" vertex="1">
+        <mxCell id="70" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ff8000;strokeColor=#cc6600;fontColor=#1a1a1a;fontSize=11;" value="&lt;b&gt;Cloudflare Pages&lt;/b&gt;&lt;br&gt;gh-pagesの変更を検知して&lt;br&gt;Webサイトを自動ビルド&amp;amp;公開&lt;br&gt;ai-navigator.dev" vertex="1">
           <mxGeometry height="80" width="240" x="610" y="750" as="geometry" />
         </mxCell>
         <mxCell id="e70" edge="1" parent="1" source="43" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#cc6600;strokeWidth=2;fontSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="70" value="gh-pages 監視&lt;br&gt;自動デプロイ">

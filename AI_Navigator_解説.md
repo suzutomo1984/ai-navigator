@@ -14,7 +14,7 @@ tags: [ai-navigator, github-actions, 解説]
 AI Navigatorは、毎朝自動でAIニュースを収集・要約し、Webサイトとして公開するシステム。
 人が何もしなくても、スケジュールに従って収集→要約→公開まで全自動で完結する。
 
-**本番URL**: https://ai-news-eev.pages.dev
+**本番URL**: https://ai-navigator.dev
 **3つのページ**: 📰 AIニュース / 📢 公式リリース / 🌟 GitHub Trending
 
 ---
@@ -97,7 +97,7 @@ AI Navigatorは、毎朝自動でAIニュースを収集・要約し、Webサイ
 
 - `suzutomo1984/ai-navigator` の `gh-pages` ブランチを常時監視
 - ブランチの変更を検知すると自動でビルド＆公開
-- 公開URL: `ai-news-eev.pages.dev`
+- 公開URL: `ai-navigator.dev`
 
 ---
 
