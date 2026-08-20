@@ -22,13 +22,13 @@
   'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
   })(window,document,'script','dataLayer','GTM-NNQDZVDZ');</script>
   <!-- End Google Tag Manager -->
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-7JVX326HRP"></script>
   <script>
+    // GTM移行後もJS側の gtag(...) 呼び出しを生かすためのスタブ。
+    // 実体は dataLayer.push なので、GTM がそのまま受け取る。
+    // ⚠️ これを消すと app.js の typeof ガードが false になり
+    //    select_content / select_item が静かに停止する（JSエラーは出ない）。
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-7JVX326HRP');
   </script>
   <title>作り方 | AI Navigator — 非エンジニアがAIと言葉だけで作った全自動サイト</title>
   <meta name="description" content="AI Navigatorは、非エンジニアがAIとの対話だけで作り、月0円・全自動で毎日更新されているサイトです。仕組みと数字をそのまま公開しています。">
