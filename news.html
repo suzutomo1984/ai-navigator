@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- 旧ドメイン(ai-news-eev.pages.dev)からの来訪を独自ドメインへ転送する。
+       note記事・過去のSNS投稿に旧URLが残っており、Cloudflare Pagesでは
+       pages.dev を301転送する手段が無いため（2026-08-16に_redirects・
+       Redirect Rulesの両方を実測して不可を確認）、クライアント側で転送する。
+       GA4より前に置き、旧ドメインでの計測発火とチラつきを防ぐ。 -->
+  <script>
+    (function () {
+      if (location.hostname === "ai-news-eev.pages.dev") {
+        location.replace("https://ai-navigator.dev" + location.pathname + location.search + location.hash);
+      }
+    })();
+  </script>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-NNQDZVDZ');</script>
+  <!-- End Google Tag Manager -->
+  <script>
+    // GTM移行後もJS側の gtag(...) 呼び出しを生かすためのスタブ。
+    // 実体は dataLayer.push なので、GTM がそのまま受け取る。
+    // ⚠️ これを消すと app.js の typeof ガードが false になり
+    //    select_content / select_item が静かに停止する（JSエラーは出ない）。
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+  </script>
+  <title>AIニュース一覧｜note・Zenn・ITmediaなどから毎日自動収集 | AI Navigator</title>
+  <meta name="description" content="生成AI・LLM・自動化の最新ニュースや活用事例を日本語で毎日配信。カテゴリ・日付・キーワードで検索できます。">
+  <meta property="og:title" content="AIニュース一覧｜note・Zenn・ITmediaなどから毎日自動収集 | AI Navigator">
+  <meta property="og:description" content="生成AI・LLM・自動化の最新ニュースや活用事例を日本語で毎日配信。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ai-navigator.dev/news">
+  <meta property="og:image" content="https://ai-navigator.dev/ogp.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="canonical" href="https://ai-navigator.dev/news">
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NNQDZVDZ"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <header id="header">
+    <a href="/" id="logo">
+      <span id="logo-icon">Ai</span>
+      <div id="logo-group">
+        <span id="logo-text">AI Navigator</span>
+        <span id="logo-tagline">AIニュースを、現場の言葉に。</span>
+      </div>
+    </a>
+
+    <nav id="tabbar">
+      <a class="tab-btn" href="/">🏠 TOP</a>
+      <button class="tab-btn active" data-tab="latest">📰 AIニュース</button>
+      <a class="tab-btn" href="/official">📦 リリースノート</a>
+      <a class="tab-btn" href="/about">🛠️ 作り方</a>
+    </nav>
+
+    <div id="search-wrapper">
+      <span id="search-icon">🔍</span>
+      <input type="text" id="search-input" placeholder="記事を検索..." autocomplete="off" spellcheck="false">
+    </div>
+    <button id="sidebar-toggle" aria-label="フィルターを開く">☰</button>
+  </header>
+
+  <nav id="bottom-nav">
+    <a class="bnav-item" href="/">
+      <span class="bnav-icon">🏠</span>
+      <span class="bnav-label">TOP</span>
+    </a>
+    <a class="bnav-item active" href="/news">
+      <span class="bnav-icon">📰</span>
+      <span class="bnav-label">ニュース</span>
+    </a>
+    <a class="bnav-item" href="/official">
+      <span class="bnav-icon">📦</span>
+      <span class="bnav-label">リリース</span>
+    </a>
+    <a class="bnav-item" href="/about">
+      <span class="bnav-icon">🛠️</span>
+      <span class="bnav-label">作り方</span>
+    </a>
+  </nav>
+
+  <div id="article-list-start"></div>
+  <div id="mobile-category-bar">
+    <div id="mobile-cat-scroll"><!-- app.js が動的に生成 --></div>
+    <button id="mob-date-btn">📅 <span id="mob-date-label">日付</span></button>
+  </div>
+  <div id="mob-date-dropdown">
+    <div id="mob-date-list"></div>
+  </div>
+
+  <div id="app-layout">
+    <aside id="sidebar">
+      <section class="sidebar-section">
+        <ul id="category-filter"></ul>
+      </section>
+      <div class="sidebar-divider"></div>
+      <section class="sidebar-section">
+        <ul id="date-filter"></ul>
+      </section>
+    </aside>
+
+    <main id="main">
+      <section class="page-guide page-guide--list-heading" aria-labelledby="news-page-title">
+        <h1 id="news-page-title">AIニュース一覧｜note・Zenn・ITmediaなどから毎日自動収集</h1>
+      </section>
+
+      <div id="masthead">
+        <div id="masthead-top">
+          <div id="masthead-brand">
+            <span id="masthead-title">AI NAVIGATOR</span>
+            <span id="masthead-tagline">AIニュースを、現場の言葉に。</span>
+          </div>
+          <div id="masthead-issue">
+            <span id="masthead-issue-label">ISSUE</span>
+            <span id="masthead-issue-no">----</span>
+          </div>
+        </div>
+        <div id="masthead-rule"></div>
+        <div id="masthead-digest">
+          <span id="digest-label">TODAY'S DIGEST</span>
+          <span id="digest-stats">読み込み中...</span>
+        </div>
+      </div>
+      <div id="stats-bar">読み込み中...</div>
+      <div id="articles-container">
+        <div id="empty-state">
+          <div class="empty-icon">⏳</div>
+          <div>読み込み中...</div>
+        </div>
+      </div>
+      <div id="load-more-wrapper" style="display:none">
+        <button id="load-more-btn">もっと見る</button>
+      </div>
+
+      <div class="page-guide">
+        <section class="page-guide-section">
+          <h2>このページについて</h2>
+          <!-- NEWS_ARTICLE_COUNT:start -->
+          <p>AI Navigator は、生成AI・LLM・業務自動化に関する記事を毎日自動で収集し、AIが要約・分類して一覧にしているページです。現在 <strong>7,020本</strong> を掲載しています。</p>
+<!-- NEWS_ARTICLE_COUNT:end -->
+          <p>収集元は note・Zenn・Qiita・Dev.to といった実務者の発信と、ITmedia AI+・Business Insider Japan・Impress Watch などの国内メディア、OpenAI Blog・Google AI Blog・TechCrunch AI などの海外一次情報です。<strong>「実際に使ってみた人が書いたもの」を中心に集めている</strong>のが特徴です。</p>
+          <p>記事は毎日朝と夕方の2回更新されます。要約は生成AIが自動で作成しているため、正確な内容は必ず元記事でご確認ください。</p>
+        </section>
+
+        <section class="page-guide-section">
+          <h2>このページの使い方</h2>
+          <ul>
+            <li><strong>カテゴリで絞る</strong> — 左のサイドバー（スマホは上部のタブ）から、業務効率化・営業マーケなど9カテゴリで絞り込めます</li>
+            <li><strong>日付で絞る</strong> — 特定の日に何が出たかを追えます</li>
+            <li><strong>キーワードで探す</strong> — 上部の検索窓でタイトル・要約を横断検索できます</li>
+            <li><strong>記事カードをタップ</strong> — 要約が開き、そこから元記事へ移動できます</li>
+          </ul>
+        </section>
+
+        <section class="page-guide-section">
+          <h2>カテゴリの意味</h2>
+          <div class="page-guide-table-wrap">
+            <table>
+              <thead>
+                <tr><th>カテゴリ</th><th>何を集めているか</th></tr>
+              </thead>
+              <tbody>
+                <tr><th>⚡ 業務効率化</th><td>日々の作業をAIで短縮した事例。文書作成・データ整理・定型業務の自動化など</td></tr>
+                <tr><th>🏢 経営・戦略</th><td>AI導入の判断材料。市場動向・投資・組織へのAI導入など経営レイヤーの話題</td></tr>
+                <tr><th>🔧 AI技術・ツール</th><td>新しいモデルやツールの解説。使い方・比較・技術的な仕組み</td></tr>
+                <tr><th>📈 営業・マーケ</th><td>集客・商談・広告運用へのAI活用。SEO・SNS・コンテンツ制作を含む</td></tr>
+                <tr><th>🧠 情報管理・ナレッジ</th><td>社内文書やナレッジの整理・検索・共有をAIで行う話題</td></tr>
+                <tr><th><a href="/official">📦 リリースノート</a></th><td>AIツール・SDKの公式アップデート情報（<a href="/official"><code>/official</code></a> にもまとめています）</td></tr>
+                <tr><th>📋 経理・総務・管理</th><td>請求書処理・経費精算・労務などバックオフィス業務の自動化</td></tr>
+                <tr><th>💰 副業・フリーランス</th><td>個人がAIを使って収入を得る事例。受託・自動化ツール販売など</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="article-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close-btn" aria-label="閉じる">✕</button>
+      <div class="modal-thumb-wrap" id="modal-thumb-wrap"></div>
+      <div class="modal-content">
+        <div class="modal-meta" id="modal-meta"></div>
+        <h2 class="modal-title" id="modal-title"></h2>
+        <p class="modal-summary" id="modal-summary"></p>
+        <a class="modal-read-btn" id="modal-read-btn" target="_blank" rel="noopener noreferrer">記事を読む →</a>
+      </div>
+    </div>
+  </div>
+
+  <footer id="site-footer">
+    <p class="footer-title">AI Navigator</p>
+    <p class="footer-desc">中小企業の経営者・現場担当者のためのAIビジネスニュース。主要なAI情報源から記事を毎日自動で収集し、生成AIが要約・分類して配信しています。</p>
+    <p class="footer-meta">運営: tomomo / 毎日自動更新 / <a href="/">TOP</a> / <a href="/news">AIニュース</a> / <a href="/official">リリースノート</a> / <a href="/about">作り方</a></p>
+  </footer>
+
+  <script src="app.js"></script>
+  <script src="ai-consult.js"></script>
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "899bb0ef97f74baa90f5584bb37ff9c4"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>
