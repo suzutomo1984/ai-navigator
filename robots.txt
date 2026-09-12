@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://ai-navigator.dev/sitemap.xml
