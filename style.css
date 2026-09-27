@@ -2277,19 +2277,13 @@ body::before { content: none; }
 .top-editorial-layout {
   width: min(1280px, calc(100% - 40px));
   margin: 76px auto 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 310px;
-  gap: 48px;
-  /* align-items:start だと左右が独立して伸び、短い方の下に空白が残る
-     （Phase 5で数字グリッドを外し左カラムが短くなって顕在化した）。
-     stretch にして両カラムの高さを揃える。 */
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   align-items: stretch;
 }
-.top-editorial-main { min-width: 0; }
-/* グリッドの align-items:stretch で左カラムと高さが揃う。
-   sticky を付けると stretch が無効化されて空白が戻るので付けない。 */
 .top-section { margin-top: 72px; }
-.top-editorial-main > .top-section:first-child { margin-top: 0; }
+.top-editorial-layout > .top-section:first-child { margin-top: 0; }
 .top-section-heading { margin-bottom: 22px; }
 .top-section-heading-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
 .top-text-link { color: var(--ink); text-decoration: none; font-size: 12px; font-weight: 700; }
@@ -2390,20 +2384,16 @@ body::before { content: none; }
 .top-category-tile small { color: var(--ink); margin-top: 2px; }
 .top-category-tile b { color: var(--ink); }
 
-.top-release-sidebar {
-  position: sticky;
-  top: calc(var(--header-h) + 24px);
-  padding: 22px;
-  background: var(--paper);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-.top-trending-section { padding-bottom: 24px; border-bottom: 1px solid var(--border-hover); }
-.top-release-section { padding-top: 24px; }
+.top-trending-section, .top-release-section { min-width: 0; }
 .top-trending-section .top-section-heading,
 .top-release-section .top-section-heading { margin-bottom: 16px; }
 .top-trending-section .top-section-heading h2 { font-size: 20px; }
-.top-trending-list { border-top: 1px solid var(--border); }
+.top-trending-list, .top-release-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 24px;
+  border-top: 1px solid var(--border);
+}
 .top-trending-item {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) 14px;
@@ -2420,9 +2410,9 @@ body::before { content: none; }
   place-items: center;
   width: 24px;
   height: 24px;
-  border-radius: 50%;
-  background: var(--paper);
-  color: var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--brand-red);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
   font-weight: 700;
@@ -2443,22 +2433,20 @@ body::before { content: none; }
   overflow: hidden;
   margin-top: 6px;
   color: var(--ink);
-  font-size: 10px;
-  line-height: 1.6;
-  white-space: pre-line;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: normal;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 5;
+  -webkit-line-clamp: 2;
 }
-.top-trending-meta { display: block; margin-top: 7px; color: var(--ink); font-size: 9px; }
+.top-trending-meta { display: block; overflow: hidden; margin-top: 6px; color: var(--ink-muted); font-size: 10px; line-height: 1.4; white-space: nowrap; text-overflow: ellipsis; }
 .top-trending-external { color: var(--ink); font-size: 11px; }
-.top-release-list { border-top: 1px solid var(--border); }
-.top-release-item { display: block; padding: 16px 0; border-bottom: 1px solid var(--border); color: var(--ink); text-decoration: none; }
-.top-release-item:hover h3 { color: var(--ink); }
-.top-release-item > div { display: flex; justify-content: space-between; gap: 8px; color: var(--ink); font-size: 9px; }
-.top-release-item > div span { max-width: 64%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.top-release-item h3 { margin-top: 7px; font-size: 12px; line-height: 1.55; transition: color .15s; }
-.top-release-all { display: inline-block; margin-top: 18px; }
-
+.top-release-item { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; padding: 14px 0; border-bottom: 1px solid var(--border); color: var(--ink); text-decoration: none; }
+.top-release-identity { display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; }
+.top-release-identity strong { overflow: hidden; color: var(--ink); font-size: 13px; font-weight: 600; text-overflow: ellipsis; }
+.top-release-identity small { flex: none; color: var(--ink-muted); font-size: 11px; }
+.top-release-item time { flex: none; color: var(--ink-muted); font-size: 10px; }
+.top-release-item:hover .top-release-identity strong { color: var(--brand-red); }
 .top-numbers-section,
 .top-how-section,
 .top-note-section { width: min(1120px, calc(100% - 40px)); margin-left: auto; margin-right: auto; }
@@ -2505,7 +2493,7 @@ body::before { content: none; }
 .top-release-section, .top-site-info { background: var(--paper); }
 
 .article-card, .top-pickup-card, .top-news-card, .top-category-tile,
-.top-number-card, .top-step, .top-stat, .top-trending-item, .top-release-item {
+.top-number-card, .top-step, .top-stat {
   background: var(--paper);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -2564,13 +2552,11 @@ body::before { content: none; }
   .top-stats-row { grid-template-columns: repeat(4, 1fr); row-gap: 18px; }
   .top-stat:nth-child(5) { border-left: 0; }
   .top-news-grid { grid-template-columns: repeat(2, 1fr); }
-  .top-editorial-layout { grid-template-columns: minmax(0, 1fr) 280px; gap: 28px; }
+  .top-trending-list, .top-release-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 900px) {
   .top-hero-content h1 { white-space: normal; }
-  .top-editorial-layout { grid-template-columns: 1fr; }
-  .top-release-sidebar { position: static; }
   .top-number-grid { grid-template-columns: repeat(3, 1fr); }
   .top-site-info { align-items: flex-start; flex-direction: column; }
   #site-footer.top-site-footer { grid-template-columns: repeat(2, 1fr); }
@@ -2612,6 +2598,7 @@ body::before { content: none; }
   .top-note-section,
   .top-site-info { width: calc(100% - 24px); }
   .top-editorial-layout { margin-top: 54px; }
+  .top-trending-list, .top-release-list { grid-template-columns: 1fr; }
   .top-section { margin-top: 54px; }
   .top-section.top-pick-section { margin-top: 0; padding: 22px 0 54px; }
   .top-section-heading h2,
@@ -2861,4 +2848,59 @@ button, input, select, textarea { color: var(--ink); }
   .top-morning-contents li { padding: 3px 0; font-size: 14px; }
   .top-morning-read { min-height: 40px; font-size: 14px; }
   .daily-wrap { padding-top: calc(var(--header-h) + 10px); padding-bottom: 90px; }
+}
+
+/* Full-width newspaper sections on the landing page. */
+.top-editorial-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.top-editorial-layout > .top-section { width: 100%; margin: 56px 0 0; }
+.top-editorial-layout > .top-section:first-child { margin-top: 0; }
+.top-release-list, .top-trending-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 24px;
+  border-top: 1px solid var(--rule);
+}
+.top-release-item, .top-trending-item {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.top-trending-item { padding: 15px 0; }
+.top-trending-rank { color: var(--brand-red); background: transparent; border-radius: 0; }
+.top-trending-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.top-trending-meta {
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.top-release-item { padding: 14px 0; }
+.top-release-identity { flex: 1; }
+.top-release-item time { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 1100px) {
+  .top-release-list, .top-trending-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 768px) {
+  .top-editorial-layout { width: calc(100% - 24px); margin-top: 54px; }
+  .top-editorial-layout > .top-section { margin-top: 42px; }
+  .top-editorial-layout > .top-section:first-child { margin-top: 0; }
+  .top-release-list, .top-trending-list { grid-template-columns: 1fr; }
 }

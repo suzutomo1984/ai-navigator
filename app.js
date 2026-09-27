@@ -508,6 +508,19 @@ function topTrendingSummary(repo) {
   return summary.split(/\r?\n/).slice(0, 5).join("\n");
 }
 
+function topReleaseIdentity(article) {
+  const title = String(article.title || "").trim();
+  const summary = String(article.summary || "").trim();
+  const source = String(article.source || "公式リリース").trim();
+  const version = `${title}\n${summary}`.match(/\bv?\d+(?:\.\d+)+(?:-[\w.]+)?/i)?.[0] || "";
+  const titleProduct = version ? title.replace(version, "").replace(/[\s:：·—–-]+$/, "").trim() : title;
+  const sourceProduct = source.replace(/\s+releases?$/i, "").trim();
+  const product = !titleProduct || /releases?$/i.test(titleProduct)
+    ? sourceProduct || title || "公式リリース"
+    : titleProduct;
+  return { product, version: version || title };
+}
+
 function renderTopTrending(repos) {
   return repos.slice(0, 5).map((repo, index) => {
     const stars = Number(repo.stars);
@@ -613,11 +626,14 @@ function renderLanding() {
   }
 
   if (releasesEl) {
-    releasesEl.innerHTML = content.recentReleases.map(article => `
-      <a class="top-release-item" href="${escAttr(safeExternalUrl(article.url))}" target="_blank" rel="noopener noreferrer">
-        <div><span>${escHtml(article.source || "公式リリース")}</span><time datetime="${escAttr(article.date)}">${escHtml(formatTopDate(article.date))}</time></div>
-        <h3>${escHtml(article.title)}</h3>
-      </a>`).join("");
+    releasesEl.innerHTML = content.recentReleases.map(article => {
+      const release = topReleaseIdentity(article);
+      return `
+        <a class="top-release-item" href="${escAttr(safeExternalUrl(article.url))}" target="_blank" rel="noopener noreferrer">
+          <span class="top-release-identity"><strong>${escHtml(release.product)}</strong><small>${escHtml(release.version)}</small></span>
+          <time datetime="${escAttr(article.date)}">${escHtml(formatTopDate(article.date))}</time>
+        </a>`;
+    }).join("");
   }
 
   if (categoriesEl) {
