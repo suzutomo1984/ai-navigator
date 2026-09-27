@@ -42,6 +42,25 @@ class MorningEditionTests(unittest.TestCase):
         self.assertEqual(len(updated), 2)
         self.assertEqual(updated[0]["generatedAt"], "new")
 
+    def test_rendered_week_only_lists_existing_morning_issues(self):
+        rows = [
+            {"date": "2026-09-27", "edition": "am", "selectedCount": 10},
+            {"date": "2026-09-27", "edition": "pm", "selectedCount": 8},
+            {"date": "2026-09-26", "edition": "am", "selectedCount": 9},
+        ]
+        page = edition.render_html(
+            date(2026, 9, 27), "am", [], [],
+            {"lead_line": "今日の一言", "summary": "要点", "deep_topics": []},
+            "2026-09-27T08:11:00+09:00", rows,
+        )
+        self.assertIn("今週の朝刊</h2>", page)
+        self.assertIn("9/27 (日)", page)
+        self.assertIn("9/26 (土)", page)
+        self.assertNotIn("9/25", page)
+        self.assertNotIn("夕刊", page)
+        self.assertIn("次の朝刊は <b>明朝8時ごろ</b>", page)
+        self.assertNotIn("次の夕刊", page)
+
     def test_jev_or_gemini_failure_creates_no_issue_and_keeps_editions(self):
         articles = [{"id": "one", "title": "Example", "summary": "Example summary", "source": "Example", "url": "https://example.com/a", "addedAt": "2026-09-27T08:00:00+09:00", "date": "2026-09-27"}]
         for failure_target in ("run_jev", "generate_copy"):

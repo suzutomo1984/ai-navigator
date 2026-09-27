@@ -566,10 +566,15 @@ function renderLanding() {
       .then(response => response.ok ? response.json() : Promise.reject(new Error("editions unavailable")))
       .then(rows => {
         if (!Array.isArray(rows) || rows.length === 0) return;
-        const latest = [...rows].sort((a, b) => `${b.date || ""}-${b.edition || ""}`.localeCompare(`${a.date || ""}-${a.edition || ""}`))[0];
-        if (!latest || !/^\d{4}-\d{2}-\d{2}$/.test(latest.date || "") || !["am", "pm"].includes(latest.edition)) return;
+        const latest = rows.filter(row => row.edition === "am").sort((a, b) => `${b.date || ""}`.localeCompare(`${a.date || ""}`))[0];
+        if (!latest || !/^\d{4}-\d{2}-\d{2}$/.test(latest.date || "")) return;
         const link = `daily/${encodeURIComponent(latest.date)}-${encodeURIComponent(latest.edition)}.html`;
-        morningEditionEl.innerHTML = `<div class="top-morning-card"><div><p class="top-morning-kicker">${latest.edition === "am" ? "TODAY'S MORNING EDITION" : "LATEST EDITION"}</p><h2>${escHtml(latest.date.slice(5).replace("-", "/"))} ${latest.edition === "am" ? "朝刊" : "夕刊"}</h2><p>${escHtml(latest.leadLine || latest.summaryExcerpt || "AIニュースを読者向けに選んだ朝刊です。")}</p></div><a class="top-action top-action-primary" href="${link}">朝刊を読む <span aria-hidden="true">→</span></a></div>`;
+        const [, year, month, day] = latest.date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        const weekday = "日月火水木金土"[new Date(Date.UTC(Number(year), Number(month) - 1, Number(day))).getUTCDay()];
+        const updatedAt = latest.generatedTime || (latest.generatedAt ? new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(latest.generatedAt)) : "");
+        const meta = `${latest.candidateCount}本から${latest.selectedCount}本を選びました${updatedAt ? `・更新 ${updatedAt}` : ""}`;
+        const excerpt = (latest.summaryExcerpt || "").trim();
+        morningEditionEl.innerHTML = `<div class="top-morning-card"><p class="top-morning-kicker">今日の朝刊</p><h2>${Number(month)}月${Number(day)}日（${weekday}）朝刊</h2><p class="top-morning-meta">${escHtml(meta)}</p><p class="top-morning-lead">${escHtml(latest.leadLine || "")}</p><p class="top-morning-summary">${escHtml(excerpt)}${excerpt ? "…" : ""}</p><a class="top-action top-action-primary top-morning-read" href="${link}">朝刊を読む（約5分）</a></div>`;
         morningEditionEl.hidden = false;
       })
       .catch(() => { morningEditionEl.hidden = true; morningEditionEl.replaceChildren(); });
