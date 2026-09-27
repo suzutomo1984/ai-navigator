@@ -18,12 +18,12 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(
-  `${appSource}\n;globalThis.__phase2TestApi = { compareArticlesNewestFirst, getLandingContent, landingThumbnail, topBenefitLabel };`,
+  `${appSource}\n;globalThis.__phase2TestApi = { compareArticlesNewestFirst, getLandingContent, landingThumbnail, topBenefitLabel, pickupHeading };`,
   context,
   { filename: "app.js" },
 );
 
-const { getLandingContent, landingThumbnail, topBenefitLabel } = context.__phase2TestApi;
+const { getLandingContent, landingThumbnail, topBenefitLabel, pickupHeading } = context.__phase2TestApi;
 const expected = getLandingContent(data.articles, data.categories);
 
 // 入力順を反転しても、3種の記事選択とカテゴリ順が変わらないことを保証する。
@@ -54,14 +54,18 @@ assert.ok(expected.recentReleases.every(article => article.isOfficial));
 assert.ok(expected.topCategories.length >= 5 && expected.topCategories.length <= 9, `topCategories should be 6-9, got ${expected.topCategories.length}`);
 assert.match(landingThumbnail({ thumbnail: "" }, "test-thumb"), /top-thumb-placeholder/);
 
-// must-readを先頭にし、PICK不足時は重複せず最新記事で4枠を埋める。
+// must-readを先頭にし、PICK不足時も別日を混ぜず同日記事だけで枠を埋める。
 const fallbackContent = getLandingContent([
   { id: "latest", date: "2026-08-12", addedAt: "2026-08-12T02:00:00Z" },
   { id: "must", date: "2026-08-11", addedAt: "2026-08-11T02:00:00Z", isPick: true, pickPriority: "must-read" },
   { id: "pick", date: "2026-08-11", addedAt: "2026-08-11T01:00:00Z", isPick: true },
   { id: "older", date: "2026-08-10", addedAt: "2026-08-10T01:00:00Z" },
 ], []);
-assert.deepEqual(Array.from(fallbackContent.pickup, article => article.id), ["must", "pick", "latest", "older"]);
+assert.deepEqual(Array.from(fallbackContent.pickup, article => article.id), ["must", "pick"]);
+assert.ok(Array.from(fallbackContent.pickup, article => article.id).every(id => id !== "latest" && id !== "older"));
+assert.equal(fallbackContent.pickupDate, "2026-08-11");
+assert.equal(pickupHeading(fallbackContent.pickupDate, "2026-08-12"), "8月11日の重要4本");
+assert.equal(pickupHeading("2026-08-12", "2026-08-12"), "今日の重要4本");
 
 assert.deepEqual([
   "productivity", "strategy", "sales-marketing", "back-office", "info-mgmt",
