@@ -6,6 +6,14 @@ import argparse
 import os
 
 class NoCacheHandler(SimpleHTTPRequestHandler):
+    def translate_path(self, path):
+        translated = Path(super().translate_path(path))
+        if not translated.suffix and not translated.exists():
+            html_path = translated.with_suffix(".html")
+            if html_path.is_file():
+                return str(html_path)
+        return str(translated)
+
     def end_headers(self):
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         self.send_header("Pragma", "no-cache")
