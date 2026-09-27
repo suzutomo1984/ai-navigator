@@ -2296,6 +2296,8 @@ body::before { content: none; }
   margin: 0 auto;
   padding: 30px 0 72px;
 }
+#top-after-edition[hidden] { display: none !important; }
+#top-after-edition .top-pick-summary { margin: 8px 0 0; font-size: 13px; text-align: left; }
 .top-pickup {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2604,6 +2606,8 @@ body::before { content: none; }
   .top-section-heading h2,
   .top-stats-heading h2 { font-size: 21px; }
   .top-section-heading-row { align-items: flex-start; }
+  #top-after-edition .top-section-heading-row { display: block; }
+  #top-after-edition .top-text-link { display: inline-block; margin-top: 8px; }
   .top-pickup { grid-template-columns: 1fr; gap: 12px; }
   .top-pickup-card { grid-template-columns: 104px minmax(0, 1fr); min-height: 158px; }
   .top-pickup-thumb { min-height: 0; }

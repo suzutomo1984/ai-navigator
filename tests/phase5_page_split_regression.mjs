@@ -22,11 +22,13 @@ for (const id of requiredIds) {
 }
 
 assert.doesNotMatch(indexSource, /TOP_STATS_GRID|top-number-grid/);
-for (const marker of ["TOP_STATS_BAR", "TOP_STATS_COUNT", "TOP_HERO_STATS", "JSON_LD"]) {
+for (const marker of ["TOP_STATS_BAR", "TOP_STATS_COUNT", "JSON_LD"]) {
   assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:start -->`, "g")) || []).length, 1);
   assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:end -->`, "g")) || []).length, 1);
 }
-assert.match(indexSource, /href=["']\/news["'][^>]*>今日の全\d+本を見る/);
+// 旧「今日の全◯本を見る」はトップのPICKとともに外し、朝刊後の新着導線に置き換えた。
+assert.match(indexSource, /<section id="top-after-edition"[^>]*aria-labelledby="after-edition-title"[^>]*hidden/);
+assert.match(indexSource, /<h2 id="after-edition-title">朝刊のあとに入った新着<\/h2>/);
 assert.match(indexSource, /href=["']\/news["'][^>]*>すべて見る →/);
 assert.match(appSource, /new URLSearchParams\(window\.location\.search\)\.get\("category"\)/);
 assert.match(appSource, /news\.html\?category=\$\{encodeURIComponent\(category\.id\)\}/);
@@ -36,8 +38,9 @@ for (const page of pages) {
   const tabbar = source.match(/<nav id="tabbar">(.*?)<\/nav>/s)?.[1] || "";
   const bottomNav = source.match(/<nav id="bottom-nav">(.*?)<\/nav>/s)?.[1] || "";
   const footer = source.match(/<footer\b[^>]*>(.*?)<\/footer>/s)?.[1] || "";
-  assert.equal((tabbar.match(/class="tab-btn(?: active)?"/g) || []).length, 4, `${page} tabbar`);
-  assert.equal((bottomNav.match(/class="bnav-item(?: active)?"/g) || []).length, 4, `${page} bottom nav`);
+  // 朝刊の独立ページ導線を加えた現行ナビは、TOP・ニュース・朝刊・公式・作り方の5項目。
+  assert.equal((tabbar.match(/class="tab-btn(?: active)?"/g) || []).length, 5, `${page} tabbar`);
+  assert.equal((bottomNav.match(/class="bnav-item(?: active)?"/g) || []).length, 5, `${page} bottom nav`);
   for (const href of pageRoutes) {
     assert.match(footer, new RegExp(`href=["']${href}["']`), `${page} footer must link ${href}`);
   }

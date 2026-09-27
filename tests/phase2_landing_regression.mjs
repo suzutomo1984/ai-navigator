@@ -18,20 +18,16 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(
-  `${appSource}\n;globalThis.__phase2TestApi = { compareArticlesNewestFirst, getLandingContent, landingThumbnail, topBenefitLabel, pickupHeading };`,
+  `${appSource}\n;globalThis.__phase2TestApi = { compareArticlesNewestFirst, getLandingContent, landingThumbnail, topBenefitLabel };`,
   context,
   { filename: "app.js" },
 );
 
-const { getLandingContent, landingThumbnail, topBenefitLabel, pickupHeading } = context.__phase2TestApi;
+const { getLandingContent, landingThumbnail, topBenefitLabel } = context.__phase2TestApi;
 const expected = getLandingContent(data.articles, data.categories);
 
-// 入力順を反転しても、3種の記事選択とカテゴリ順が変わらないことを保証する。
+// 入力順を反転しても、トップの最新ニュース・リリース・カテゴリ順が変わらないことを保証する。
 const shuffled = getLandingContent([...data.articles].reverse(), data.categories);
-assert.deepEqual(
-  Array.from(shuffled.pickup, article => article.id),
-  Array.from(expected.pickup, article => article.id),
-);
 assert.deepEqual(
   Array.from(shuffled.latestNews, article => article.id),
   Array.from(expected.latestNews, article => article.id),
@@ -45,7 +41,6 @@ assert.deepEqual(
   Array.from(expected.topCategories, category => category.id),
 );
 
-assert.equal(expected.pickup.length, 4);
 assert.equal(expected.latestNews.length, 4);
 assert.ok(expected.latestNews.every(article => !article.isOfficial));
 assert.equal(expected.recentReleases.length, 5);
@@ -53,19 +48,6 @@ assert.ok(expected.recentReleases.every(article => article.isOfficial));
 // official と other を除く全カテゴリを出す（実データは7種）。
 assert.ok(expected.topCategories.length >= 5 && expected.topCategories.length <= 9, `topCategories should be 6-9, got ${expected.topCategories.length}`);
 assert.match(landingThumbnail({ thumbnail: "" }, "test-thumb"), /top-thumb-placeholder/);
-
-// must-readを先頭にし、PICK不足時も別日を混ぜず同日記事だけで枠を埋める。
-const fallbackContent = getLandingContent([
-  { id: "latest", date: "2026-08-12", addedAt: "2026-08-12T02:00:00Z" },
-  { id: "must", date: "2026-08-11", addedAt: "2026-08-11T02:00:00Z", isPick: true, pickPriority: "must-read" },
-  { id: "pick", date: "2026-08-11", addedAt: "2026-08-11T01:00:00Z", isPick: true },
-  { id: "older", date: "2026-08-10", addedAt: "2026-08-10T01:00:00Z" },
-], []);
-assert.deepEqual(Array.from(fallbackContent.pickup, article => article.id), ["must", "pick"]);
-assert.ok(Array.from(fallbackContent.pickup, article => article.id).every(id => id !== "latest" && id !== "older"));
-assert.equal(fallbackContent.pickupDate, "2026-08-11");
-assert.equal(pickupHeading(fallbackContent.pickupDate, "2026-08-12"), "8月11日の重要4本");
-assert.equal(pickupHeading("2026-08-12", "2026-08-12"), "今日の重要4本");
 
 assert.deepEqual([
   "productivity", "strategy", "sales-marketing", "back-office", "info-mgmt",
@@ -79,7 +61,8 @@ assert.equal(topBenefitLabel({ category: "unknown" }), "【今週の話題】");
 // Phase 2の静的構造と、Phase 4で追加した統計更新契約。
 for (const id of [
   "landing-main",
-  "top-pickup",
+  "top-after-edition",
+  "top-after-edition-articles",
   "top-latest-news",
   "top-category-tiles",
   "top-recent-releases",
@@ -89,39 +72,34 @@ for (const id of [
 }
 assert.equal((indexSource.match(/<footer\b/gi) || []).length, 1);
 // TOP_STATS_COUNT はサイト説明バーの記事数。指標バーと同じ実測値を維持する。
-for (const marker of ["TOP_STATS_BAR", "TOP_STATS_COUNT", "TOP_HERO_STATS", "JSON_LD"]) {
+for (const marker of ["TOP_STATS_BAR", "TOP_STATS_COUNT", "JSON_LD"]) {
   assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:start -->`, "g")) || []).length, 1);
   assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:end -->`, "g")) || []).length, 1);
 }
-assert.equal((indexSource.match(/<h1\b/gi) || []).length, 1);
-assert.match(indexSource, /<h1 id=["']top-hero-title["']>AIと共に、<br>ビジネスの未来をナビゲート。<\/h1>/);
-assert.match(indexSource, /<p class=["']top-eyebrow["']>AI BUSINESS NEWS \/ UPDATED TWICE DAILY<\/p>/);
-const heroSection = indexSource.match(/<section class="top-hero"[\s\S]*?<\/section>/)?.[0] || "";
-assert.match(heroSection, /class="top-hero-orbit"/);
-assert.match(heroSection, /href="\/news"[^>]*>最新のAIニュースを読む<\/a>/);
-assert.match(heroSection, /href="\/about"[^>]*>このサイトの作り方<\/a>/);
-assert.equal((heroSection.match(/class="top-action /g) || []).length, 2);
-const heroAt = indexSource.indexOf('class="top-hero"');
-const pickAt = indexSource.indexOf('class="top-section top-pick-section"');
+// 旧トップヒーローとPICK固定枠は、朝刊カードと朝刊後の新着を主役にする新デザインで置き換えた。
+assert.match(indexSource, /<section id="top-morning-edition" class="top-morning-edition"/);
+const afterEditionSection = indexSource.match(/<section id="top-after-edition"[\s\S]*?<\/section>/)?.[0] || "";
+assert.match(afterEditionSection, /aria-labelledby="after-edition-title"[^>]*hidden/);
+assert.match(afterEditionSection, /<h2 id="after-edition-title">朝刊のあとに入った新着<\/h2>/);
+assert.match(afterEditionSection, /id="top-after-edition-meta"/);
+assert.match(afterEditionSection, /id="top-after-edition-articles" class="top-pickup"/);
+assert.match(afterEditionSection, /href="\/news">すべて見る →<\/a>/);
+assert.doesNotMatch(indexSource, /id=["']top-pickup["']/);
+const morningAt = indexSource.indexOf('id="top-morning-edition"');
+const afterEditionAt = indexSource.indexOf('id="top-after-edition"');
 const layoutAt = indexSource.indexOf('class="top-editorial-layout"');
 const statsAt = indexSource.indexOf('class="top-stats-bar"');
-assert.ok(heroAt < pickAt && pickAt < layoutAt && layoutAt < statsAt, "top order must be hero -> PICK -> layout -> stats");
-const heroStatsAt = indexSource.indexOf("<!-- TOP_HERO_STATS:start -->");
-assert.ok(heroStatsAt > indexSource.indexOf('id="top-pickup"') && heroStatsAt < layoutAt, "TOP_HERO_STATS must be directly below PICK");
+assert.ok(morningAt < afterEditionAt && afterEditionAt < layoutAt && layoutAt < statsAt, "top order must place after-edition after the morning edition and before latest news");
 const footer = indexSource.match(/<footer\b[^>]*>(.*?)<\/footer>/s)?.[1] || "";
 assert.match(footer, />このサイトの作り方<\/a>/);
-assert.match(styleSource, /\.top-hero\s*\{[^}]*min-height:\s*540px;[^}]*padding:\s*92px 24px 84px;/s);
-assert.match(styleSource, /@media \(max-width: 768px\)[\s\S]*?\.top-hero\s*\{[^}]*min-height:\s*510px;[^}]*padding:\s*72px 20px 70px;/);
-assert.equal((styleSource.match(/hero-compass\.webp/g) || []).length, 2);
-assert.match(styleSource, /\.top-hero::before[\s\S]*?\.top-hero::after/);
-assert.match(styleSource, /\.top-hero-orbit\s*\{/);
-assert.match(styleSource, /\.top-editorial-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 310px;/s);
+assert.match(styleSource, /\.top-morning-edition\s*\{/);
+assert.match(styleSource, /\.top-pickup-card\s*\{/);
+assert.match(styleSource, /@media \(max-width: 768px\)[\s\S]*?\.top-pickup-card \{[^}]*grid-template-columns: 104px minmax\(0, 1fr\)/);
 assert.doesNotMatch(indexSource, /TOP_STATS_GRID/);
 assert.doesNotMatch(indexSource, /top-number-grid/);
 assert.equal((indexSource.match(/id=["']top-github-trending["']/g) || []).length, 1);
 
 console.log(JSON.stringify({
-  pickup: expected.pickup.map(article => article.id),
   latestNews: expected.latestNews.map(article => article.id),
   recentReleases: expected.recentReleases.map(article => article.id),
   topCategories: expected.topCategories.map(category => category.id),

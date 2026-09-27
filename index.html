@@ -119,18 +119,16 @@
       <div class="top-morning-fallback"><p>最新ニュース</p><h1><a href="/news">AIニュース一覧を見る</a></h1></div>
     </section>
 
-    <section class="top-section top-pick-section" aria-labelledby="pickup-title">
-      <div class="top-section-heading">
-        <p class="top-section-kicker">EDITOR'S PICK</p>
-        <h2 id="pickup-title">今日の重要4本</h2>
+    <section id="top-after-edition" class="top-section top-pick-section" aria-labelledby="after-edition-title" hidden>
+      <div class="top-section-heading top-section-heading-row">
+        <div>
+          <p class="top-section-kicker">AFTER THE MORNING EDITION</p>
+          <h2 id="after-edition-title">朝刊のあとに入った新着</h2>
+          <p id="top-after-edition-meta" class="top-pick-summary"></p>
+        </div>
+        <a class="top-text-link" href="/news">すべて見る →</a>
       </div>
-      <div id="top-pickup" class="top-pickup" aria-live="polite">
-        <p class="top-loading">記事を読み込み中...</p>
-      </div>
-<!-- TOP_HERO_STATS:start -->
-      <p class="top-pick-summary">毎日2回、62本のAI記事を集めて、4本を選びました。</p>
-      <div class="top-pick-actions"><a class="top-action top-action-subtle" href="/news">今日の記事をすべて見る</a></div>
-<!-- TOP_HERO_STATS:end -->
+      <div id="top-after-edition-articles" class="top-pickup" aria-live="polite"></div>
     </section>
 
     <div class="top-editorial-layout">

@@ -416,25 +416,8 @@ function getLandingContent(articles, categories) {
   const newest = items => [...items].sort(compareArticlesNewestFirst);
   const categoryOrder = new Map(categories.map((category, index) => [category.id, index]));
   const categoryCount = category => Number(category.articleCount ?? category.count ?? 0);
-  const pickedArticles = articles.filter(article => article.isPick || article.pickPriority === "must-read");
-  const pickupDate = newest(pickedArticles)[0]?.date || "";
-  const sameDayArticles = pickupDate ? articles.filter(article => article.date === pickupDate) : [];
-  const pickup = [
-    ...newest(sameDayArticles.filter(article => article.pickPriority === "must-read")),
-    ...newest(sameDayArticles.filter(article => article.isPick && article.pickPriority !== "must-read")),
-  ];
-
-  // PICKが4本未満の日は、同じ日の記事だけで枠を埋める。
-  if (pickup.length < 4) {
-    for (const article of newest(sameDayArticles)) {
-      if (!pickup.includes(article)) pickup.push(article);
-      if (pickup.length === 4) break;
-    }
-  }
 
   return {
-    pickupDate,
-    pickup: pickup.slice(0, 4),
     latestNews: newest(articles.filter(article => !article.isOfficial)).slice(0, 4),
     recentReleases: newest(articles.filter(article => article.isOfficial)).slice(0, 5),
     // 6枚だと左カラムが右サイドバー（Trending＋リリース）より短くなり、
@@ -445,6 +428,31 @@ function getLandingContent(articles, categories) {
       .filter(category => !["official", "other"].includes(category.id) && categoryCount(category) > 0)
       .sort((a, b) => categoryCount(b) - categoryCount(a) || categoryOrder.get(a.id) - categoryOrder.get(b.id))
       .slice(0, 9),
+  };
+}
+
+function getLatestEditionBatch(editions) {
+  if (!Array.isArray(editions)) return null;
+  return editions
+    .filter(issue => /^\d{4}-\d{2}-\d{2}$/.test(issue.date || "") && Number.isFinite(Date.parse(issue.batchAt || "")))
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.edition || "").localeCompare(String(a.edition || "")))[0] || null;
+}
+
+function getAfterEditionContent(articles, editions) {
+  const latestIssue = getLatestEditionBatch(editions);
+  const batchTime = latestIssue ? Date.parse(latestIssue.batchAt) : NaN;
+  if (!Number.isFinite(batchTime)) return null;
+
+  const matching = articles
+    .filter(article => !article.isOfficial && isValidArticle(article) && Number.isFinite(Date.parse(article.addedAt || "")) && Date.parse(article.addedAt) > batchTime)
+    .sort((a, b) => Date.parse(b.addedAt) - Date.parse(a.addedAt) || String(b.date || "").localeCompare(String(a.date || "")));
+  if (matching.length === 0) return null;
+
+  return {
+    items: matching.slice(0, 6),
+    totalCount: matching.length,
+    latestAddedAt: matching[0].addedAt,
+    batchAt: latestIssue.batchAt,
   };
 }
 
@@ -488,23 +496,6 @@ function topBenefitLabel(article) {
 function formatTopDate(date) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) return "";
   return date.replace(/-/g, ".");
-}
-
-function getTodayDateJST() {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
-
-function pickupHeading(pickupDate, todayDate = getTodayDateJST()) {
-  if (!pickupDate || pickupDate === todayDate) return "今日の重要4本";
-  const match = pickupDate.match(/^\d{4}-(\d{2})-(\d{2})$/);
-  return match ? `${Number(match[1])}月${Number(match[2])}日の重要4本` : "今日の重要4本";
 }
 
 function safeExternalUrl(value) {
@@ -567,15 +558,57 @@ function onLandingThumbError(img) {
   wrap.innerHTML = "<span>AI</span>";
 }
 
+function formatAfterEditionMeta(latestAddedAt, totalCount) {
+  const addedAt = new Date(latestAddedAt);
+  if (Number.isNaN(addedAt.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(addedAt);
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return values.month + "月" + values.day + "日 " + values.hour + ":" + values.minute + " の配信で" + totalCount + "本";
+}
+
+function renderAfterEditionSection(sectionEl, articlesEl, metaEl, articles, editions) {
+  if (!sectionEl || !articlesEl || !metaEl) return;
+  sectionEl.hidden = true;
+  const content = getAfterEditionContent(articles, editions);
+  if (!content) return;
+
+  articlesEl.innerHTML = content.items.map(article =>
+    '<a class="top-pickup-card" href="' + escAttr(safeExternalUrl(article.url)) + '" target="_blank" rel="noopener noreferrer">' +
+      landingThumbnail(article, "top-pickup-thumb") +
+      '<div class="top-pickup-body">' +
+        '<strong class="top-pickup-label">' + escHtml(topBenefitLabel(article)) + '</strong>' +
+        '<div class="top-article-meta"><span>' + escHtml(topCategoryLabel(article)) + '</span><time datetime="' + escAttr(article.date) + '">' + escHtml(formatTopDate(article.date)) + '</time></div>' +
+        '<h3>' + escHtml(article.title) + '</h3>' +
+        '<p>' + escHtml(article.summary || "") + '</p>' +
+        '<b>続きを読む →</b>' +
+      '</div>' +
+    '</a>'
+  ).join("");
+  articlesEl.querySelectorAll(".top-pickup-card").forEach((card, index) => {
+    card.addEventListener("click", e => { e.preventDefault(); openModal(content.items[index]); });
+  });
+  metaEl.textContent = formatAfterEditionMeta(content.latestAddedAt, content.totalCount);
+  sectionEl.hidden = false;
+}
+
 function renderLanding() {
-  const pickupEl = getOptionalById("top-pickup");
-  const pickupTitleEl = getOptionalById("pickup-title");
+  const afterEditionSectionEl = getOptionalById("top-after-edition");
+  const afterEditionArticlesEl = getOptionalById("top-after-edition-articles");
+  const afterEditionMetaEl = getOptionalById("top-after-edition-meta");
   const latestEl = getOptionalById("top-latest-news");
   const trendingEl = getOptionalById("top-github-trending");
   const releasesEl = getOptionalById("top-recent-releases");
   const categoriesEl = getOptionalById("top-category-tiles");
   const footerCategoriesEl = getOptionalById("footer-categories");
-  if (!pickupEl && !latestEl && !trendingEl && !releasesEl && !categoriesEl && !footerCategoriesEl) return;
+  if (afterEditionSectionEl) afterEditionSectionEl.hidden = true;
+  if (!afterEditionSectionEl && !latestEl && !trendingEl && !releasesEl && !categoriesEl && !footerCategoriesEl) return;
 
   const morningEditionEl = getOptionalById("top-morning-edition");
   if (morningEditionEl) {
@@ -607,26 +640,14 @@ function renderLanding() {
       .catch(renderMorningFallback);
   }
 
-  const content = getLandingContent(allArticles, allCategories);
-
-  if (pickupTitleEl) pickupTitleEl.textContent = pickupHeading(content.pickupDate);
-
-  if (pickupEl) {
-    pickupEl.innerHTML = content.pickup.length ? content.pickup.map(article => `
-      <a class="top-pickup-card" href="${escAttr(safeExternalUrl(article.url))}" target="_blank" rel="noopener noreferrer">
-        ${landingThumbnail(article, "top-pickup-thumb")}
-        <div class="top-pickup-body">
-          <strong class="top-pickup-label">${escHtml(topBenefitLabel(article))}</strong>
-          <div class="top-article-meta"><span>${escHtml(topCategoryLabel(article))}</span><time datetime="${escAttr(article.date)}">${escHtml(formatTopDate(article.date))}</time></div>
-          <h3>${escHtml(article.title)}</h3>
-          <p>${escHtml(article.summary || "")}</p>
-          <b>続きを読む →</b>
-        </div>
-      </a>`).join("") : `<p class="top-empty">おすすめ記事はありません。</p>`;
-    pickupEl.querySelectorAll(".top-pickup-card").forEach((card, index) => {
-      card.addEventListener("click", e => { e.preventDefault(); openModal(content.pickup[index]); });
-    });
+  if (afterEditionSectionEl) {
+    fetch("daily/editions.json", { cache: "no-store" })
+      .then(response => response.ok ? response.json() : Promise.reject(new Error("editions unavailable")))
+      .then(rows => renderAfterEditionSection(afterEditionSectionEl, afterEditionArticlesEl, afterEditionMetaEl, allArticles, rows))
+      .catch(() => { afterEditionSectionEl.hidden = true; });
   }
+
+  const content = getLandingContent(allArticles, allCategories);
 
   if (latestEl) {
     latestEl.innerHTML = content.latestNews.map(article => `
