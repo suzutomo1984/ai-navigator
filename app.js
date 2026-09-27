@@ -571,7 +571,8 @@ function renderLanding() {
         const link = `daily/${encodeURIComponent(latest.date)}-${encodeURIComponent(latest.edition)}.html`;
         const [, year, month, day] = latest.date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
         const weekday = "日月火水木金土"[new Date(Date.UTC(Number(year), Number(month) - 1, Number(day))).getUTCDay()];
-        const updatedAt = latest.generatedTime || (latest.generatedAt ? new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(latest.generatedAt)) : "");
+        const batchDate = latest.batchAt ? new Date(latest.batchAt) : null;
+        const updatedAt = batchDate && !Number.isNaN(batchDate.getTime()) ? new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(batchDate) : "";
         const meta = `${latest.candidateCount}本から${latest.selectedCount}本を選びました${updatedAt ? `・更新 ${updatedAt}` : ""}`;
         const excerpt = (latest.summaryExcerpt || "").trim();
         morningEditionEl.innerHTML = `<div class="top-morning-card"><p class="top-morning-kicker">今日の朝刊</p><h2>${Number(month)}月${Number(day)}日（${weekday}）朝刊</h2><p class="top-morning-meta">${escHtml(meta)}</p><p class="top-morning-lead">${escHtml(latest.leadLine || "")}</p><p class="top-morning-summary">${escHtml(excerpt)}${excerpt ? "…" : ""}</p><a class="top-action top-action-primary top-morning-read" href="${link}">朝刊を読む（約5分）</a></div>`;
