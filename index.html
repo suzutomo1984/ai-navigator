@@ -42,7 +42,7 @@
   <meta name="twitter:description" content="非エンジニアのための AIビジネスニュース。営業・マーケ・総務・経営に使えるAI情報を毎日配信。">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="canonical" href="https://ai-navigator.dev/">
   <!-- Google Search Console 所有権確認（parse_news.pyのマーカー外に置き永続させる） -->
@@ -75,6 +75,7 @@
     <nav id="tabbar">
       <a class="tab-btn active" href="/">🏠 TOP</a>
       <a class="tab-btn" href="/news">📰 AIニュース</a>
+      <a class="tab-btn" href="/daily/">🌅 朝刊</a>
       <a class="tab-btn" href="/official">📦 リリースノート</a>
       <a class="tab-btn" href="/about">🛠️ 作り方</a>
     </nav>
@@ -110,20 +111,13 @@
   <!-- ランディングの主コンテンツ。記事一覧は news.html に分離済みなので、
        このページの main ランドマークはここ1個だけ -->
   <main id="landing-main">
-    <section class="top-hero" aria-labelledby="top-hero-title">
-      <div class="top-hero-orbit" aria-hidden="true"></div>
-      <div class="top-hero-content">
-        <p class="top-eyebrow">AI BUSINESS NEWS / UPDATED TWICE DAILY</p>
-        <h1 id="top-hero-title">AIと共に、<br>ビジネスの未来をナビゲート。</h1>
-        <p class="top-hero-lead">AI Navigatorは、生成AI・LLM・自動化の最新ニュースや活用事例、リリース情報を日本語で毎日お届けするメディアです。</p>
-        <div class="top-hero-actions">
-          <a class="top-action top-action-subtle" href="/news">最新のAIニュースを読む</a>
-          <a class="top-action top-action-secondary" href="/about">このサイトの作り方</a>
-        </div>
-      </div>
+    <section class="top-intro" aria-label="AI Navigatorの案内">
+      <p>毎朝8時、中小企業のためのAIニュースをAIが選んでお届け <a href="/about">このサイトについて</a></p>
     </section>
 
-    <section id="top-morning-edition" class="top-section top-morning-edition" aria-live="polite" hidden></section>
+    <section id="top-morning-edition" class="top-morning-edition" aria-live="polite">
+      <div class="top-morning-fallback"><p>最新ニュース</p><h1><a href="/news">AIニュース一覧を見る</a></h1></div>
+    </section>
 
     <section class="top-section top-pick-section" aria-labelledby="pickup-title">
       <div class="top-section-heading">

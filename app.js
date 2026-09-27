@@ -265,20 +265,6 @@ function buildDateFilter() {
 // モバイルカテゴリタブバー構築
 // =============================================
 
-// カテゴリごとのタブカラー
-const CAT_COLORS = {
-  "all":              "#ff335f",
-  "sales-marketing":  "#3b82f6",
-  "back-office":      "#8b5cf6",
-  "productivity":     "#f59e0b",
-  "strategy":         "#10b981",
-  "info-mgmt":        "#6366f1",
-  "ai-tech":          "#06b6d4",
-  "side-business":    "#eab308",
-  "official":         "#6b7280",
-  "other":            "#6b7280",
-};
-
 // トップの重要記事で、カテゴリを読者にとっての利点へ言い換える。
 const CAT_LABELS = Object.freeze({
   "productivity":    "【仕事が速くなる】",
@@ -301,7 +287,6 @@ function buildMobileCategoryBar() {
   allBtn.className = `mob-cat-btn${state.category === "all" ? " active" : ""}`;
   allBtn.dataset.cat = "all";
   allBtn.textContent = "ALL";
-  allBtn.style.background = CAT_COLORS["all"];
   scroll.appendChild(allBtn);
 
   allCategories
@@ -311,7 +296,6 @@ function buildMobileCategoryBar() {
       btn.className = `mob-cat-btn${state.category === c.id ? " active" : ""}`;
       btn.dataset.cat = c.id;
       btn.textContent = `${c.emoji} ${c.label}`;
-      btn.style.background = CAT_COLORS[c.id] || "#64748b";
       scroll.appendChild(btn);
     });
 
@@ -558,16 +542,19 @@ function renderLanding() {
   const footerCategoriesEl = getOptionalById("footer-categories");
   if (!pickupEl && !latestEl && !trendingEl && !releasesEl && !categoriesEl && !footerCategoriesEl) return;
 
-  // editions.json is generated together with each morning issue. Missing or unreadable
-  // data intentionally leaves the card hidden so old hard-coded issues never appear.
   const morningEditionEl = getOptionalById("top-morning-edition");
   if (morningEditionEl) {
+    const renderMorningFallback = () => {
+      const latestNews = [...allArticles].filter(article => article.title).sort((a, b) => `${b.date || ""}`.localeCompare(`${a.date || ""}`))[0];
+      const title = latestNews?.title || "AIニュース一覧を見る";
+      morningEditionEl.innerHTML = `<div class="top-morning-fallback"><p>最新ニュース</p><h1><a href="/news">${escHtml(title)}</a></h1></div>`;
+    };
     fetch("daily/editions.json", { cache: "no-store" })
       .then(response => response.ok ? response.json() : Promise.reject(new Error("editions unavailable")))
       .then(rows => {
-        if (!Array.isArray(rows) || rows.length === 0) return;
+        if (!Array.isArray(rows) || rows.length === 0) { renderMorningFallback(); return; }
         const latest = rows.filter(row => row.edition === "am").sort((a, b) => `${b.date || ""}`.localeCompare(`${a.date || ""}`))[0];
-        if (!latest || !/^\d{4}-\d{2}-\d{2}$/.test(latest.date || "")) return;
+        if (!latest || !/^\d{4}-\d{2}-\d{2}$/.test(latest.date || "")) { renderMorningFallback(); return; }
         const link = `daily/${encodeURIComponent(latest.date)}-${encodeURIComponent(latest.edition)}.html`;
         const [, year, month, day] = latest.date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
         const weekday = "日月火水木金土"[new Date(Date.UTC(Number(year), Number(month) - 1, Number(day))).getUTCDay()];
@@ -575,10 +562,14 @@ function renderLanding() {
         const updatedAt = batchDate && !Number.isNaN(batchDate.getTime()) ? new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(batchDate) : "";
         const meta = `${latest.candidateCount}本から${latest.selectedCount}本を選びました${updatedAt ? `・更新 ${updatedAt}` : ""}`;
         const excerpt = (latest.summaryExcerpt || "").trim();
-        morningEditionEl.innerHTML = `<div class="top-morning-card"><p class="top-morning-kicker">今日の朝刊</p><h2>${Number(month)}月${Number(day)}日（${weekday}）朝刊</h2><p class="top-morning-meta">${escHtml(meta)}</p><p class="top-morning-lead">${escHtml(latest.leadLine || "")}</p><p class="top-morning-summary">${escHtml(excerpt)}${excerpt ? "…" : ""}</p><a class="top-action top-action-primary top-morning-read" href="${link}">朝刊を読む（約5分）</a></div>`;
-        morningEditionEl.hidden = false;
+        const articleById = new Map(allArticles.map(article => [String(article.id), article]));
+        const toc = (Array.isArray(latest.selectedIds) ? latest.selectedIds : []).slice(0, 5).map((id, index) => {
+          const article = articleById.get(String(id));
+          return article ? `<li><span>${String(index + 1).padStart(2, "0")}</span><a href="${link}#story-${index + 1}">${escHtml(article.title || "記事")}</a></li>` : "";
+        }).filter(Boolean).join("");
+        morningEditionEl.innerHTML = `<div class="top-morning-card"><p class="top-morning-kicker">今日の朝刊</p><h1>${Number(month)}月${Number(day)}日（${weekday}）朝刊</h1><p class="top-morning-meta">${escHtml(meta)}</p><p class="top-morning-lead">${escHtml(latest.leadLine || "")}</p><p class="top-morning-summary">${escHtml(excerpt)}${excerpt ? "…" : ""}</p>${toc ? `<section class="top-morning-contents" aria-label="今日の目次"><h2>今日の目次</h2><ol>${toc}</ol></section>` : ""}<a class="top-action top-action-primary top-morning-read" href="${link}">朝刊を読む（約5分）</a></div>`;
       })
-      .catch(() => { morningEditionEl.hidden = true; morningEditionEl.replaceChildren(); });
+      .catch(renderMorningFallback);
   }
 
   const content = getLandingContent(allArticles, allCategories);
@@ -1505,7 +1496,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div id="empty-state">
           <div class="empty-icon">⚠️</div>
           <div>データの読み込みに失敗しました</div>
-          <div style="font-size:12px;margin-top:8px;color:#484f58">${err.message}</div>
+          <div style="font-size:12px;margin-top:8px;color:var(--ink-muted)">${err.message}</div>
         </div>`;
     }
     console.error("[AI Navigator] Failed to load article data.", err);

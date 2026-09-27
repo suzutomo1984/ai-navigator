@@ -147,27 +147,6 @@ function buildDateFilter() {
 // モバイルカテゴリタブバー（会社フィルター）
 // =============================================
 
-const COMPANY_COLORS = {
-  "all":        "#ff335f",
-  "OpenAI":     "#10a37f",
-  "Google":     "#ea4335",
-  "Anthropic":  "#d97706",
-  "Microsoft":  "#0078d4",
-  "MCP":        "#8b5cf6",
-  "LangChain":  "#16a34a",
-  "LlamaIndex": "#6366f1",
-  "Ollama":     "#64748b",
-  "CrewAI":     "#ec4899",
-  "vLLM":       "#f59e0b",
-  "LiteLLM":    "#06b6d4",
-  "Dify":       "#7c3aed",
-  "Flowise":    "#059669",
-  "Gemini CLI": "#1a73e8",
-  "Antigravity": "#0891b2",
-  "Kimi":        "#be123c",
-  "Codex CLI":  "#00a67e",
-};
-
 function buildMobileCategoryBar() {
   const scroll = document.getElementById("mobile-cat-scroll");
   if (!scroll) return;
@@ -179,7 +158,6 @@ function buildMobileCategoryBar() {
   allBtn.className = "mob-cat-btn active";
   allBtn.dataset.company = "all";
   allBtn.textContent = "ALL";
-  allBtn.style.background = COMPANY_COLORS["all"];
   scroll.appendChild(allBtn);
 
   Object.entries(SOURCE_GROUPS).forEach(([company, sources]) => {
@@ -189,7 +167,6 @@ function buildMobileCategoryBar() {
     btn.className = "mob-cat-btn";
     btn.dataset.company = company;
     btn.textContent = company;
-    btn.style.background = COMPANY_COLORS[company] || "#64748b";
     scroll.appendChild(btn);
   });
 
@@ -650,7 +627,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <div id="empty-state">
         <div class="empty-icon">⚠️</div>
         <div>データの読み込みに失敗しました</div>
-        <div style="font-size:12px;margin-top:8px;color:#484f58">${err.message}</div>
+        <div style="font-size:12px;margin-top:8px;color:var(--ink-muted)">${err.message}</div>
       </div>`;
   });
 });
