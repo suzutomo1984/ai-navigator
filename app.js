@@ -416,20 +416,24 @@ function getLandingContent(articles, categories) {
   const newest = items => [...items].sort(compareArticlesNewestFirst);
   const categoryOrder = new Map(categories.map((category, index) => [category.id, index]));
   const categoryCount = category => Number(category.articleCount ?? category.count ?? 0);
+  const pickedArticles = articles.filter(article => article.isPick || article.pickPriority === "must-read");
+  const pickupDate = newest(pickedArticles)[0]?.date || "";
+  const sameDayArticles = pickupDate ? articles.filter(article => article.date === pickupDate) : [];
   const pickup = [
-    ...newest(articles.filter(article => article.pickPriority === "must-read")),
-    ...newest(articles.filter(article => article.isPick && article.pickPriority !== "must-read")),
+    ...newest(sameDayArticles.filter(article => article.pickPriority === "must-read")),
+    ...newest(sameDayArticles.filter(article => article.isPick && article.pickPriority !== "must-read")),
   ];
 
-  // PICKが4本未満の日も、重複を避けながら最新記事で枠を埋める。
+  // PICKが4本未満の日は、同じ日の記事だけで枠を埋める。
   if (pickup.length < 4) {
-    for (const article of newest(articles)) {
+    for (const article of newest(sameDayArticles)) {
       if (!pickup.includes(article)) pickup.push(article);
       if (pickup.length === 4) break;
     }
   }
 
   return {
+    pickupDate,
     pickup: pickup.slice(0, 4),
     latestNews: newest(articles.filter(article => !article.isOfficial)).slice(0, 4),
     recentReleases: newest(articles.filter(article => article.isOfficial)).slice(0, 5),
@@ -484,6 +488,23 @@ function topBenefitLabel(article) {
 function formatTopDate(date) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) return "";
   return date.replace(/-/g, ".");
+}
+
+function getTodayDateJST() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function pickupHeading(pickupDate, todayDate = getTodayDateJST()) {
+  if (!pickupDate || pickupDate === todayDate) return "今日の重要4本";
+  const match = pickupDate.match(/^\d{4}-(\d{2})-(\d{2})$/);
+  return match ? `${Number(match[1])}月${Number(match[2])}日の重要4本` : "今日の重要4本";
 }
 
 function safeExternalUrl(value) {
@@ -548,6 +569,7 @@ function onLandingThumbError(img) {
 
 function renderLanding() {
   const pickupEl = getOptionalById("top-pickup");
+  const pickupTitleEl = getOptionalById("pickup-title");
   const latestEl = getOptionalById("top-latest-news");
   const trendingEl = getOptionalById("top-github-trending");
   const releasesEl = getOptionalById("top-recent-releases");
@@ -586,6 +608,8 @@ function renderLanding() {
   }
 
   const content = getLandingContent(allArticles, allCategories);
+
+  if (pickupTitleEl) pickupTitleEl.textContent = pickupHeading(content.pickupDate);
 
   if (pickupEl) {
     pickupEl.innerHTML = content.pickup.length ? content.pickup.map(article => `
