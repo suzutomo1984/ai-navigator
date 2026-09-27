@@ -2080,7 +2080,15 @@ body::before {
 .top-action:hover { transform: translateY(-2px); border-color: var(--accent); }
 .top-action-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .top-action-primary:hover { background: var(--accent-hover); }
+.top-action-subtle { background: transparent; border-color: var(--border); color: var(--text-secondary); box-shadow: none; }
+.top-action-subtle:hover { border-color: var(--accent); color: var(--text-primary); }
 .top-action-secondary { background: rgba(255, 255, 255, 0.03); }
+.top-morning-edition { margin-top: 24px !important; }
+.top-morning-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; padding: 22px 24px; border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--bg-card); }
+.top-morning-kicker { margin: 0 0 5px; color: var(--accent-hover); font-size: 11px; font-weight: 700; letter-spacing: .12em; }
+.top-morning-card h2 { margin: 0 0 7px; font-family: "Noto Serif JP", serif; font-size: clamp(20px, 2vw, 26px); }
+.top-morning-card p { margin: 0; color: var(--text-secondary); line-height: 1.7; }
+.top-morning-card .top-action-primary { white-space: nowrap; }
 
 .top-stats-bar {
   width: min(1280px, calc(100% - 40px));
@@ -2592,6 +2600,8 @@ body::before {
   .top-eyebrow, .top-hero-lead { max-width: none; }
   .top-hero-actions { flex-direction: column; }
   .top-action { width: 100%; }
+  .top-morning-card { grid-template-columns: 1fr; gap: 12px; padding: 16px; }
+  .top-morning-card .top-action { width: 100%; }
   .top-pick-summary { margin-top: 16px; font-size: 13px; }
   .top-pick-actions { margin-top: 10px; }
   .top-pick-actions .top-action { width: 100%; }

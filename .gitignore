@@ -1,5 +1,6 @@
 audit_report.txt
 __pycache__/
+node_modules/
 *.pyc
 .playwright-cli/
 

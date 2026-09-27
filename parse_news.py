@@ -821,7 +821,7 @@ def update_top_stats(meta: dict, dates_meta: list[dict]) -> None:
     hero_lines = [
         f'      <p class="top-pick-summary">毎日2回、{daily_count}本のAI記事を集めて、{pick_count}本を選びました。</p>',
         '      <div class="top-pick-actions">',
-        f'        <a class="top-action top-action-primary" href="/news">今日の全{daily_count}本を見る</a>',
+        f'        <a class="top-action top-action-subtle" href="/news">今日の全{daily_count}本を見る</a>',
         "      </div>",
     ]
 

@@ -63,6 +63,16 @@ python -m http.server 8765
 # → http://localhost:8765
 ```
 
+### 朝刊の生成・ローカル表示
+
+```bash
+npm ci # 初回のみ。JevのAI SDK依存を入れる
+python daily/local_preview.py
+# 本番 articles.json を取得し、今日の朝刊（未配信なら前日の号）を生成して http://127.0.0.1:8799 で表示
+```
+
+個別の号を生成する場合は `python daily/morning_edition.py --articles path/to/articles.json --date 2026-09-28 --edition am` を実行します。Jev に `AI_GATEWAY_API_KEY`、Gemini に `GEMINI_API_KEY` が必要です。
+
 ---
 
 ## デプロイ

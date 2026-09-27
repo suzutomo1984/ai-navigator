@@ -1,0 +1,11 @@
+{
+  "name": "ai-navigator-local-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "morning-edition": "python daily/local_preview.py"
+  },
+  "dependencies": {
+    "ai": "7.0.105"
+  }
+}

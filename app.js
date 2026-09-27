@@ -558,6 +558,23 @@ function renderLanding() {
   const footerCategoriesEl = getOptionalById("footer-categories");
   if (!pickupEl && !latestEl && !trendingEl && !releasesEl && !categoriesEl && !footerCategoriesEl) return;
 
+  // editions.json is generated together with each morning issue. Missing or unreadable
+  // data intentionally leaves the card hidden so old hard-coded issues never appear.
+  const morningEditionEl = getOptionalById("top-morning-edition");
+  if (morningEditionEl) {
+    fetch("daily/editions.json", { cache: "no-store" })
+      .then(response => response.ok ? response.json() : Promise.reject(new Error("editions unavailable")))
+      .then(rows => {
+        if (!Array.isArray(rows) || rows.length === 0) return;
+        const latest = [...rows].sort((a, b) => `${b.date || ""}-${b.edition || ""}`.localeCompare(`${a.date || ""}-${a.edition || ""}`))[0];
+        if (!latest || !/^\d{4}-\d{2}-\d{2}$/.test(latest.date || "") || !["am", "pm"].includes(latest.edition)) return;
+        const link = `daily/${encodeURIComponent(latest.date)}-${encodeURIComponent(latest.edition)}.html`;
+        morningEditionEl.innerHTML = `<div class="top-morning-card"><div><p class="top-morning-kicker">${latest.edition === "am" ? "TODAY'S MORNING EDITION" : "LATEST EDITION"}</p><h2>${escHtml(latest.date.slice(5).replace("-", "/"))} ${latest.edition === "am" ? "朝刊" : "夕刊"}</h2><p>${escHtml(latest.leadLine || latest.summaryExcerpt || "AIニュースを読者向けに選んだ朝刊です。")}</p></div><a class="top-action top-action-primary" href="${link}">朝刊を読む <span aria-hidden="true">→</span></a></div>`;
+        morningEditionEl.hidden = false;
+      })
+      .catch(() => { morningEditionEl.hidden = true; morningEditionEl.replaceChildren(); });
+  }
+
   const content = getLandingContent(allArticles, allCategories);
 
   if (pickupEl) {

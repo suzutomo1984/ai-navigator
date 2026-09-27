@@ -1,0 +1,478 @@
+{
+  "model": "gemini-3-flash-preview",
+  "checked_sentence_count": 27,
+  "dropped_sentences": [],
+  "checks": [
+    {
+      "section": "lead_line",
+      "text": "AIで浮いた時間の再配分と価値の翻訳",
+      "terms": [
+        {
+          "term": "AI",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "summary",
+      "text": "生成AIの回答はもっともらしさと正しさが別物であり、実務では出典の照合や数値の単独検証が不可欠です。",
+      "terms": [
+        {
+          "term": "AI",
+          "found": true
+        },
+        {
+          "term": "もっともらしさ",
+          "found": true
+        },
+        {
+          "term": "正しさ",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "summary",
+      "text": "業務効率化で浮いた時間を会社に報告せず、自分の余白とするAI版静かな退職が広がっています。",
+      "terms": [
+        {
+          "term": "AI",
+          "found": true
+        },
+        {
+          "term": "AI版静かな退職",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "summary",
+      "text": "従業員の32%がAI利用を隠しており、報告すると仕事が増える報酬設計がその要因です。",
+      "terms": [
+        {
+          "term": "32%",
+          "found": true
+        },
+        {
+          "term": "AI",
+          "found": true
+        },
+        {
+          "term": "Ivanti",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "summary",
+      "text": "削減した時間を成果に直結する活動へ再投資できた組織は、顧客数の成長目標を超える確率が2.2倍高まります。",
+      "terms": [
+        {
+          "term": "2.2倍",
+          "found": true
+        },
+        {
+          "term": "Gartner",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "summary",
+      "text": "既存の価値を相手に伝わる形へ翻訳する動きもあり、セメントをカフェにするなどの事例が見られます。",
+      "terms": [
+        {
+          "term": "カフェ",
+          "found": true
+        },
+        {
+          "term": "太平洋セメント",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "summary",
+      "text": "AI導入ではツール選定より先に、どの業務をどう変えるかという業務分析が最も重要です。",
+      "terms": [
+        {
+          "term": "AI",
+          "found": true
+        },
+        {
+          "term": "業務分析",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "summary",
+      "text": "運用ルールを常時と特定の作業用に分けることで、指示の追従率を高め外注費を削減できます。",
+      "terms": [
+        {
+          "term": "CLAUDE.md",
+          "found": true
+        },
+        {
+          "term": "外注費",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "summary",
+      "text": "浮いた時間の行き先を商談数や受注率の向上に設定し、型にして渡した人を評価する仕組みが有効です。",
+      "terms": [
+        {
+          "term": "受注率",
+          "found": true
+        },
+        {
+          "term": "商談数",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[1]",
+      "text": "AIで週平均4.8時間の削減が可能ですが、72%の組織がその時間を価値の高い活動に再投資できていません。",
+      "terms": [
+        {
+          "term": "4.8時間",
+          "found": true
+        },
+        {
+          "term": "72%",
+          "found": true
+        },
+        {
+          "term": "AI",
+          "found": true
+        },
+        {
+          "term": "Gartner",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[1]",
+      "text": "従業員の32%がAI利用を隠しており、報告すると仕事が増えるだけの報酬設計がその合理的な動機です。",
+      "terms": [
+        {
+          "term": "32%",
+          "found": true
+        },
+        {
+          "term": "AI",
+          "found": true
+        },
+        {
+          "term": "Ivanti",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[1]",
+      "text": "対策として、自動化に着手する前に浮いた時間を商談数や受注率のどれに効かせるか行き先を決めます。",
+      "terms": [
+        {
+          "term": "受注率",
+          "found": true
+        },
+        {
+          "term": "商談数",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[1]",
+      "text": "早く終わらせた人ではなく、手順を型にして他の人に渡した人を評価する軸の変更が組織には有効です。",
+      "terms": [
+        {
+          "term": "型",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[1]",
+      "text": "削減時間を実測し、判定日を設けた254件の改善台帳のように管理することで時間を会社に残せます。",
+      "terms": [
+        {
+          "term": "254件",
+          "found": true
+        },
+        {
+          "term": "判定日",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[1]",
+      "text": "浮いた時間を商談準備や教材づくりに再配分し、顧客への返信速度や提案の質を高めることが重要です。",
+      "terms": [
+        {
+          "term": "商談準備",
+          "found": true
+        },
+        {
+          "term": "教材づくり",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[2]",
+      "text": "良い商品や技術があっても、その価値が相手に伝わっているとは限らないため翻訳の視点が重要です。",
+      "terms": [
+        {
+          "term": "翻訳",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[2]",
+      "text": "太平洋セメントはMIYASHITA PARKでセメントを食べて学ぶカフェを開催し、魅力を伝えました。",
+      "terms": [
+        {
+          "term": "MIYASHITA PARK",
+          "found": true
+        },
+        {
+          "term": "太平洋セメント",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[2]",
+      "text": "秩父地域では民泊や家業の体験を教育旅行向けに組み直し、地域全体を学習サービスへ変えています。",
+      "terms": [
+        {
+          "term": "教育旅行",
+          "found": true
+        },
+        {
+          "term": "秩父地域",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[2]",
+      "text": "博物館をケアの場に、自然を市民が参加できる地図に翻訳するなど、用途や見せ方を変える動きがあります。",
+      "terms": [
+        {
+          "term": "ケアの場",
+          "found": true
+        },
+        {
+          "term": "サケワシMap",
+          "found": true
+        },
+        {
+          "term": "博物館",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[2]",
+      "text": "すでにある価値を別の人に伝わる言葉や体験へ変えることで、今まで届かなかった人に届くようになります。",
+      "terms": [
+        {
+          "term": "価値",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[2]",
+      "text": "専門技術を体験へ、地域資源を学習へ、文化をケアへ翻訳することが、新しい商売の種を生み出します。",
+      "terms": [
+        {
+          "term": "地域資源",
+          "found": true
+        },
+        {
+          "term": "専門技術",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[3]",
+      "text": "初めて扱うテーマではAIの誤りに気づきにくいため、出典を名指しで要求し実在するか照合が必要です。",
+      "terms": [
+        {
+          "term": "4ステップ",
+          "found": true
+        },
+        {
+          "term": "AI",
+          "found": true
+        },
+        {
+          "term": "出典",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[3]",
+      "text": "数字や固有名詞、日付を単独で検証し、あえて反対の立場から質問し直すことで情報の精度を高めます。",
+      "terms": [
+        {
+          "term": "固有名詞",
+          "found": true
+        },
+        {
+          "term": "数字",
+          "found": true
+        },
+        {
+          "term": "日付",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[3]",
+      "text": "CLAUDE.mdなどの指示ファイルは、常時必要なルールと特定の作業限定のルールに分けるべきです。",
+      "terms": [
+        {
+          "term": "CLAUDE.md",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[3]",
+      "text": "条件ルールをSkillファイルへ切り出すことで、指示への追従率が下がるリスクを回避し精度を保ちます。",
+      "terms": [
+        {
+          "term": "Claude Code",
+          "found": true
+        },
+        {
+          "term": "Skill",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[3]",
+      "text": "AIコンサルタントは業務をヒアリングし、効果が大きく導入しやすいものから優先順位を決定します。",
+      "terms": [
+        {
+          "term": "AI",
+          "found": true
+        },
+        {
+          "term": "AIコンサルタント",
+          "found": true
+        },
+        {
+          "term": "優先順位",
+          "found": true
+        }
+      ],
+      "verified": true
+    },
+    {
+      "section": "deep_topics[3]",
+      "text": "導入後も社員教育やプロンプトの作り方を浸透させ、日常業務に組み込むまでを継続的に支援します。",
+      "terms": [
+        {
+          "term": "プロンプト",
+          "found": true
+        },
+        {
+          "term": "社員教育",
+          "found": true
+        }
+      ],
+      "verified": true
+    }
+  ],
+  "crawl": [
+    {
+      "index": 1,
+      "id": "2026-09-27_12",
+      "url": "https://note.com/safe_ruff2294/n/n86af0d6ba5a4",
+      "chars": 1586,
+      "method": "article page"
+    },
+    {
+      "index": 2,
+      "id": "2026-09-27_5",
+      "url": "https://note.com/tovigasmaru_h/n/nfa6737f81731",
+      "chars": 3948,
+      "method": "article page"
+    },
+    {
+      "index": 3,
+      "id": "2026-09-27_6",
+      "url": "https://note.com/ai_remote_worker/n/ndada6decfe58",
+      "chars": 12018,
+      "method": "article page"
+    },
+    {
+      "index": 4,
+      "id": "2026-09-27_9",
+      "url": "https://note.com/tnioj_resale/n/ncc02005137a9",
+      "chars": 2828,
+      "method": "article page"
+    },
+    {
+      "index": 5,
+      "id": "2026-09-27_21",
+      "url": "https://note.com/tenten43/n/nbdff01402f74",
+      "chars": 5263,
+      "method": "article page"
+    }
+  ],
+  "selectedIds": [
+    "2026-09-27_12",
+    "2026-09-27_5",
+    "2026-09-27_6",
+    "2026-09-27_9",
+    "2026-09-27_21",
+    "2026-09-27_16",
+    "2026-09-27_7",
+    "2026-09-27_35",
+    "2026-09-27_20",
+    "2026-09-27_14"
+  ],
+  "gemini_calls": 1
+}
