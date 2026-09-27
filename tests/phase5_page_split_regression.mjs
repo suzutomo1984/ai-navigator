@@ -26,9 +26,10 @@ for (const marker of ["TOP_STATS_BAR", "TOP_STATS_COUNT", "JSON_LD"]) {
   assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:start -->`, "g")) || []).length, 1);
   assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:end -->`, "g")) || []).length, 1);
 }
-// 旧「今日の全◯本を見る」はトップのPICKとともに外し、朝刊後の新着導線に置き換えた。
-assert.match(indexSource, /<section id="top-after-edition"[^>]*aria-labelledby="after-edition-title"[^>]*hidden/);
-assert.match(indexSource, /<h2 id="after-edition-title">朝刊のあとに入った新着<\/h2>/);
+// 旧「最新のAIニュース」枠は統合し、「新着」1節とその一覧リンクをトップに残す。
+assert.match(indexSource, /<section id="top-new-arrivals"[^>]*aria-labelledby="new-arrivals-title"[^>]*hidden/);
+assert.match(indexSource, /<h2 id="new-arrivals-title">新着<\/h2>/);
+assert.doesNotMatch(indexSource, /id=["']top-latest-news["']/);
 assert.match(indexSource, /href=["']\/news["'][^>]*>すべて見る →/);
 assert.match(appSource, /new URLSearchParams\(window\.location\.search\)\.get\("category"\)/);
 assert.match(appSource, /news\.html\?category=\$\{encodeURIComponent\(category\.id\)\}/);

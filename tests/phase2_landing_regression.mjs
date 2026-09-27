@@ -26,12 +26,8 @@ vm.runInContext(
 const { getLandingContent, landingThumbnail, topBenefitLabel } = context.__phase2TestApi;
 const expected = getLandingContent(data.articles, data.categories);
 
-// 入力順を反転しても、トップの最新ニュース・リリース・カテゴリ順が変わらないことを保証する。
+// 入力順を反転しても、トップのリリース・カテゴリ順が変わらないことを保証する。
 const shuffled = getLandingContent([...data.articles].reverse(), data.categories);
-assert.deepEqual(
-  Array.from(shuffled.latestNews, article => article.id),
-  Array.from(expected.latestNews, article => article.id),
-);
 assert.deepEqual(
   Array.from(shuffled.recentReleases, article => article.id),
   Array.from(expected.recentReleases, article => article.id),
@@ -41,8 +37,6 @@ assert.deepEqual(
   Array.from(expected.topCategories, category => category.id),
 );
 
-assert.equal(expected.latestNews.length, 4);
-assert.ok(expected.latestNews.every(article => !article.isOfficial));
 assert.equal(expected.recentReleases.length, 5);
 assert.ok(expected.recentReleases.every(article => article.isOfficial));
 // official と other を除く全カテゴリを出す（実データは7種）。
@@ -61,9 +55,8 @@ assert.equal(topBenefitLabel({ category: "unknown" }), "【今週の話題】");
 // Phase 2の静的構造と、Phase 4で追加した統計更新契約。
 for (const id of [
   "landing-main",
-  "top-after-edition",
-  "top-after-edition-articles",
-  "top-latest-news",
+  "top-new-arrivals",
+  "top-new-arrivals-articles",
   "top-category-tiles",
   "top-recent-releases",
   "site-footer",
@@ -76,20 +69,22 @@ for (const marker of ["TOP_STATS_BAR", "TOP_STATS_COUNT", "JSON_LD"]) {
   assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:start -->`, "g")) || []).length, 1);
   assert.equal((indexSource.match(new RegExp(`<!-- ${marker}:end -->`, "g")) || []).length, 1);
 }
-// 旧トップヒーローとPICK固定枠は、朝刊カードと朝刊後の新着を主役にする新デザインで置き換えた。
+// 旧トップヒーローとPICK固定枠は、朝刊カードと新着を主役にする新デザインで置き換えた。
 assert.match(indexSource, /<section id="top-morning-edition" class="top-morning-edition"/);
-const afterEditionSection = indexSource.match(/<section id="top-after-edition"[\s\S]*?<\/section>/)?.[0] || "";
-assert.match(afterEditionSection, /aria-labelledby="after-edition-title"[^>]*hidden/);
-assert.match(afterEditionSection, /<h2 id="after-edition-title">朝刊のあとに入った新着<\/h2>/);
-assert.match(afterEditionSection, /id="top-after-edition-meta"/);
-assert.match(afterEditionSection, /id="top-after-edition-articles" class="top-pickup"/);
-assert.match(afterEditionSection, /href="\/news">すべて見る →<\/a>/);
+const newArrivalsSection = indexSource.match(/<section id="top-new-arrivals"[\s\S]*?<\/section>/)?.[0] || "";
+assert.match(newArrivalsSection, /aria-labelledby="new-arrivals-title"[^>]*hidden/);
+assert.match(newArrivalsSection, /<h2 id="new-arrivals-title">新着<\/h2>/);
+assert.match(newArrivalsSection, /id="top-new-arrivals-meta"/);
+assert.match(newArrivalsSection, /id="top-new-arrivals-articles" class="top-pickup"/);
+assert.match(newArrivalsSection, /href="\/news">すべて見る →<\/a>/);
 assert.doesNotMatch(indexSource, /id=["']top-pickup["']/);
+assert.doesNotMatch(indexSource, /id=["']top-latest-news["']/);
 const morningAt = indexSource.indexOf('id="top-morning-edition"');
-const afterEditionAt = indexSource.indexOf('id="top-after-edition"');
+const newArrivalsAt = indexSource.indexOf('id="top-new-arrivals"');
 const layoutAt = indexSource.indexOf('class="top-editorial-layout"');
 const statsAt = indexSource.indexOf('class="top-stats-bar"');
-assert.ok(morningAt < afterEditionAt && afterEditionAt < layoutAt && layoutAt < statsAt, "top order must place after-edition after the morning edition and before latest news");
+assert.ok(morningAt < newArrivalsAt && newArrivalsAt < layoutAt && layoutAt < statsAt, "top order must place new arrivals after the morning edition and before the remaining sections");
+assert.doesNotMatch(indexSource, /<h2 id="latest-news-title">最新のAIニュース<\/h2>/);
 const footer = indexSource.match(/<footer\b[^>]*>(.*?)<\/footer>/s)?.[1] || "";
 assert.match(footer, />このサイトの作り方<\/a>/);
 assert.match(styleSource, /\.top-morning-edition\s*\{/);
@@ -100,7 +95,6 @@ assert.doesNotMatch(indexSource, /top-number-grid/);
 assert.equal((indexSource.match(/id=["']top-github-trending["']/g) || []).length, 1);
 
 console.log(JSON.stringify({
-  latestNews: expected.latestNews.map(article => article.id),
   recentReleases: expected.recentReleases.map(article => article.id),
   topCategories: expected.topCategories.map(category => category.id),
 }, null, 2));
