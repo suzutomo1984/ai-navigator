@@ -192,6 +192,7 @@ def parse_tech_news(filepath: Path, date_str: str) -> list[dict]:
     current_category_emoji = "📰"
     current_section = "main"
     article_num = 0
+    skipped_without_url = 0
 
     lines = content.split("\n")
     i = 0
@@ -257,6 +258,11 @@ def parse_tech_news(filepath: Path, date_str: str) -> list[dict]:
 
                 j += 1
 
+            if not url.strip():
+                skipped_without_url += 1
+                i = j
+                continue
+
             is_official = source in OFFICIAL_SOURCES
             # カテゴリ決定（2026-06-28 「公式」再設計）。
             # - リリースノート枠（category="official", ラベル=リリースノート）に入れて良いのは
@@ -293,6 +299,9 @@ def parse_tech_news(filepath: Path, date_str: str) -> list[dict]:
             continue
 
         i += 1
+
+    if skipped_without_url:
+        print(f"⚠️ URLなし項目をスキップ: {skipped_without_url}件")
 
     return articles
 
@@ -412,6 +421,21 @@ def calc_ranking(articles: list[dict]) -> list[dict]:
 # ============================================================
 # メイン処理
 # ============================================================
+
+def apply_existing_added_at(
+    articles: list[dict], existing_added_at: dict[str, str]
+) -> int:
+    """Restore the original timestamp for known URLs and count newly seen articles."""
+    new_count = 0
+    for article in articles:
+        url = article.get("url", "")
+        if url and url in existing_added_at:
+            article["addedAt"] = existing_added_at[url]
+        else:
+            article["addedAt"] = NOW.isoformat()
+            new_count += 1
+    return new_count
+
 
 def main():
     all_articles = []
@@ -557,14 +581,7 @@ def main():
     # addedAt 固定化 + 最新配信バッチ判定
     # 既出URLは前回の addedAt を引き継ぎ（＝初回登場時刻で固定）、
     # 今回初登場のURLだけ NOW を持つ。NEW判定はこの「今回バッチ」を基準にする。
-    new_count = 0
-    for a in all_articles:
-        url = a.get("url", "")
-        if url and url in existing_added_at:
-            a["addedAt"] = existing_added_at[url]
-        else:
-            a["addedAt"] = NOW.isoformat()
-            new_count += 1
+    new_count = apply_existing_added_at(all_articles, existing_added_at)
 
     # latestBatchAt = 今回の配信バッチ時刻。
     # 今回新規が1件でもあれば NOW、無ければ前回値を維持（NEW表示を消さない）。
