@@ -94,6 +94,21 @@ assert.ok(!html.includes("★ 100"));
 assert.ok(!html.includes("TypeScript"));
 assert.equal((topTrendingRepos(repositories).map(repo => repo.title).includes("pipepipe/pipepipe")), false);
 
+const displayableRepos = repositories.filter(repo =>
+  repo.aiRelated !== false && Boolean(String(repo.summary || "").trim() || String(repo.jaName || "").trim())
+);
+const sevenHtml = renderTopTrending(displayableRepos.slice(0, 7));
+assert.equal((sevenHtml.match(/class="top-trending-item"/g) || []).length, 7);
+const twelveRepos = displayableRepos.slice(0, 11).concat({
+  ...displayableRepos[0],
+  title: "owner/twelve",
+  summary: "12件目の表示可能要約です。",
+  url: "https://github.com/owner/twelve",
+});
+assert.equal(twelveRepos.length, 12);
+assert.equal(topTrendingRepos(twelveRepos).length, 10);
+assert.equal((renderTopTrending(twelveRepos).match(/class="top-trending-item"/g) || []).length, 10);
+
 const legacyHtml = renderTopTrending([repositories[4]]);
 assert.ok(legacyHtml.includes("owner/legacy-tool"));
 assert.ok(legacyHtml.includes("旧形式の記事要約です。"));

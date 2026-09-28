@@ -110,18 +110,51 @@ class Phase3TrendingTests(unittest.TestCase):
         self.assertEqual(current["summary"], "")
         self.assertFalse(any(field in current for field in ("jaName", "workUse", "audience", "aiRelated")))
 
-    def test_fewer_than_ten_keeps_previous_snapshot_unchanged(self) -> None:
-        previous = [repo(f"owner/old-{i}", "以前の日本語要約") for i in range(10)]
-        partial = [repo(f"owner/new-{i}", "新しい日本語要約") for i in range(9)]
+    def test_four_displayable_repositories_keep_previous_snapshot_unchanged(self) -> None:
+        previous = [repo(f"owner/old-{i}", "以前の日本語要約") for i in range(7)]
+        partial = [repo(f"owner/new-{i}", "新しい日本語要約") for i in range(4)]
 
         selected, status = parse_news.select_trending_snapshot(
             partial, previous, "2026-08-05"
         )
 
         self.assertIs(selected, previous)
-        self.assertIn("前回値を維持", status)
+        self.assertIn("表示可能4件 (<5)・前回値を維持", status)
 
-    def test_incomplete_display_content_keeps_last_complete_ten(self) -> None:
+    def test_seven_displayable_repositories_adopt_today_snapshot(self) -> None:
+        previous = [repo(f"owner/old-{i}", "以前の日本語要約") for i in range(10)]
+        current = [repo(f"owner/new-{i}", "新しい日本語要約") for i in range(7)]
+
+        selected, status = parse_news.select_trending_snapshot(
+            current, previous, "2026-08-05"
+        )
+
+        self.assertIsNot(selected, previous)
+        self.assertEqual(selected[:7], current)
+        self.assertEqual(sum(
+            1 for row in selected
+            if row.get("date") == "2026-08-05"
+            and row.get("aiRelated") is not False
+            and parse_news.has_trending_display_content(row)
+        ), 7)
+        self.assertIn("新7件を採用", status)
+
+    def test_more_than_ten_displayable_repositories_are_capped_for_display(self) -> None:
+        current = [repo(f"owner/new-{i}", "新しい日本語要約") for i in range(12)]
+
+        selected, status = parse_news.select_trending_snapshot(
+            current, [], "2026-08-05"
+        )
+
+        self.assertEqual(selected[:12], current)
+        self.assertEqual(len([
+            row for row in selected[:parse_news.TRENDING_DISPLAY_COUNT]
+            if row.get("aiRelated") is not False
+            and parse_news.has_trending_display_content(row)
+        ]), 10)
+        self.assertIn("新10件を採用", status)
+
+    def test_nine_displayable_repositories_adopt_today_snapshot(self) -> None:
         previous = [repo(f"owner/old-{i}", "以前の日本語要約") for i in range(10)]
         current = [repo(f"owner/new-{i}", "新しい日本語要約") for i in range(10)]
         current[2]["summary"] = ""
@@ -130,8 +163,9 @@ class Phase3TrendingTests(unittest.TestCase):
             current, previous, "2026-08-05"
         )
 
-        self.assertIs(selected, previous)
-        self.assertIn("前回正常値を維持", status)
+        self.assertIsNot(selected, previous)
+        self.assertEqual(selected[:10], current)
+        self.assertIn("新9件を採用", status)
 
     def test_initial_incomplete_summaries_use_pending_snapshot(self) -> None:
         current = [repo(f"owner/new-{i}") for i in range(10)]

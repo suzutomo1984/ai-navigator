@@ -556,9 +556,8 @@ def main():
     today_trending = fetch_github_trending(limit=25)
     existing_trending = existing_data.get("trending", [])
 
-    if len(today_trending) < TRENDING_DISPLAY_COUNT:
-        # 取得失敗時は当日分を先に除外しない。直前の表示スナップショットを
-        # そのまま維持し、部分取得したデータでは置き換えない。
+    if len(today_trending) < TRENDING_MIN_ADOPT:
+        # 候補が5件未満なら詳細補完を省き、選択関数に前回値の維持を任せる。
         all_trending, snapshot_status = select_trending_snapshot(
             today_trending, existing_trending, today_str
         )
@@ -1101,6 +1100,7 @@ def parse_trending(filepath: Path, date_str: str) -> list[dict]:
 
 
 TRENDING_DISPLAY_COUNT = 10
+TRENDING_MIN_ADOPT = 5
 
 
 def github_repo_key(value: str) -> str:
@@ -1246,27 +1246,20 @@ def select_trending_snapshot(
     today_repos: list[dict], existing_repos: list[dict], today: str
 ) -> tuple[list[dict], str]:
     """要約の成否に応じて新規・前回正常値・初回縮退値を選ぶ。"""
-    if len(today_repos) < TRENDING_DISPLAY_COUNT:
-        return (
-            existing_repos,
-            f"取得{len(today_repos)}件 (<{TRENDING_DISPLAY_COUNT})・前回値を維持",
-        )
-
-    merged = merge_trending_history(today_repos, existing_repos, today)
     current_displayable = [
         repo for repo in today_repos
         if repo.get("aiRelated") is not False and has_trending_display_content(repo)
     ]
-    current_ten = current_displayable[:TRENDING_DISPLAY_COUNT]
-    if len(current_ten) == TRENDING_DISPLAY_COUNT:
-        return merged, "新10件を採用"
+    if len(current_displayable) < TRENDING_MIN_ADOPT and existing_repos:
+        return (
+            existing_repos,
+            f"表示可能{len(current_displayable)}件 (<{TRENDING_MIN_ADOPT})・前回値を維持",
+        )
 
-    previous_displayable = [
-        repo for repo in existing_repos
-        if repo.get("aiRelated") is not False and has_trending_display_content(repo)
-    ]
-    if len(previous_displayable) >= TRENDING_DISPLAY_COUNT:
-        return existing_repos, "表示可能件数不足のため前回正常値を維持"
+    merged = merge_trending_history(today_repos, existing_repos, today)
+    if len(current_displayable) >= TRENDING_MIN_ADOPT:
+        adopted = min(len(current_displayable), TRENDING_DISPLAY_COUNT)
+        return merged, f"新{adopted}件を採用"
 
     # 初回など正常値がまだ無い場合は、フロント側が空要約を
     # 「要約を準備中です」に置き換える。
