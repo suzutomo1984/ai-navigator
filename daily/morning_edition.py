@@ -127,11 +127,18 @@ JSONのみ。各文章を文単位に分け、各文に根拠記事番号 source
         f"【記事{i}】\n題名: {a.get('title','')}\n媒体: {a.get('source','')}\n本文:\n{text}"
         for i, (a, text) in enumerate(zip(selected[:5], bodies), 1)
     )
-    response = requests.post(
-        f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={key}",
-        json={"contents": [{"parts": [{"text": prompt + ("\n\n修正指示: " + refinement if refinement else "") + "\n\n" + body}]}],
-              "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"}}, timeout=120,
-    )
+    payload = {"contents": [{"parts": [{"text": prompt + ("\n\n修正指示: " + refinement if refinement else "") + "\n\n" + body}]}],
+               "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"}}
+    for attempt in range(2):
+        try:
+            response = requests.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={key}",
+                json=payload, timeout=120,
+            )
+            break
+        except requests.Timeout:
+            if attempt == 1:
+                raise
     response.raise_for_status()
     return json.loads(response.json()["candidates"][0]["content"]["parts"][0]["text"])
 
@@ -284,6 +291,8 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
     tmp_page.replace(page_path)
     tmp_claim.replace(output_dir / f"{target.isoformat()}-{edition}.claim_check.json")
     atomic_json(editions_path, edition_rows)
+    from parse_news import generate_sitemap
+    generate_sitemap(editions_path=editions_path)
     latest = edition_rows[0]
     index_html = f'''<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0; url={esc(latest["date"])}-{esc(latest["edition"])}.html"><title>AI Navigator 朝刊・夕刊</title></head><body><p><a href="{esc(latest["date"])}-{esc(latest["edition"])}.html">最新号を読む</a></p></body></html>'''
     (output_dir / "index.html").write_text(index_html, encoding="utf-8")

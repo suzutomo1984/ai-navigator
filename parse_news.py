@@ -13,10 +13,11 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import urllib.parse
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 # ============================================================
 # 設定
@@ -903,19 +904,29 @@ def update_about_stats(meta: dict, dates_meta: list[dict]) -> None:
     print(f"✅ about.html の数字を更新: {total:,}本 / {official:,}本 / {days}日分")
 
 
-def generate_seo_assets(all_articles: list[dict]) -> None:
-    """robots.txt・sitemap.xml を生成し、index.html に WebSite/CollectionPage の
-    JSON-LD を埋め込む。記事収集のたびに毎回上書きされるため運用は完全自動。"""
+def generate_sitemap(editions_path: Path | None = None) -> None:
+    """Generate the sitemap for fixed pages and published morning editions."""
     today = datetime.now(JST)
     lastmod = today.strftime("%Y-%m-%d")
+    editions_path = editions_path or (Path(__file__).parent / "daily" / "editions.json")
+    edition_urls = []
+    if editions_path.exists():
+        try:
+            editions = json.loads(editions_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"朝刊一覧を読めません: {editions_path}") from exc
+        for row in editions:
+            issue_date = str(row.get("date", ""))
+            if row.get("edition") != "am" or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", issue_date):
+                continue
+            try:
+                date.fromisoformat(issue_date)
+            except ValueError:
+                continue
+            # Cloudflare Pages redirects .html to extensionless paths; list the canonical URL.
+            edition_urls.append(f"  <url>\n    <loc>{BASE_URL}/daily/{issue_date}-am</loc>\n    <lastmod>{issue_date}</lastmod>\n    <changefreq>never</changefreq>\n    <priority>0.7</priority>\n  </url>")
 
-    # --- robots.txt（全許可＋サイトマップ案内）---
-    ROBOTS_FILE.write_text(
-        f"User-agent: *\nAllow: /\nSitemap: {BASE_URL}/sitemap.xml\n",
-        encoding="utf-8",
-    )
-
-    # --- sitemap.xml（個別記事URLは存在しないので固定ページのみ）---
+    # --- sitemap.xml (fixed pages plus morning editions; no .html URLs) ---
     # about は毎日更新されないので changefreq を monthly にする。
     #
     # 【重要】拡張子 .html を付けないこと。
@@ -948,8 +959,21 @@ def generate_seo_assets(all_articles: list[dict]) -> None:
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
+{chr(10).join(edition_urls)}
 </urlset>"""
     SITEMAP_FILE.write_text(sitemap, encoding="utf-8")
+
+
+def generate_seo_assets(all_articles: list[dict]) -> None:
+    """robots.txt・sitemap.xml を生成し、index.html に WebSite/CollectionPage の
+    JSON-LD を埋め込む。記事収集のたびに毎回上書きされるため運用は完全自動。"""
+    today = datetime.now(JST)
+    # --- robots.txt（全許可＋サイトマップ案内）---
+    ROBOTS_FILE.write_text(
+        f"User-agent: *\nAllow: /\nSitemap: {BASE_URL}/sitemap.xml\n",
+        encoding="utf-8",
+    )
+    generate_sitemap()
 
     # --- 構造化データ（JSON-LD）を index.html に埋め込み ---
     # 個別記事URLが無いため NewsArticle ではなく WebSite + CollectionPage(ItemList)

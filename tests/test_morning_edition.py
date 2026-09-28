@@ -1,11 +1,13 @@
 import json
+import xml.etree.ElementTree as ET
 import tempfile
 import unittest
 from datetime import date
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from daily import morning_edition as edition
+import parse_news
 
 
 class MorningEditionTests(unittest.TestCase):
@@ -26,6 +28,15 @@ class MorningEditionTests(unittest.TestCase):
     def test_copy_lengths_are_checked(self):
         content = {"lead_line": "短い", "summary": "要点", "deep_topics": [{"text": "深掘り"}]}
         self.assertIn("15〜25字", edition.copy_length_problem(content))
+
+    def test_gemini_timeout_is_retried_once(self):
+        response = Mock()
+        response.json.return_value = {"candidates": [{"content": {"parts": [{"text": '{"ok": true}'}]}}]}
+        with patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}), patch.object(
+            edition.requests, "post", side_effect=[edition.requests.Timeout(), response]
+        ) as post:
+            self.assertEqual(edition.generate_copy([], []), {"ok": True})
+        self.assertEqual(post.call_count, 2)
 
     def test_claim_check_drops_sentence_with_unsupported_number_or_name(self):
         copy, check = edition.verify_and_filter({
@@ -70,6 +81,23 @@ class MorningEditionTests(unittest.TestCase):
         )
         self.assertIn("更新 08:11</span>", page)
         self.assertNotIn("更新 00:14", page)
+
+    def test_sitemap_includes_only_canonical_morning_edition_urls(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            editions_path = root / "editions.json"
+            sitemap_path = root / "sitemap.xml"
+            editions_path.write_text(json.dumps([
+                {"date": "2026-09-27", "edition": "am"},
+                {"date": "2026-09-27", "edition": "pm"},
+                {"date": "not-a-date", "edition": "am"},
+            ]), encoding="utf-8")
+            with patch.object(parse_news, "SITEMAP_FILE", sitemap_path):
+                parse_news.generate_sitemap(editions_path)
+            urls = [node.text for node in ET.parse(sitemap_path).iter() if node.tag.endswith("loc")]
+        self.assertIn("https://ai-navigator.dev/daily/2026-09-27-am", urls)
+        self.assertFalse(any(".html" in url for url in urls))
+        self.assertFalse(any("pm" in url for url in urls))
 
     def test_jev_or_gemini_failure_creates_no_issue_and_keeps_editions(self):
         articles = [{"id": "one", "title": "Example", "summary": "Example summary", "source": "Example", "url": "https://example.com/a", "addedAt": "2026-09-27T08:00:00+09:00", "date": "2026-09-27"}]
