@@ -2908,3 +2908,78 @@ button, input, select, textarea { color: var(--ink); }
   .top-editorial-layout > .top-section:first-child { margin-top: 0; }
   .top-release-list, .top-trending-list { grid-template-columns: 1fr; }
 }
+
+/* TOP GitHub Trending: 読者向けの短い説明と実用情報 */
+.top-trending-section .top-trending-subtitle {
+  margin: 4px 0 0;
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.top-trending-section .top-trending-list { min-width: 0; }
+.top-trending-section .top-trending-item {
+  grid-template-columns: 24px minmax(0, 1fr);
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.top-trending-body { min-width: 0; max-width: 100%; }
+.top-trending-body > strong {
+  display: block;
+  overflow: visible;
+  color: var(--ink);
+  font: 700 16px/1.45 "Noto Serif JP", "Yu Mincho", serif;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.top-trending-section .top-trending-summary {
+  margin-top: 5px;
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+.top-trending-work-use {
+  display: block;
+  margin-top: 7px;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.top-trending-work-use b { color: var(--ink-muted); font-weight: 600; }
+.top-trending-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+  min-width: 0;
+}
+.top-trending-badge {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 2px 7px;
+  border: 1px solid var(--rule);
+  color: var(--ink-muted);
+  font-size: 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.top-trending-badge--ready {
+  border-color: var(--brand-red);
+  color: var(--brand-red);
+}
+.top-trending-source {
+  display: inline-block;
+  max-width: 100%;
+  margin-top: 8px;
+  color: var(--ink-muted);
+  font-size: 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 2px;
+}
+.top-trending-source:hover { color: var(--ink); }
+@media (max-width: 768px) {
+  .top-trending-section .top-trending-list { grid-template-columns: minmax(0, 1fr); }
+  .top-trending-section .top-trending-item { grid-template-columns: 24px minmax(0, 1fr); }
+}

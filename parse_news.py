@@ -1132,6 +1132,83 @@ def has_japanese_summary(repo: dict) -> bool:
     )
 
 
+TRENDING_AUDIENCES = {"ready", "install", "developer"}
+
+
+def has_trending_reader_fields(repo: dict) -> bool:
+    """新しいTOP表示に必要な、型が正しい説明フィールドが揃っているか判定する。"""
+    audience = repo.get("audience")
+    return (
+        isinstance(repo.get("jaName"), str)
+        and bool(repo["jaName"].strip())
+        and isinstance(repo.get("workUse"), str)
+        and isinstance(audience, str)
+        and audience in TRENDING_AUDIENCES
+        and type(repo.get("aiRelated")) is bool
+        and (bool(repo["workUse"].strip()) or repo["aiRelated"] is False)
+    )
+
+
+def parse_trending_enrichment_response(text: str, targets: list[dict]) -> int:
+    """GeminiのJSON結果を反映し、旧番号付き要約も安全に受け付ける。"""
+    candidate = str(text or "").strip()
+    fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", candidate, re.IGNORECASE | re.DOTALL)
+    if fenced:
+        candidate = fenced.group(1).strip()
+
+    try:
+        rows = json.loads(candidate)
+    except (TypeError, json.JSONDecodeError):
+        rows = None
+
+    if isinstance(rows, dict):
+        rows = rows.get("items")
+    if not isinstance(rows, list):
+        # JSONが壊れた場合も、旧形式の番号付き要約は従来どおり残す。
+        for line in str(text or "").strip().splitlines():
+            match = re.match(r"^(\d+)\.\s+(.+)", line.strip())
+            if not match:
+                continue
+            index = int(match.group(1)) - 1
+            if 0 <= index < len(targets):
+                if not has_japanese_summary(targets[index]):
+                    targets[index]["summary"] = match.group(2).strip()
+        return 0
+
+    enriched = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        index = row.get("index")
+        if type(index) is not int or not 1 <= index <= len(targets):
+            continue
+        summary = row.get("summary")
+        if not isinstance(summary, str) or not summary.strip():
+            continue
+
+        repo = targets[index - 1]
+        if not has_japanese_summary(repo):
+            repo["summary"] = summary.strip()
+        reader_fields = {
+            "jaName": row.get("jaName"),
+            "workUse": row.get("workUse"),
+            "audience": row.get("audience"),
+            "aiRelated": row.get("aiRelated"),
+        }
+        if (
+            isinstance(reader_fields["jaName"], str)
+            and reader_fields["jaName"].strip()
+            and isinstance(reader_fields["workUse"], str)
+            and isinstance(reader_fields["audience"], str)
+            and reader_fields["audience"] in TRENDING_AUDIENCES
+            and type(reader_fields["aiRelated"]) is bool
+            and (reader_fields["workUse"].strip() or reader_fields["aiRelated"] is False)
+        ):
+            repo.update(reader_fields)
+            enriched += 1
+    return enriched
+
+
 def merge_trending_history(
     today_repos: list[dict], existing_repos: list[dict], today: str
 ) -> list[dict]:
@@ -1274,6 +1351,9 @@ def enrich_trending_with_github_api(repos: list[dict], existing_cache: dict | No
             repo["language"] = cached_repo.get("language", "")
             repo["githubDescription"] = cached_repo.get("githubDescription", "")
             repo["summary"] = cached_repo.get("summary", "")
+            for field in ("jaName", "workUse", "audience", "aiRelated"):
+                if field in cached_repo:
+                    repo[field] = cached_repo[field]
             cached += 1
             if repo.get("githubDescription") and repo.get("stars") is not None:
                 continue
@@ -1301,30 +1381,38 @@ def translate_trending_descriptions(repos: list[dict]) -> None:
         print("⚠️  GEMINI_API_KEY未設定 - 翻訳スキップ")
         return
 
-    # 要約対象（githubDescriptionあり・日本語summaryなし）
+    # 説明対象（githubDescriptionがあり、summaryか読者向け項目が不足）
     targets = [
         r for r in repos
-        if r.get("githubDescription") and not has_japanese_summary(r)
+        if r.get("githubDescription")
+        and (not has_japanese_summary(r) or not has_trending_reader_fields(r))
     ]
     if not targets:
         print("🌐 翻訳対象なし（全件キャッシュ済み）")
         return
 
-    # 一括要約プロンプト（入力はGitHub APIの英語1行descriptionのみ）
+    # 一括生成プロンプト（入力はGitHub APIのdescriptionのみ）
     lines = "\n".join(
         f"{i+1}. [{r['title']}] {r['githubDescription']}"
+        + (f"\n   既存summary（変更しない）: {r['summary']}" if has_japanese_summary(r) else "")
         for i, r in enumerate(targets)
     )
-    prompt = f"""以下はGitHubリポジトリの英語の短い説明です。
-各リポジトリが何をするものか、非エンジニアにも分かる日本語で要約してください。
+    prompt = f"""以下はGitHubリポジトリの名前と説明です。
+各リポジトリについて、非エンジニアにも分かる日本語の要約と、指定フィールドを作ってください。
 
 ## ルール
 - 各要約は5行以内
 - 誇張しない
 - 入力から分からないことは書かない
-- 英語説明の翻訳や言い換えに必要な範囲だけを書く
-- 出力は番号付きリスト形式（例: 1. 要約）
-- リポジトリ名は要約に含めない
+- summary は従来どおり、リポジトリ名を含めず、説明の翻訳や言い換えに必要な範囲だけを書く
+- 入力に既存summaryがある場合は、その文面を変更せずsummaryに使う
+- jaName は15字前後の日本語の短い名前にする
+- workUse は仕事での使い道を具体的に1文で書く。説明から判断できなければ空文字にする
+- audience は ready（ブラウザ等ですぐ使える）、install（インストールして使う）、developer（主に開発者向け）のいずれか
+- aiRelated はAIまたは自動化に直接関係する場合だけ true。関係がなければ false
+- 出力はJSON配列のみ。各要素は index, summary, jaName, workUse, audience, aiRelated を持つ
+- index は入力の番号（1始まり）。JSON以外の文章やMarkdownコードフェンスは付けない
+- 形式例: [{{"index":1,"summary":"要約","jaName":"AIエージェント管理アプリ","workUse":"複数の業務AIを一か所で管理できる。","audience":"install","aiRelated":true}}]
 
 {lines}"""
 
@@ -1336,16 +1424,9 @@ def translate_trending_descriptions(repos: list[dict]) -> None:
             result = json.loads(res.read())
         text = result["candidates"][0]["content"]["parts"][0]["text"]
 
-        # 番号付きリストをパース: "1. 説明文" → index → summary
-        for line in text.strip().splitlines():
-            m = re.match(r"^(\d+)\.\s+(.+)", line.strip())
-            if m:
-                idx = int(m.group(1)) - 1
-                if 0 <= idx < len(targets):
-                    targets[idx]["summary"] = m.group(2).strip()
-
-        translated = sum(1 for r in targets if r.get("summary"))
-        print(f"🌐 Gemini翻訳: {translated}/{len(targets)}件")
+        enriched = parse_trending_enrichment_response(text, targets)
+        translated = sum(1 for r in targets if has_japanese_summary(r))
+        print(f"🌐 Gemini翻訳: {translated}/{len(targets)}件・読者向け情報{enriched}件")
     except Exception as e:
         print(f"⚠️  Gemini翻訳失敗: {e}")
 

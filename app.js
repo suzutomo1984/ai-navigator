@@ -136,7 +136,7 @@ async function loadData() {
   allArticles = (data.articles || []).filter(isValidArticle);
   allDates = data.dates || [];
   allCategories = data.categories || [];
-  allTrending = (data.trending || []).slice(0, 5);
+  allTrending = Array.isArray(data.trending) ? data.trending : [];
   latestBatchAt = data.latestBatchAt || null; // 最新配信バッチ時刻（NEW判定の基準）
 
   const requestedCategory = window.location
@@ -571,21 +571,43 @@ function topReleaseIdentity(article) {
   return { product, version: version || title };
 }
 
+function topTrendingRepos(repos) {
+  return (Array.isArray(repos) ? repos : [])
+    .filter(repo => repo && repo.aiRelated !== false)
+    .slice(0, 5);
+}
+
 function renderTopTrending(repos) {
-  return repos.slice(0, 5).map((repo, index) => {
-    const stars = Number(repo.stars);
-    const starLabel = Number.isFinite(stars) ? stars.toLocaleString("ja-JP") : "—";
-    const language = String(repo.language || "").trim();
+  const audienceLabels = {
+    ready: "すぐ使える",
+    install: "要インストール",
+    developer: "開発者向け",
+  };
+  return topTrendingRepos(repos).map((repo, index) => {
+    const audience = Object.prototype.hasOwnProperty.call(audienceLabels, repo.audience)
+      ? audienceLabels[repo.audience]
+      : "";
+    const days = Number(repo.trendingDays);
+    const daysLabel = Number.isInteger(days) && days >= 1
+      ? (days === 1 ? "今日から話題" : `${days}日連続`)
+      : "";
+    const badges = [
+      audience ? `<span class="top-trending-badge${repo.audience === "ready" ? " top-trending-badge--ready" : ""}">${audience}</span>` : "",
+      daysLabel ? `<span class="top-trending-badge">${escHtml(daysLabel)}</span>` : "",
+    ].filter(Boolean).join("");
+    const jaName = String(repo.jaName || "").trim() || repo.title || "GitHub repository";
+    const workUse = String(repo.workUse || "").trim();
     return `
-      <a class="top-trending-item" href="${escAttr(safeExternalUrl(repo.url))}" target="_blank" rel="noopener noreferrer">
+      <article class="top-trending-item">
         <span class="top-trending-rank" aria-label="${index + 1}位">${index + 1}</span>
-        <span class="top-trending-body">
-          <strong>${escHtml(repo.title || "GitHub repository")}</strong>
+        <div class="top-trending-body">
+          <strong>${escHtml(jaName)}</strong>
           <span class="top-trending-summary">${escHtml(topTrendingSummary(repo))}</span>
-          <span class="top-trending-meta">★ ${escHtml(starLabel)}${language ? ` · ${escHtml(language)}` : ""}</span>
-        </span>
-        <span class="top-trending-external" aria-hidden="true">↗</span>
-      </a>`;
+          ${workUse ? `<span class="top-trending-work-use"><b>仕事では:</b> ${escHtml(workUse)}</span>` : ""}
+          ${badges ? `<span class="top-trending-badges">${badges}</span>` : ""}
+          <a class="top-trending-source" href="${escAttr(safeExternalUrl(repo.url))}" target="_blank" rel="noopener noreferrer">${escHtml(repo.title || "GitHub repository")} ↗ GitHub（英語）</a>
+        </div>
+      </article>`;
   }).join("");
 }
 
@@ -672,9 +694,10 @@ function renderLanding() {
   const content = getLandingContent(allArticles, allCategories);
 
   if (trendingEl) {
-    trendingEl.innerHTML = allTrending.length
-      ? renderTopTrending(allTrending)
-      : `<p class="top-empty">GitHubの情報を取得できませんでした。</p>`;
+    const trendingRepos = topTrendingRepos(allTrending);
+    trendingEl.innerHTML = renderTopTrending(trendingRepos);
+    const trendingSection = trendingEl.closest(".top-trending-section");
+    if (trendingSection) trendingSection.hidden = trendingRepos.length === 0;
   }
 
   if (releasesEl) {

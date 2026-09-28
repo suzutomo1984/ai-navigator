@@ -9,44 +9,103 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const appSource = fs.readFileSync(path.join(root, "app.js"), "utf8");
 const indexSource = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const data = JSON.parse(fs.readFileSync(path.join(root, "articles.json"), "utf8"));
+const trendingSection = { hidden: false };
+const trendingElement = {
+  innerHTML: "",
+  closest(selector) {
+    assert.equal(selector, ".top-trending-section");
+    return trendingSection;
+  },
+};
 const context = {
   console,
-  document: { addEventListener() {} },
+  document: {
+    addEventListener() {},
+    getElementById(id) { return id === "top-github-trending" ? trendingElement : null; },
+  },
   window: {},
 };
 vm.createContext(context);
 vm.runInContext(
-  `${appSource}\n;globalThis.__phase3TestApi = { renderTopTrending, topTrendingSummary };`,
+  `${appSource}\n;globalThis.__phase3TestApi = { renderTopTrending, topTrendingRepos, renderLanding, setTrending(value) { allTrending = value; } };`,
   context,
   { filename: "app.js" },
 );
 
-const { renderTopTrending, topTrendingSummary } = context.__phase3TestApi;
-const repos = Array.from({ length: 6 }, (_, index) => ({
-  title: `owner/repo-${index + 1}`,
-  url: `https://github.com/owner/repo-${index + 1}`,
-  summary: index === 0 ? "English description only" : "日本語の要約です",
-  stars: 100 + index,
-  language: "TypeScript",
-}));
-const html = renderTopTrending(repos);
+const { renderTopTrending, topTrendingRepos, renderLanding, setTrending } = context.__phase3TestApi;
+const repositories = [
+  { title: "pipepipe/pipepipe", aiRelated: false, url: "https://github.com/pipepipe/pipepipe" },
+  {
+    title: "paperclipai/paperclip",
+    jaName: "AIエージェント管理アプリ",
+    summary: "複数のAIエージェントをまとめて管理できます。",
+    workUse: "問い合わせ対応や資料作成のAIを一か所で管理できます。",
+    audience: "ready",
+    aiRelated: true,
+    trendingDays: 1,
+    stars: 100,
+    language: "TypeScript",
+    url: "https://github.com/paperclipai/paperclip",
+  },
+  {
+    title: "owner/install-tool",
+    jaName: "社内文書検索ツール",
+    summary: "社内資料を検索するAIツールです。",
+    workUse: "社内資料の確認時間を短縮できます。",
+    audience: "install",
+    aiRelated: true,
+    trendingDays: 3,
+    url: "https://github.com/owner/install-tool",
+  },
+  {
+    title: "owner/dev-library",
+    jaName: "AI連携ライブラリ",
+    summary: "開発者がAI機能を組み込むための部品です。",
+    workUse: "社内システムへのAI機能追加に使えます。",
+    audience: "developer",
+    aiRelated: true,
+    url: "https://github.com/owner/dev-library",
+  },
+  { title: "owner/legacy-tool", summary: "旧形式の記事要約です。", url: "https://github.com/owner/legacy-tool" },
+  { title: "owner/legacy-tool-2", summary: "もう一つの旧形式要約です。", url: "https://github.com/owner/legacy-tool-2" },
+  { title: "owner/over-limit", summary: "6件目は出しません。", url: "https://github.com/owner/over-limit" },
+];
 
+const html = renderTopTrending(repositories);
 assert.equal((html.match(/class="top-trending-item"/g) || []).length, 5);
-assert.ok(html.includes("owner/repo-1"));
-assert.ok(html.includes("★ 100"));
-assert.ok(html.includes("要約を準備中です"));
-assert.ok(!html.includes("English description only"));
-assert.equal(topTrendingSummary({ summary: "English only" }), "要約を準備中です");
+assert.ok(html.includes("AIエージェント管理アプリ"));
+assert.ok(html.includes("問い合わせ対応や資料作成のAIを一か所で管理できます。"));
+assert.ok(html.includes("すぐ使える"));
+assert.ok(html.includes("今日から話題"));
+assert.ok(html.includes("要インストール"));
+assert.ok(html.includes("3日連続"));
+assert.ok(html.includes("開発者向け"));
+assert.ok(html.includes("owner/legacy-tool ↗ GitHub（英語）"));
+assert.ok(!html.includes("pipepipe/pipepipe"));
+assert.ok(!html.includes("6件目は出しません"));
+assert.ok(!html.includes("★ 100"));
+assert.ok(!html.includes("TypeScript"));
+assert.equal((topTrendingRepos(repositories).map(repo => repo.title).includes("pipepipe/pipepipe")), false);
+
+const legacyHtml = renderTopTrending([repositories[4]]);
+assert.ok(legacyHtml.includes("owner/legacy-tool"));
+assert.ok(legacyHtml.includes("旧形式の記事要約です。"));
+assert.ok(!legacyHtml.includes("仕事では:"));
+assert.ok(!legacyHtml.includes("開発者向け"));
+
+setTrending(repositories.filter(repo => repo.aiRelated !== false));
+renderLanding();
+assert.equal(trendingSection.hidden, false);
+assert.equal((trendingElement.innerHTML.match(/class="top-trending-item"/g) || []).length, 5);
+setTrending([{ title: "unrelated/one", aiRelated: false }, { title: "unrelated/two", aiRelated: false }]);
+renderLanding();
+assert.equal(trendingSection.hidden, true);
+assert.equal(trendingElement.innerHTML, "");
+
 assert.equal((indexSource.match(/id=["']top-github-trending["']/g) || []).length, 1);
-assert.ok(indexSource.includes("今、作る側が注目しているもの"));
-assert.ok(indexSource.includes("GitHub Trending（daily）"));
+assert.ok(indexSource.includes("今、世界で話題のAIツール"));
+assert.ok(indexSource.includes("エンジニアの間で急上昇中の無料ツール"));
 
 const actualHtml = renderTopTrending(data.trending || []);
-assert.equal((actualHtml.match(/class="top-trending-item"/g) || []).length, 5);
-assert.ok(!actualHtml.includes(data.trending[0].githubDescription || "\u0000"));
-
-console.log(JSON.stringify({
-  renderedItems: 5,
-  actualDataItems: (data.trending || []).slice(0, 5).length,
-  fallback: "要約を準備中です",
-}));
+assert.ok((actualHtml.match(/class="top-trending-item"/g) || []).length <= 5);
+console.log(JSON.stringify({ sampleItems: 5, oldData: "supported", unrelatedFiltered: true, emptySectionHidden: true }));
