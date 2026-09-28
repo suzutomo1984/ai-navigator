@@ -379,6 +379,8 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
     atomic_json(editions_path, edition_rows)
     (output_dir / "index.html").write_text(render_archive_html(edition_rows), encoding="utf-8")
     sync_issue_navigation(edition_rows, output_dir)
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))  # 直接実行時は daily/ しか import パスに無い
     from parse_news import generate_sitemap
     generate_sitemap(editions_path=editions_path)
     return {"page": str(page_path), "editions": str(editions_path), "candidate_count": len(candidates), "selected": selected, "dropped_sentences": claim_check["dropped_sentences"], "generated_at": generated_at, "claim_check": str(output_dir / f"{target.isoformat()}-{edition}.claim_check.json")}
