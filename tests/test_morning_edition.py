@@ -65,6 +65,18 @@ class MorningEditionTests(unittest.TestCase):
         self.assertIn("2026年9月28日（月）朝刊", page)
         self.assertIn("2026-09-28-am.html", page)
 
+    def test_archive_and_issue_pages_include_gtm(self):
+        archive = edition.render_archive_html([])
+        issue = edition.render_html(
+            date(2026, 9, 28), "am", [], [],
+            {"lead_line": "今日の一言", "summary": "要点", "deep_topics": []},
+            "2026-09-28T08:11:00+09:00", [],
+        )
+        for page in (archive, issue):
+            with self.subTest(page=page[:40]):
+                self.assertIn("GTM-NNQDZVDZ", page)
+                self.assertIn("ns.html?id=GTM-NNQDZVDZ", page)
+
     def test_issue_navigation_has_only_available_static_neighbors(self):
         rows = [
             {"date": "2026-09-28", "edition": "am"},
