@@ -68,6 +68,9 @@ class Phase3TrendingTests(unittest.TestCase):
             parse_news.translate_trending_descriptions([current])
 
         self.assertEqual(urlopen.call_count, 1)
+        prompt = json.loads(urlopen.call_args.args[0].data)["contents"][0]["parts"][0]["text"]
+        self.assertIn("2文・60〜100字", prompt)
+        self.assertIn("1〜2文・40〜80字", prompt)
         self.assertEqual(current["summary"], "既存の要約はそのまま残します")
         self.assertEqual(current["jaName"], "AIエージェント管理アプリ")
         self.assertEqual(current["workUse"], "複数の業務AIを一か所で管理できます。")
@@ -107,9 +110,9 @@ class Phase3TrendingTests(unittest.TestCase):
         self.assertEqual(current["summary"], "")
         self.assertFalse(any(field in current for field in ("jaName", "workUse", "audience", "aiRelated")))
 
-    def test_fewer_than_five_keeps_previous_snapshot_unchanged(self) -> None:
-        previous = [repo(f"owner/old-{i}", "以前の日本語要約") for i in range(5)]
-        partial = [repo(f"owner/new-{i}", "新しい日本語要約") for i in range(4)]
+    def test_fewer_than_ten_keeps_previous_snapshot_unchanged(self) -> None:
+        previous = [repo(f"owner/old-{i}", "以前の日本語要約") for i in range(10)]
+        partial = [repo(f"owner/new-{i}", "新しい日本語要約") for i in range(9)]
 
         selected, status = parse_news.select_trending_snapshot(
             partial, previous, "2026-08-05"
@@ -118,9 +121,9 @@ class Phase3TrendingTests(unittest.TestCase):
         self.assertIs(selected, previous)
         self.assertIn("前回値を維持", status)
 
-    def test_incomplete_summaries_keep_last_complete_five(self) -> None:
-        previous = [repo(f"owner/old-{i}", "以前の日本語要約") for i in range(5)]
-        current = [repo(f"owner/new-{i}", "新しい日本語要約") for i in range(5)]
+    def test_incomplete_display_content_keeps_last_complete_ten(self) -> None:
+        previous = [repo(f"owner/old-{i}", "以前の日本語要約") for i in range(10)]
+        current = [repo(f"owner/new-{i}", "新しい日本語要約") for i in range(10)]
         current[2]["summary"] = ""
 
         selected, status = parse_news.select_trending_snapshot(
@@ -131,14 +134,57 @@ class Phase3TrendingTests(unittest.TestCase):
         self.assertIn("前回正常値を維持", status)
 
     def test_initial_incomplete_summaries_use_pending_snapshot(self) -> None:
-        current = [repo(f"owner/new-{i}") for i in range(5)]
+        current = [repo(f"owner/new-{i}") for i in range(10)]
 
         selected, status = parse_news.select_trending_snapshot(
             current, [], "2026-08-05"
         )
 
-        self.assertEqual(selected[:5], current)
+        self.assertEqual(selected[:10], current)
         self.assertIn("準備中表示", status)
+
+    def test_ten_displayable_ai_repositories_are_adopted_and_non_ai_are_skipped(self) -> None:
+        current = [repo(f"owner/new-{i}", "日本語の要約") for i in range(10)]
+        current[0]["aiRelated"] = False
+        current.append(repo("owner/extra", "別の日本語要約"))
+
+        selected, status = parse_news.select_trending_snapshot(
+            current, [], "2026-08-05"
+        )
+
+        self.assertIs(selected[0], current[0])
+        self.assertIn("新10件を採用", status)
+
+    def test_display_requires_summary_or_japanese_name(self) -> None:
+        self.assertFalse(parse_news.has_trending_display_content(repo("owner/empty")))
+        self.assertTrue(parse_news.has_trending_display_content({"jaName": "ツール名"}))
+        self.assertTrue(parse_news.has_trending_display_content({"summary": "説明"}))
+
+    def test_fetch_uses_weekly_feed_as_unique_candidates_after_daily(self) -> None:
+        def rss(names: list[str]) -> bytes:
+            items = "".join(
+                f"<item><title>{name}</title><link>https://github.com/{name}</link></item>"
+                for name in names
+            )
+            return f"<rss><channel>{items}</channel></rss>".encode()
+
+        daily = [f"daily/repo-{i}" for i in range(1, 10)]
+        weekly = ["DAILY/REPO-1", "daily/repo-2"] + [f"weekly/repo-{i}" for i in range(1, 10)]
+        responses = []
+        for content in (rss(daily), rss(weekly)):
+            response = MagicMock()
+            response.__enter__.return_value.read.return_value = content
+            responses.append(response)
+
+        with patch.object(parse_news.urllib.request, "urlopen", side_effect=responses) as urlopen:
+            fetched = parse_news.fetch_github_trending(limit=15)
+
+        self.assertEqual(urlopen.call_count, 2)
+        self.assertIn("/daily/", urlopen.call_args_list[0].args[0].full_url)
+        self.assertIn("/weekly/", urlopen.call_args_list[1].args[0].full_url)
+        self.assertEqual(len(fetched), 15)
+        self.assertEqual(fetched[0]["title"], daily[0])
+        self.assertEqual(len({row["url"].lower() for row in fetched}), 15)
 
 
 if __name__ == "__main__":

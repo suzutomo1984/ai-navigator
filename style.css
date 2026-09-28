@@ -2916,7 +2916,10 @@ button, input, select, textarea { color: var(--ink); }
   font-size: 12px;
   line-height: 1.5;
 }
-.top-trending-section .top-trending-list { min-width: 0; }
+.top-trending-section .top-trending-list {
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .top-trending-section .top-trending-item {
   grid-template-columns: 24px minmax(0, 1fr);
   min-width: 0;
@@ -2936,6 +2939,7 @@ button, input, select, textarea { color: var(--ink); }
   margin-top: 5px;
   color: var(--ink-muted);
   overflow-wrap: anywhere;
+  -webkit-line-clamp: 3;
 }
 .top-trending-work-use {
   display: block;

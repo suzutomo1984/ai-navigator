@@ -571,8 +571,9 @@ def main():
         # GitHub APIで今日分の詳細情報を補完（stars・language・description・summary）
         enrich_trending_with_github_api(today_trending, existing_trending_cache)
 
-        # 画面に出す先頭5件だけを、英語descriptionから日本語要約する。
-        translate_trending_descriptions(today_trending[:TRENDING_DISPLAY_COUNT])
+        # AI無関係・説明なしの項目が混ざるため、取得した候補をまとめて翻訳する。
+        # 25件から表示条件を満たす10件を確保する。
+        translate_trending_descriptions(today_trending)
 
         all_trending, snapshot_status = select_trending_snapshot(
             today_trending, existing_trending, today_str
@@ -1099,7 +1100,7 @@ def parse_trending(filepath: Path, date_str: str) -> list[dict]:
     return repos
 
 
-TRENDING_DISPLAY_COUNT = 5
+TRENDING_DISPLAY_COUNT = 10
 
 
 def github_repo_key(value: str) -> str:
@@ -1146,6 +1147,14 @@ def has_trending_reader_fields(repo: dict) -> bool:
         and audience in TRENDING_AUDIENCES
         and type(repo.get("aiRelated")) is bool
         and (bool(repo["workUse"].strip()) or repo["aiRelated"] is False)
+    )
+
+
+def has_trending_display_content(repo: dict) -> bool:
+    """TOPで表示できる日本語名または日本語要約があるか判定する。"""
+    return any(
+        isinstance(repo.get(field), str) and bool(repo[field].strip())
+        for field in ("summary", "jaName")
     )
 
 
@@ -1244,17 +1253,20 @@ def select_trending_snapshot(
         )
 
     merged = merge_trending_history(today_repos, existing_repos, today)
-    current_five = today_repos[:TRENDING_DISPLAY_COUNT]
-    if len(current_five) == TRENDING_DISPLAY_COUNT and all(
-        has_japanese_summary(repo) for repo in current_five
-    ):
-        return merged, "新5件を採用"
+    current_displayable = [
+        repo for repo in today_repos
+        if repo.get("aiRelated") is not False and has_trending_display_content(repo)
+    ]
+    current_ten = current_displayable[:TRENDING_DISPLAY_COUNT]
+    if len(current_ten) == TRENDING_DISPLAY_COUNT:
+        return merged, "新10件を採用"
 
-    previous_five = existing_repos[:TRENDING_DISPLAY_COUNT]
-    if len(previous_five) == TRENDING_DISPLAY_COUNT and all(
-        has_japanese_summary(repo) for repo in previous_five
-    ):
-        return existing_repos, "要約不足のため前回正常値を維持"
+    previous_displayable = [
+        repo for repo in existing_repos
+        if repo.get("aiRelated") is not False and has_trending_display_content(repo)
+    ]
+    if len(previous_displayable) >= TRENDING_DISPLAY_COUNT:
+        return existing_repos, "表示可能件数不足のため前回正常値を維持"
 
     # 初回など正常値がまだ無い場合は、フロント側が空要約を
     # 「要約を準備中です」に置き換える。
@@ -1262,8 +1274,11 @@ def select_trending_snapshot(
 
 
 def fetch_github_trending(limit: int = 25) -> list[dict]:
-    """GitHub Trending RSS (daily/all) からリポジトリ一覧を取得する。"""
-    feed_url = "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml"
+    """GitHub Trending の daily / weekly RSS を重複除去して取得する。"""
+    feed_urls = [
+        "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml",
+        "https://mshibanami.github.io/GitHubTrendingRSS/weekly/all.xml",
+    ]
     today = datetime.now(JST).strftime("%Y-%m-%d")
     repos = []
     seen_names = set()
@@ -1278,8 +1293,12 @@ def fetch_github_trending(limit: int = 25) -> list[dict]:
         entries = root.findall("atom:entry", ns) or root.findall(".//item")
         result = []
         for entry in entries:
-            title_el = entry.find("atom:title", ns) or entry.find("title")
-            link_el  = entry.find("atom:link",  ns) or entry.find("link")
+            title_el = entry.find("atom:title", ns)
+            if title_el is None:
+                title_el = entry.find("title")
+            link_el = entry.find("atom:link", ns)
+            if link_el is None:
+                link_el = entry.find("link")
             title = title_el.text.strip() if title_el is not None and title_el.text else ""
             if link_el is not None:
                 url = link_el.get("href") or (link_el.text or "").strip()
@@ -1294,34 +1313,41 @@ def fetch_github_trending(limit: int = 25) -> list[dict]:
             result.append((full_name, f"https://github.com/{full_name}"))
         return result
 
-    try:
-        items = parse_feed(feed_url)
-        for full_name, url in items:
-            key = github_repo_key(full_name)
-            if not key or key in seen_names:
-                continue
-            seen_names.add(key)
-            idx = len(repos) + 1
-            repos.append({
-                "id": f"{today}_trending_{idx}",
-                "date": today,
-                "title": full_name,
-                "url": url,
-                "source": "GitHub Trending",
-                "category": "trending",
-                "summary": "",
-                "isTrending": True,
-                "isPick": False,
-                "pickPriority": None,
-                "isOfficial": False,
-                "rankingTier": 3,
-                "rankingScore": 0,
-            })
-            if len(repos) >= limit:
-                break
-        print(f"📡 RSS取得: +{len(repos)}件 (daily)")
-    except Exception as e:
-        print(f"⚠️  RSS取得失敗 (daily): {e}")
+    for feed_url in feed_urls:
+        feed_name = feed_url.split("/")[-2]
+        try:
+            items = parse_feed(feed_url)
+            added = 0
+            for full_name, url in items:
+                key = github_repo_key(full_name)
+                if not key or key in seen_names:
+                    continue
+                seen_names.add(key)
+                idx = len(repos) + 1
+                repos.append({
+                    "id": f"{today}_trending_{idx}",
+                    "date": today,
+                    "title": full_name,
+                    "url": url,
+                    "source": "GitHub Trending",
+                    "category": "trending",
+                    "summary": "",
+                    "isTrending": True,
+                    "isPick": False,
+                    "pickPriority": None,
+                    "isOfficial": False,
+                    "rankingTier": 3,
+                    "rankingScore": 0,
+                })
+                added += 1
+                if len(repos) >= limit:
+                    break
+            print(f"📡 RSS取得: +{added}件 ({feed_name})")
+        except Exception as e:
+            print(f"⚠️  RSS取得失敗 ({feed_name}): {e}")
+
+        if len(repos) >= limit:
+            break
 
     print(f"📡 GitHub Trending 合計: {len(repos)}件")
     return repos
@@ -1401,10 +1427,11 @@ def translate_trending_descriptions(repos: list[dict]) -> None:
 各リポジトリについて、非エンジニアにも分かる日本語の要約と、指定フィールドを作ってください。
 
 ## ルール
-- 各要約は5行以内
+- summary は「何をするツールか」を2文・60〜100字で説明する
+- workUse は「中小企業の現場で、誰が・どんな場面で使うか」を具体的な場面で1〜2文・40〜80字で説明する
 - 誇張しない
 - 入力から分からないことは書かない
-- summary は従来どおり、リポジトリ名を含めず、説明の翻訳や言い換えに必要な範囲だけを書く
+- summary にリポジトリ名を含めない
 - 入力に既存summaryがある場合は、その文面を変更せずsummaryに使う
 - jaName は15字前後の日本語の短い名前にする
 - workUse は仕事での使い道を具体的に1文で書く。説明から判断できなければ空文字にする

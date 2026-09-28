@@ -574,7 +574,8 @@ function topReleaseIdentity(article) {
 function topTrendingRepos(repos) {
   return (Array.isArray(repos) ? repos : [])
     .filter(repo => repo && repo.aiRelated !== false)
-    .slice(0, 5);
+    .filter(repo => Boolean(String(repo.summary || "").trim() || String(repo.jaName || "").trim()))
+    .slice(0, 10);
 }
 
 function renderTopTrending(repos) {
