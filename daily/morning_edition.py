@@ -133,7 +133,7 @@ JSONのみ。各文章を文単位に分け、各文に根拠記事番号 source
         try:
             response = requests.post(
                 f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={key}",
-                json=payload, timeout=120,
+                json=payload, timeout=300,
             )
             break
         except requests.Timeout:
