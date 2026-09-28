@@ -917,14 +917,15 @@ def generate_sitemap(editions_path: Path | None = None) -> None:
             raise ValueError(f"朝刊一覧を読めません: {editions_path}") from exc
         for row in editions:
             issue_date = str(row.get("date", ""))
-            if row.get("edition") != "am" or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", issue_date):
+            issue_type = str(row.get("edition", ""))
+            if issue_type not in {"am", "pm"} or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", issue_date):
                 continue
             try:
                 date.fromisoformat(issue_date)
             except ValueError:
                 continue
             # Cloudflare Pages redirects .html to extensionless paths; list the canonical URL.
-            edition_urls.append(f"  <url>\n    <loc>{BASE_URL}/daily/{issue_date}-am</loc>\n    <lastmod>{issue_date}</lastmod>\n    <changefreq>never</changefreq>\n    <priority>0.7</priority>\n  </url>")
+            edition_urls.append(f"  <url>\n    <loc>{BASE_URL}/daily/{issue_date}-{issue_type}</loc>\n    <lastmod>{issue_date}</lastmod>\n    <changefreq>never</changefreq>\n    <priority>0.7</priority>\n  </url>")
 
     # --- sitemap.xml (fixed pages plus morning editions; no .html URLs) ---
     # about は毎日更新されないので changefreq を monthly にする。
@@ -958,6 +959,12 @@ def generate_sitemap(editions_path: Path | None = None) -> None:
     <lastmod>{lastmod}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>{BASE_URL}/daily/</loc>
+    <lastmod>{lastmod}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
   </url>
 {chr(10).join(edition_urls)}
 </urlset>"""

@@ -53,6 +53,53 @@ class MorningEditionTests(unittest.TestCase):
         self.assertEqual(len(updated), 2)
         self.assertEqual(updated[0]["generatedAt"], "new")
 
+    def test_archive_is_static_newest_first_and_marks_latest(self):
+        rows = [
+            {"date": "2026-09-27", "edition": "am", "leadLine": "古い号", "summaryExcerpt": "前日の要約"},
+            {"date": "2026-09-28", "edition": "am", "leadLine": "最新の見出し", "summaryExcerpt": "最新の要約"},
+        ]
+        page = edition.render_archive_html(rows)
+        self.assertNotIn("http-equiv=\"refresh\"", page)
+        self.assertLess(page.index("最新の見出し"), page.index("古い号"))
+        self.assertIn("最新号", page)
+        self.assertIn("2026年9月28日（月）朝刊", page)
+        self.assertIn("2026-09-28-am.html", page)
+
+    def test_issue_navigation_has_only_available_static_neighbors(self):
+        rows = [
+            {"date": "2026-09-28", "edition": "am"},
+            {"date": "2026-09-27", "edition": "am"},
+        ]
+        latest = edition.render_issue_navigation(rows[0], rows)
+        older = edition.render_issue_navigation(rows[1], rows)
+        self.assertIn("← 前の号", latest)
+        self.assertNotIn("次の号 →", latest)
+        self.assertIn("2026-09-27-am.html", latest)
+        self.assertNotIn("前の号", older)
+        self.assertIn("次の号 →", older)
+        self.assertIn("2026-09-28-am.html", older)
+
+    def test_sync_updates_previous_issue_and_is_idempotent(self):
+        rows = [
+            {"date": "2026-09-28", "edition": "am"},
+            {"date": "2026-09-27", "edition": "am"},
+        ]
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            for row in rows:
+                (output / f'{row["date"]}-{row["edition"]}.html').write_text(
+                    "<main><footer>footer</footer></main>", encoding="utf-8"
+                )
+            edition.sync_issue_navigation(rows, output)
+            edition.sync_issue_navigation(rows, output)
+            latest = (output / "2026-09-28-am.html").read_text(encoding="utf-8")
+            older = (output / "2026-09-27-am.html").read_text(encoding="utf-8")
+        self.assertEqual(latest.count("EDITION_NAV:start"), 1)
+        self.assertIn("← 前の号", latest)
+        self.assertNotIn("次の号 →", latest)
+        self.assertNotIn("前の号", older)
+        self.assertIn("次の号 →", older)
+
     def test_rendered_week_only_lists_existing_morning_issues(self):
         rows = [
             {"date": "2026-09-27", "edition": "am", "selectedCount": 10},
@@ -82,7 +129,7 @@ class MorningEditionTests(unittest.TestCase):
         self.assertIn("更新 08:11</span>", page)
         self.assertNotIn("更新 00:14", page)
 
-    def test_sitemap_includes_only_canonical_morning_edition_urls(self):
+    def test_sitemap_includes_archive_and_canonical_edition_urls(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             editions_path = root / "editions.json"
@@ -95,9 +142,10 @@ class MorningEditionTests(unittest.TestCase):
             with patch.object(parse_news, "SITEMAP_FILE", sitemap_path):
                 parse_news.generate_sitemap(editions_path)
             urls = [node.text for node in ET.parse(sitemap_path).iter() if node.tag.endswith("loc")]
+        self.assertIn("https://ai-navigator.dev/daily/", urls)
         self.assertIn("https://ai-navigator.dev/daily/2026-09-27-am", urls)
+        self.assertIn("https://ai-navigator.dev/daily/2026-09-27-pm", urls)
         self.assertFalse(any(".html" in url for url in urls))
-        self.assertFalse(any("pm" in url for url in urls))
 
     def test_jev_or_gemini_failure_creates_no_issue_and_keeps_editions(self):
         articles = [{"id": "one", "title": "Example", "summary": "Example summary", "source": "Example", "url": "https://example.com/a", "addedAt": "2026-09-27T08:00:00+09:00", "date": "2026-09-27"}]

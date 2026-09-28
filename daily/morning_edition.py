@@ -191,6 +191,92 @@ def esc(value: object) -> str:
     return html.escape(str(value or ""), quote=True)
 
 
+def issue_rows(editions: list[dict]) -> list[dict]:
+    """Return unique, valid issues in newest-first order."""
+    rows = {}
+    for row in editions:
+        issue_date = str(row.get("date", ""))
+        issue_type = str(row.get("edition", ""))
+        if issue_type not in {"am", "pm"}:
+            continue
+        try:
+            date.fromisoformat(issue_date)
+        except ValueError:
+            continue
+        rows[(issue_date, issue_type)] = row
+    return sorted(rows.values(), key=lambda row: (row["date"], row["edition"]), reverse=True)
+
+
+def issue_title(row: dict) -> str:
+    day_names = "月火水木金土日"
+    issue_day = date.fromisoformat(row["date"])
+    label = "朝刊" if row["edition"] == "am" else "夕刊"
+    return f"{issue_day.year}年{issue_day.month}月{issue_day.day}日（{day_names[issue_day.weekday()]}）{label}"
+
+
+def render_issue_navigation(current: dict, editions: list[dict]) -> str:
+    """Render previous and next issue links as crawlable static HTML."""
+    rows = issue_rows(editions)
+    keys = [(row["date"], row["edition"]) for row in rows]
+    current_key = (current["date"], current["edition"])
+    if current_key not in keys:
+        return ""
+    index = keys.index(current_key)
+    previous = rows[index + 1] if index + 1 < len(rows) else None
+    following = rows[index - 1] if index > 0 else None
+    links = []
+    if previous:
+        links.append(f'<a class="issue-nav-link" href="{esc(previous["date"])}-{esc(previous["edition"])}.html"><span>← 前の号</span><small>{esc(issue_title(previous))}</small></a>')
+    if following:
+        links.append(f'<a class="issue-nav-link issue-nav-link--next" href="{esc(following["date"])}-{esc(following["edition"])}.html"><span>次の号 →</span><small>{esc(issue_title(following))}</small></a>')
+    if not links:
+        return ""
+    return """<!-- EDITION_NAV:start -->
+<style>.issue-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:34px 0 10px;padding-top:18px;border-top:1px solid var(--rule)}.issue-nav-link{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border:1px solid var(--rule);text-decoration:none;color:var(--ink)}.issue-nav-link span{font-weight:700;color:var(--brand-red)}.issue-nav-link small{font-size:11px;color:var(--ink-muted)}.issue-nav-link--next{text-align:right;grid-column:2}.issue-nav-link:hover{border-color:var(--brand-red)}@media(max-width:520px){.issue-nav{gap:8px}.issue-nav-link{padding:10px}.issue-nav-link small{font-size:10px}}</style>
+<nav class="issue-nav" aria-label="号を移動">""" + "".join(links) + "</nav>\n<!-- EDITION_NAV:end -->"
+
+
+def sync_issue_navigation(editions: list[dict], output_dir: Path) -> None:
+    """Refresh static navigation on every already-generated issue page."""
+    markers = re.compile(r"<!-- EDITION_NAV:start -->.*?<!-- EDITION_NAV:end -->", re.DOTALL)
+    for row in issue_rows(editions):
+        page_path = output_dir / f'{row["date"]}-{row["edition"]}.html'
+        if not page_path.is_file():
+            continue
+        page = page_path.read_text(encoding="utf-8")
+        navigation = render_issue_navigation(row, editions)
+        if markers.search(page):
+            updated = markers.sub(lambda _: navigation, page)
+        elif navigation:
+            footer = re.search(r"<footer\b", page, re.IGNORECASE)
+            position = footer.start() if footer else page.lower().rfind("</body>")
+            if position < 0:
+                raise ValueError(f"号ナビゲーションを挿入できません: {page_path}")
+            updated = page[:position] + navigation + page[position:]
+        else:
+            updated = page
+        if updated != page:
+            page_path.write_text(updated, encoding="utf-8")
+
+
+def render_archive_html(editions: list[dict]) -> str:
+    """Render the back-issue list as a static, newest-first page."""
+    cards = []
+    for index, row in enumerate(issue_rows(editions)):
+        issue_type = "朝刊" if row["edition"] == "am" else "夕刊"
+        title = issue_title(row)
+        href = f'{esc(row["date"])}-{esc(row["edition"])}.html'
+        lead = esc(row.get("leadLine") or title)
+        excerpt = esc(row.get("summaryExcerpt", ""))
+        badge = '<span class="archive-latest">最新号</span>' if index == 0 else ""
+        latest_class = " archive-card--latest" if index == 0 else ""
+        cards.append(f'<article class="archive-card{latest_class}"><div class="archive-meta">{badge}<span>{esc(title)}</span><span class="archive-kind">{issue_type}</span></div><h2><a href="{href}">{lead}</a></h2><p>{excerpt}</p><a class="archive-read" href="{href}">この号を読む →</a></article>')
+    empty = '<p class="archive-empty">朝刊を準備しています。</p>' if not cards else ""
+    return f'''<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>朝刊・夕刊の一覧｜AI Navigator</title><meta name="description" content="AI Navigator の朝刊・夕刊バックナンバー一覧。"><link rel="canonical" href="https://ai-navigator.dev/daily/"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="../style.css"><style>
+.daily-archive{{width:min(100% - 32px,760px);margin:0 auto;padding:78px 0 40px;color:var(--ink)}}.archive-masthead{{border-bottom:1px solid var(--ink);padding:12px 0;font-size:11px;letter-spacing:.12em}}.archive-heading{{padding:24px 0 8px}}.archive-heading p{{margin:0;color:var(--ink-muted);font-size:14px}}.archive-heading h1{{font:800 clamp(30px,7vw,42px)/1.3 "Noto Serif JP","Yu Mincho",serif;margin:0 0 8px}}.archive-list{{display:grid;gap:14px;margin-top:22px}}.archive-card{{padding:18px 20px;border:1px solid var(--rule);background:var(--paper)}}.archive-card--latest{{border-left:4px solid var(--brand-red);padding-left:17px}}.archive-meta{{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:12px;color:var(--ink-muted)}}.archive-latest{{padding:2px 8px;background:var(--brand-red);color:var(--paper);font-weight:700}}.archive-kind{{padding-left:9px;border-left:1px solid var(--rule-strong)}}.archive-card h2{{font:700 clamp(19px,4vw,25px)/1.5 "Noto Serif JP","Yu Mincho",serif;margin:8px 0}}.archive-card h2 a{{text-decoration:none}}.archive-card h2 a:hover,.archive-read:hover{{color:var(--brand-red)}}.archive-card p{{margin:0 0 12px;color:var(--ink-muted);font-size:14px;line-height:1.8}}.archive-read{{display:inline-flex;font-size:13px;font-weight:700;color:var(--brand-red);text-decoration:none}}.archive-empty{{padding:24px 0;color:var(--ink-muted)}}.archive-footer{{width:min(100% - 32px,760px);margin:10px auto 0;padding:18px 0 38px;border-top:1px solid var(--ink);font-size:12px;color:var(--ink-muted)}}.archive-footer-links{{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px}}.archive-footer a{{color:inherit}}@media(max-width:768px){{.daily-archive{{padding-top:66px;padding-bottom:24px}}.archive-card{{padding:15px}}.archive-card--latest{{padding-left:12px}}}}
+</style></head><body><header id="header"><a href="/" id="logo"><span id="logo-icon">Ai</span><span id="logo-group"><span id="logo-text">AI Navigator</span><span id="logo-tagline">AIニュースを、現場の言葉に。</span></span></a><nav id="tabbar"><a class="tab-btn" href="/">🏠 TOP</a><a class="tab-btn" href="/news">📰 AIニュース</a><a class="tab-btn active" href="/daily/">🌅 朝刊</a><a class="tab-btn" href="/official">📦 リリースノート</a><a class="tab-btn" href="/about">🛠️ 作り方</a></nav><span class="daily-header-spacer"></span></header><nav id="bottom-nav"><a class="bnav-item" href="/"><span class="bnav-icon">🏠</span><span class="bnav-label">TOP</span></a><a class="bnav-item" href="/news"><span class="bnav-icon">📰</span><span class="bnav-label">ニュース</span></a><a class="bnav-item active" href="/daily/"><span class="bnav-icon">🌅</span><span class="bnav-label">朝刊</span></a><a class="bnav-item" href="/official"><span class="bnav-icon">📦</span><span class="bnav-label">リリース</span></a><a class="bnav-item" href="/about"><span class="bnav-icon">🛠️</span><span class="bnav-label">作り方</span></a></nav><main class="daily-archive"><div class="archive-masthead">AI NAVIGATOR <span> / EDITION ARCHIVE</span></div><header class="archive-heading"><h1>朝刊・夕刊の一覧</h1><p>新しい号から順に掲載しています。</p></header><section class="archive-list" aria-label="朝刊・夕刊バックナンバー">{"".join(cards)}{empty}</section></main><footer class="archive-footer"><a href="/" class="footer-brand">AI Navigator</a><p>AIニュースを、現場の言葉に。</p><nav class="archive-footer-links"><a href="/">TOP</a><a href="/news">AIニュース</a><a href="/daily/">朝刊・夕刊</a><a href="/official">リリースノート</a><a href="/about">作り方</a></nav></footer></body></html>'''
+
+
 def render_html(target: date, edition: str, candidates: list[dict], selected: list[dict], content: dict, batch_at: str, editions: list[dict]) -> str:
     day_names = "月火水木金土日"
     weekday = day_names[target.weekday()]
@@ -291,11 +377,10 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
     tmp_page.replace(page_path)
     tmp_claim.replace(output_dir / f"{target.isoformat()}-{edition}.claim_check.json")
     atomic_json(editions_path, edition_rows)
+    (output_dir / "index.html").write_text(render_archive_html(edition_rows), encoding="utf-8")
+    sync_issue_navigation(edition_rows, output_dir)
     from parse_news import generate_sitemap
     generate_sitemap(editions_path=editions_path)
-    latest = edition_rows[0]
-    index_html = f'''<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0; url={esc(latest["date"])}-{esc(latest["edition"])}.html"><title>AI Navigator 朝刊・夕刊</title></head><body><p><a href="{esc(latest["date"])}-{esc(latest["edition"])}.html">最新号を読む</a></p></body></html>'''
-    (output_dir / "index.html").write_text(index_html, encoding="utf-8")
     return {"page": str(page_path), "editions": str(editions_path), "candidate_count": len(candidates), "selected": selected, "dropped_sentences": claim_check["dropped_sentences"], "generated_at": generated_at, "claim_check": str(output_dir / f"{target.isoformat()}-{edition}.claim_check.json")}
 
 
