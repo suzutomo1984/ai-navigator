@@ -256,7 +256,7 @@ def render_issue_navigation(current: dict, editions: list[dict]) -> str:
 
 
 def sync_issue_navigation(editions: list[dict], output_dir: Path) -> None:
-    """Refresh static navigation on every already-generated issue page."""
+    """Refresh navigation and add GTM to every already-generated issue page."""
     markers = re.compile(r"<!-- EDITION_NAV:start -->.*?<!-- EDITION_NAV:end -->", re.DOTALL)
     for row in issue_rows(editions):
         page_path = output_dir / f'{row["date"]}-{row["edition"]}.html'
@@ -274,8 +274,38 @@ def sync_issue_navigation(editions: list[dict], output_dir: Path) -> None:
             updated = page[:position] + navigation + page[position:]
         else:
             updated = page
+        updated = ensure_issue_gtm(updated, page_path)
         if updated != page:
             page_path.write_text(updated, encoding="utf-8")
+
+
+def ensure_issue_gtm(page: str, page_path: Path) -> str:
+    """Add the shared GTM snippets to an existing issue page once."""
+    if "GTM-NNQDZVDZ" in page:
+        return page
+
+    color_scheme = re.search(
+        r'<meta\b(?=[^>]*\bname\s*=\s*["\']color-scheme["\'])[^>]*>',
+        page,
+        re.IGNORECASE,
+    )
+    if color_scheme:
+        head_position = color_scheme.end()
+    else:
+        head_close = re.search(r"</head\s*>", page, re.IGNORECASE)
+        if not head_close:
+            raise ValueError(f"GTMを挿入できるheadがありません: {page_path}")
+        head_position = head_close.start()
+
+    body_open = re.search(r"<body\b[^>]*>", page, re.IGNORECASE)
+    if not body_open:
+        raise ValueError(f"GTMを挿入できるbodyがありません: {page_path}")
+
+    updated = page[:head_position] + GTM_HEAD + page[head_position:]
+    body_open = re.search(r"<body\b[^>]*>", updated, re.IGNORECASE)
+    assert body_open is not None
+    body_position = body_open.end()
+    return updated[:body_position] + GTM_NOSCRIPT + updated[body_position:]
 
 
 def render_archive_html(editions: list[dict]) -> str:

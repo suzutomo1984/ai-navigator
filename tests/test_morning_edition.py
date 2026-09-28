@@ -100,7 +100,8 @@ class MorningEditionTests(unittest.TestCase):
             output = Path(temp)
             for row in rows:
                 (output / f'{row["date"]}-{row["edition"]}.html').write_text(
-                    "<main><footer>footer</footer></main>", encoding="utf-8"
+                    '<html><head><meta name="color-scheme" content="light"></head><body><main><footer>footer</footer></main></body></html>',
+                    encoding="utf-8",
                 )
             edition.sync_issue_navigation(rows, output)
             edition.sync_issue_navigation(rows, output)
@@ -111,6 +112,49 @@ class MorningEditionTests(unittest.TestCase):
         self.assertNotIn("次の号 →", latest)
         self.assertNotIn("前の号", older)
         self.assertIn("次の号 →", older)
+
+    def test_sync_adds_gtm_to_existing_issue_once(self):
+        rows = [{"date": "2026-09-27", "edition": "am"}]
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            page_path = output / "2026-09-27-am.html"
+            page_path.write_text(
+                '<html><head><meta name="color-scheme" content="light"></head><body><main>過去号</main></body></html>',
+                encoding="utf-8",
+            )
+
+            edition.sync_issue_navigation(rows, output)
+            once = page_path.read_text(encoding="utf-8")
+            edition.sync_issue_navigation(rows, output)
+            twice = page_path.read_text(encoding="utf-8")
+
+        self.assertEqual(once, twice)
+        self.assertEqual(twice.count("<!-- Google Tag Manager -->"), 1)
+        self.assertEqual(twice.count("<!-- Google Tag Manager (noscript) -->"), 1)
+        self.assertEqual(twice.count("GTM-NNQDZVDZ"), 2)
+        self.assertIn(
+            '<meta name="color-scheme" content="light">  <!-- Google Tag Manager -->',
+            twice,
+        )
+        self.assertIn(
+            '<body>  <!-- Google Tag Manager (noscript) -->',
+            twice,
+        )
+
+    def test_sync_adds_gtm_head_before_close_when_color_scheme_is_missing(self):
+        rows = [{"date": "2026-09-27", "edition": "am"}]
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            page_path = output / "2026-09-27-am.html"
+            page_path.write_text(
+                "<html><head><title>旧号</title></head><body>本文</body></html>",
+                encoding="utf-8",
+            )
+            edition.sync_issue_navigation(rows, output)
+            page = page_path.read_text(encoding="utf-8")
+
+        self.assertIn("</script></head>", page)
+        self.assertIn("</head><body>  <!-- Google Tag Manager (noscript) -->", page)
 
     def test_rendered_week_only_lists_existing_morning_issues(self):
         rows = [
