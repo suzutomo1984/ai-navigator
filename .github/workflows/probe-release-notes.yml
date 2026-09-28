@@ -1,0 +1,186 @@
+name: Probe release-notes reachability
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe official release-note sources
+        run: |
+          python - <<'PY'
+          from collections import Counter
+          from datetime import date
+          from html.parser import HTMLParser
+          import re
+          import urllib.error
+          import urllib.request
+          import xml.etree.ElementTree as ET
+
+          USER_AGENT = "Mozilla/5.0 AutoNewsBot/2.0"
+          PROBES = [
+              ("openai_rss", "https://openai.com/products/release-notes/rss.xml", "rss"),
+              ("openai_help", "https://help.openai.com/en/articles/6825453-chatgpt-release-notes", "h1_dates"),
+              ("claude_en", "https://support.claude.com/en/articles/12138966-release-notes", "h3_dates"),
+              ("claude_ja", "https://support.claude.com/ja/articles/12138966-release-notes", "h3_dates"),
+          ]
+
+          MONTHS = {
+              name.lower(): number
+              for number, names in enumerate(
+                  [("January", "Jan"), ("February", "Feb"), ("March", "Mar"),
+                   ("April", "Apr"), ("May",), ("June", "Jun"),
+                   ("July", "Jul"), ("August", "Aug"), ("September", "Sep"),
+                   ("October", "Oct"), ("November", "Nov"), ("December", "Dec")],
+                  start=1,
+              )
+              for name in names
+          }
+
+          class HeadingParser(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.active = None
+                  self.attrs = {}
+                  self.parts = []
+                  self.headings = []
+
+              def handle_starttag(self, tag, attrs):
+                  if tag in {"h1", "h2", "h3"} and self.active is None:
+                      self.active = tag
+                      self.attrs = dict(attrs)
+                      self.parts = []
+
+              def handle_data(self, data):
+                  if self.active:
+                      self.parts.append(data)
+
+              def handle_endtag(self, tag):
+                  if tag == self.active:
+                      text = " ".join(" ".join(self.parts).split())
+                      self.headings.append((tag, self.attrs, text))
+                      self.active = None
+                      self.attrs = {}
+                      self.parts = []
+
+          def full_date(value):
+              text = str(value or "")
+              match = re.search(r"(?<!\d)((?:19|20)\d{2})[-_/年]?(\d{1,2})[-_/月](\d{1,2})日?(?!\d)", text)
+              if match:
+                  try:
+                      return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+                  except ValueError:
+                      pass
+
+              match = re.search(r"(?<!\d)((?:19|20)\d{2})(\d{2})(\d{2})(?!\d)", text)
+              if match:
+                  try:
+                      return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+                  except ValueError:
+                      pass
+
+              match = re.search(r"\b([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?[,]?\s+((?:19|20)\d{2})\b", text, re.IGNORECASE)
+              if match:
+                  month = MONTHS.get(match.group(1).lower())
+                  if month:
+                      try:
+                          return date(int(match.group(3)), month, int(match.group(2)))
+                      except ValueError:
+                          pass
+              return None
+
+          def month_year(value):
+              text = str(value or "")
+              match = re.search(r"\b([A-Za-z]+)\s+((?:19|20)\d{2})\b", text, re.IGNORECASE)
+              if match and MONTHS.get(match.group(1).lower()):
+                  return int(match.group(2)), MONTHS[match.group(1).lower()]
+              match = re.search(r"\b((?:19|20)\d{2})年\s*(\d{1,2})月", text)
+              if match:
+                  return int(match.group(1)), int(match.group(2))
+              return None
+
+          def dates_from_headings(headings, tag):
+              found = []
+              current_month = None
+              for heading_tag, attrs, text in headings:
+                  if heading_tag == "h2":
+                      current_month = month_year(text)
+                  if heading_tag != tag:
+                      continue
+                  value = full_date(text) or full_date(attrs.get("id", ""))
+                  if value is None and tag == "h3" and current_month:
+                      day_match = re.fullmatch(r"\s*(\d{1,2})(?:st|nd|rd|th)?\s*", text, re.IGNORECASE)
+                      if day_match:
+                          try:
+                              value = date(current_month[0], current_month[1], int(day_match.group(1)))
+                          except ValueError:
+                              pass
+                  if value:
+                      found.append(value)
+              return found
+
+          def analyze(mode, body):
+              if mode == "rss":
+                  root = ET.fromstring(body)
+                  items = [element for element in root.iter() if element.tag.rsplit("}", 1)[-1].lower() == "item"]
+                  counts = Counter()
+                  for item in items:
+                      for element in item:
+                          if element.tag.rsplit("}", 1)[-1].lower() == "category":
+                              category = " ".join((element.text or "").strip().lower().replace("_", " ").split())
+                              if category:
+                                  counts[category] += 1
+                  requested = {}
+                  for category, count in counts.items():
+                      key = "api_platform" if category == "api platform" else category.replace(" ", "_")
+                      requested[key] = requested.get(key, 0) + count
+                  for category in ("chatgpt", "api_platform", "codex"):
+                      requested.setdefault(category, 0)
+                  result = "OK" if items else "NG"
+                  return f"{result} item_count={len(items)} category_counts={requested}"
+
+              parser = HeadingParser()
+              parser.feed(body.decode("utf-8", errors="replace"))
+              tag = "h1" if mode == "h1_dates" else "h3"
+              found = dates_from_headings(parser.headings, tag)
+              latest = max(found).isoformat() if found else "none"
+              result = "OK" if found else "NG"
+              return f"{result} {tag}_date_count={len(found)} latest_date={latest}"
+
+          for name, url, mode in PROBES:
+              status = "ERROR"
+              content_type = "n/a"
+              body = b""
+              error = ""
+              request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+              try:
+                  with urllib.request.urlopen(request, timeout=25) as response:
+                      status = response.status
+                      content_type = response.headers.get("Content-Type", "unknown")
+                      body = response.read()
+              except urllib.error.HTTPError as exc:
+                  status = exc.code
+                  content_type = exc.headers.get("Content-Type", "unknown") if exc.headers else "unknown"
+                  try:
+                      body = exc.read()
+                  except Exception:
+                      body = b""
+                  error = f"http_error={exc.code}"
+              except Exception as exc:
+                  error = f"fetch_error={type(exc).__name__}: {exc}"
+
+              try:
+                  structure = analyze(mode, body) if body else "NG no_body"
+              except Exception as exc:
+                  structure = f"NG parse_error={type(exc).__name__}: {exc}"
+              print(
+                  f"[{name}] url={url} status={status} content_type={content_type!r} "
+                  f"bytes={len(body)} structure={structure} {error}".rstrip(),
+                  flush=True,
+              )
+          PY
