@@ -367,6 +367,20 @@ def atomic_json(path: Path, value: object) -> None:
     tmp.replace(path)
 
 
+def sns_post_payload(target: date, edition: str, content: dict) -> dict:
+    """Expose only verified copy fields needed by the separate social post."""
+    return {
+        "date": target.isoformat(),
+        "lead_line": content["lead_line"],
+        "summary": content["summary"],
+        "deep_topics": [
+            {"heading": topic["heading"]}
+            for topic in content["deep_topics"]
+        ],
+        "url": f"https://ai-navigator.dev/daily/{target.isoformat()}-{edition}",
+    }
+
+
 def upsert_edition(rows: list[dict], row: dict) -> list[dict]:
     updated = [x for x in rows if not (x.get("date") == row["date"] and x.get("edition") == row["edition"])]
     updated.append(row)
@@ -425,6 +439,11 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
     tmp_claim.write_text(json.dumps(claim_check, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp_page.replace(page_path)
     tmp_claim.replace(output_dir / f"{target.isoformat()}-{edition}.claim_check.json")
+    if edition == "am":
+        atomic_json(
+            output_dir / f"{target.isoformat()}-{edition}.sns.json",
+            sns_post_payload(target, edition, copy),
+        )
     atomic_json(editions_path, edition_rows)
     (output_dir / "index.html").write_text(render_archive_html(edition_rows), encoding="utf-8")
     sync_issue_navigation(edition_rows, output_dir)

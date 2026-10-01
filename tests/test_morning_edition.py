@@ -53,6 +53,27 @@ class MorningEditionTests(unittest.TestCase):
         self.assertEqual(len(updated), 2)
         self.assertEqual(updated[0]["generatedAt"], "new")
 
+    def test_morning_sns_payload_contains_only_verified_copy_and_canonical_url(self):
+        content = {
+            "lead_line": "今日の一言",
+            "summary": "要点の文。次の文。",
+            "deep_topics": [
+                {"heading": "◆一", "text": "深掘り本文"},
+                {"heading": "◆二", "text": "深掘り本文"},
+                {"heading": "◆三", "text": "深掘り本文"},
+            ],
+        }
+        payload = edition.sns_post_payload(date(2026, 10, 1), "am", content)
+        self.assertEqual(payload["date"], "2026-10-01")
+        self.assertEqual(payload["lead_line"], "今日の一言")
+        self.assertEqual(payload["summary"], "要点の文。次の文。")
+        self.assertEqual(
+            payload["deep_topics"],
+            [{"heading": "◆一"}, {"heading": "◆二"}, {"heading": "◆三"}],
+        )
+        self.assertEqual(payload["url"], "https://ai-navigator.dev/daily/2026-10-01-am")
+        self.assertNotIn("text", payload["deep_topics"][0])
+
     def test_archive_is_static_newest_first_and_marks_latest(self):
         rows = [
             {"date": "2026-09-27", "edition": "am", "leadLine": "古い号", "summaryExcerpt": "前日の要約"},
@@ -226,6 +247,7 @@ class MorningEditionTests(unittest.TestCase):
                         for control in controls: control.stop()
                 self.assertEqual(json.loads((output / "editions.json").read_text(encoding="utf-8")), before)
                 self.assertFalse((output / "2026-09-27-am.html").exists())
+                self.assertFalse((output / "2026-09-27-am.sns.json").exists())
 
 
 if __name__ == "__main__":
