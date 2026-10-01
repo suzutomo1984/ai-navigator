@@ -1,4 +1,6 @@
+import html
 import json
+import re
 import xml.etree.ElementTree as ET
 import tempfile
 import unittest
@@ -63,7 +65,11 @@ class MorningEditionTests(unittest.TestCase):
         self.assertLess(page.index("最新の見出し"), page.index("古い号"))
         self.assertIn("最新号", page)
         self.assertIn("2026年9月28日（月）朝刊", page)
-        self.assertIn("2026-09-28-am.html", page)
+        self.assertIn('href="2026-09-28-am"', page)
+        self.assertNotIn("2026-09-28-am.html", page)
+        self.assertIn("<title>AIニュースの朝刊・夕刊バックナンバー｜AI Navigator</title>", page)
+        self.assertIn('rel="canonical" href="https://ai-navigator.dev/daily/"', page)
+        self.assertIn('property="og:url" content="https://ai-navigator.dev/daily/"', page)
 
     def test_archive_and_issue_pages_include_gtm(self):
         archive = edition.render_archive_html([])
@@ -86,10 +92,12 @@ class MorningEditionTests(unittest.TestCase):
         older = edition.render_issue_navigation(rows[1], rows)
         self.assertIn("← 前の号", latest)
         self.assertNotIn("次の号 →", latest)
-        self.assertIn("2026-09-27-am.html", latest)
+        self.assertIn('href="2026-09-27-am"', latest)
+        self.assertNotIn("2026-09-27-am.html", latest)
         self.assertNotIn("前の号", older)
         self.assertIn("次の号 →", older)
-        self.assertIn("2026-09-28-am.html", older)
+        self.assertIn('href="2026-09-28-am"', older)
+        self.assertNotIn("2026-09-28-am.html", older)
 
     def test_sync_updates_previous_issue_and_is_idempotent(self):
         rows = [
@@ -226,6 +234,141 @@ class MorningEditionTests(unittest.TestCase):
                         for control in controls: control.stop()
                 self.assertEqual(json.loads((output / "editions.json").read_text(encoding="utf-8")), before)
                 self.assertFalse((output / "2026-09-27-am.html").exists())
+
+    def test_issue_seo_uses_toc_title_summary_and_sitemap_url(self):
+        summary = (
+            "AIを活用して会議のアジェンダ作成やニュース収集を自動化し、業務効率を高める手法が紹介されています。"
+            "会議では目的や議題をAIに渡し、時間配分付きの案を作成させますが、最終的な妥当性は人が確認します。"
+            "属人化した業務をAIに引き継ぐ際は、まず手順を書き出し、土台となる元データの掃除を行うことが重要です。"
+        )
+        selected = [
+            {"title": "AIで会議のアジェンダを自動作成：目的から時間配分まで準備", "summary": "要約", "url": "https://example.com/1", "source": "例"},
+            {"title": "GeminiがPDFを読めない時の解決チェックリスト", "summary": "要約", "url": "https://example.com/2", "source": "例"},
+        ]
+        page = edition.render_html(
+            date(2026, 9, 30), "am", selected, selected,
+            {"lead_line": "AIで会議準備や情報収集を効率化し属人化を防ぐ", "summary": summary, "deep_topics": []},
+            "2026-09-30T08:11:57+09:00",
+            [{"date": "2026-09-30", "edition": "am", "selectedCount": 2}],
+            "2026-09-30T08:40:00+09:00",
+        )
+        title = re.search(r"<title>(.*?)</title>", page).group(1)
+        pre_brand = title.rsplit("｜", 1)[0]
+        self.assertEqual(title, "AIで会議のアジェンダを自動作成：目的から時間配分まで準備｜9/30朝刊｜AI Navigator")
+        self.assertLessEqual(edition.display_width(pre_brand), 35)
+        self.assertIn("<h1>2026年9月30日（水）朝刊</h1>", page)
+        description = html.unescape(re.search(r'name="description" content="(.*?)"', page).group(1))
+        self.assertGreaterEqual(len(description), 80)
+        self.assertLessEqual(len(description), 120)
+        self.assertTrue(description.startswith("AIを活用して会議のアジェンダ作成"))
+        self.assertNotIn("属人化した業務", description)
+        canonical = "https://ai-navigator.dev/daily/2026-09-30-am"
+        self.assertIn(f'rel="canonical" href="{canonical}"', page)
+        self.assertIn(f'property="og:title" content="{html.escape(title, quote=True)}"', page)
+        self.assertIn(f'property="og:url" content="{canonical}"', page)
+        self.assertNotIn(canonical + "/", page)
+        self.assertNotIn(canonical + ".html", page)
+        payload = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page).group(1))
+        self.assertEqual(payload["@type"], "NewsArticle")
+        self.assertNotIn("author", payload)
+        self.assertEqual(payload["datePublished"], "2026-09-30T08:11:57+09:00")
+        self.assertEqual(payload["dateModified"], "2026-09-30T08:40:00+09:00")
+        self.assertEqual(payload["publisher"]["name"], "AI Navigator")
+        self.assertEqual(payload["url"], canonical)
+
+    def test_long_toc_title_is_cut_before_the_brand(self):
+        selected = [{"title": "あ" * 80, "summary": "要約", "url": "https://example.com/1", "source": "例"}]
+        page = edition.render_html(
+            date(2026, 9, 30), "am", [], selected,
+            {"lead_line": "短い見出しですよ", "summary": "要点", "deep_topics": []},
+            "", [],
+        )
+        title = re.search(r"<title>(.*?)</title>", page).group(1)
+        self.assertIn("ほか｜9/30朝刊｜AI Navigator", title)
+        self.assertLessEqual(edition.display_width(title.rsplit("｜", 1)[0]), 35)
+        self.assertNotIn("author", page)
+        payload = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page).group(1))
+        self.assertNotIn("dateModified", payload)
+        self.assertEqual(payload["datePublished"], "2026-09-30")
+
+    def test_second_toc_title_is_used_when_it_alone_fits(self):
+        selected = [
+            {"title": "あ" * 40 + "｜" + "い" * 40, "summary": "要約", "url": "https://example.com/1", "source": "例"},
+            {"title": "GeminiがPDFを読めない時の解決チェックリスト", "summary": "要約", "url": "https://example.com/2", "source": "例"},
+        ]
+        page = edition.render_html(
+            date(2026, 9, 30), "am", [], selected,
+            {"lead_line": "見出し", "summary": "あ" * 90 + "。", "deep_topics": []},
+            "", [],
+        )
+        title = html.unescape(re.search(r"<title>(.*?)</title>", page).group(1))
+        self.assertIn("GeminiがPDFを読めない時の解決チェックリスト｜9/30朝刊｜", title)
+
+    def test_archive_description_mentions_latest_issue_and_stays_in_range(self):
+        page = edition.render_archive_html([
+            {"date": "2026-09-30", "edition": "am", "leadLine": "AIで会議準備や情報収集を効率化し属人化を防ぐ", "summaryExcerpt": "要約"},
+            {"date": "2026-09-29", "edition": "am", "leadLine": "前日の見出し", "summaryExcerpt": "前日"},
+        ])
+        description = html.unescape(re.search(r'name="description" content="(.*?)"', page).group(1))
+        self.assertGreaterEqual(len(description), 80)
+        self.assertLessEqual(len(description), 120)
+        self.assertIn("9月30日朝刊", description)
+        self.assertIn("「AIで会議準備や情報収集を効率化し属人化を防ぐ」", description)
+        self.assertNotIn("前日の見出し", description)
+        nested = edition.archive_description([
+            {"date": "2026-10-01", "edition": "am", "leadLine": "AI活用は「任せ方」と「確認」の仕組みで決まる"},
+        ])
+        self.assertIn("『AI活用は「任せ方」と「確認」の仕組みで決まる』", nested)
+        self.assertLessEqual(len(nested), 120)
+        self.assertGreaterEqual(len(nested), 80)
+        self.assertIn('"@type":"CollectionPage"', page)
+        self.assertNotIn('"author"', page)
+
+    def test_sync_rewrites_existing_issue_head_without_touching_h1(self):
+        summary = "生成AIの回答はもっともらしさと正しさが別物であり、実務では出典の照合や数値の単独検証が不可欠です。業務効率化で浮いた時間を会社に報告せず、自分の余白とする動きが広がっています。"
+        rows = [{
+            "date": "2026-09-27",
+            "edition": "am",
+            "leadLine": "AIで浮いた時間の再配分と価値の翻訳",
+            "summaryExcerpt": summary[:140],
+            "batchAt": "2026-09-27T08:11:57+09:00",
+            "generatedAt": "2026-09-28T00:14:24+09:00",
+        }]
+        original = (
+            '<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>2026年9月27日（日）朝刊｜AI Navigator</title></head>'
+            '<body><main><h1>2026年9月27日（日）朝刊</h1>'
+            '<section class="brief"><p class="brief-label">30秒でわかる</p>'
+            '<h2>AIで浮いた時間の再配分と価値の翻訳</h2>'
+            f'<p>{summary}</p></section>'
+            '<nav class="toc"><a href="#story-1"><span>01</span>初めて扱うテーマの調査ほどAIの誤りに気づけない｜回答チェック4ステップ</a>'
+            '<a href="#story-2"><span>02</span>価値が伝わらないなら、「翻訳」してみる</a></nav>'
+            '<a href="2026-09-26-am.html">前</a></main></body></html>'
+        )
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            path = output / "2026-09-27-am.html"
+            path.write_text(original, encoding="utf-8")
+            edition.sync_issue_seo(rows, output)
+            once = path.read_text(encoding="utf-8")
+            edition.sync_issue_seo(rows, output)
+            twice = path.read_text(encoding="utf-8")
+        self.assertEqual(once, twice)
+        self.assertIn("<h1>2026年9月27日（日）朝刊</h1>", twice)
+        self.assertIn("初めて扱うテーマの調査ほどAIの誤りに気づけない｜9/27朝刊｜AI Navigator", twice)
+        self.assertIn('rel="canonical" href="https://ai-navigator.dev/daily/2026-09-27-am"', twice)
+        self.assertIn('href="2026-09-26-am"', twice)
+        self.assertNotIn("2026-09-26-am.html", twice)
+        self.assertEqual(twice.count("SEO_META:start"), 1)
+        self.assertEqual(twice.count('name="description"'), 1)
+
+    def test_sync_skips_issue_without_copy(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            path = output / "2026-06-24-pm.html"
+            original = "<html><head><title>旧号</title></head><body>本文</body></html>"
+            path.write_text(original, encoding="utf-8")
+            edition.sync_issue_seo([], output)
+            self.assertEqual(path.read_text(encoding="utf-8"), original)
 
 
 if __name__ == "__main__":
