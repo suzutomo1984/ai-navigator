@@ -238,7 +238,11 @@ class MorningEditionTests(unittest.TestCase):
                 target_mock = patch.object(edition, failure_target, side_effect=SystemExit(1))
                 controls = []
                 if failure_target == "generate_copy":
-                    controls = [patch.object(edition, "run_jev", return_value=[{**articles[0], "on_topic": 1}]), patch.object(edition, "crawl_body", return_value=("x" * 350, "test"))]
+                    ranked = [
+                        {**articles[0], "id": f"one-{i}", "url": f"https://example.com/{i}", "on_topic": 1}
+                        for i in range(5)
+                    ]
+                    controls = [patch.object(edition, "run_jev", return_value=ranked), patch.object(edition, "crawl_body", return_value=("x" * 350, "test"))]
                 with target_mock, self.assertRaises(SystemExit):
                     for control in controls: control.start()
                     try:
@@ -248,6 +252,115 @@ class MorningEditionTests(unittest.TestCase):
                 self.assertEqual(json.loads((output / "editions.json").read_text(encoding="utf-8")), before)
                 self.assertFalse((output / "2026-09-27-am.html").exists())
                 self.assertFalse((output / "2026-09-27-am.sns.json").exists())
+
+    def test_note_paywall_is_rejected_when_public_body_is_short(self):
+        article = {"id": "paid", "url": "https://note.com/someone/n/nabc"}
+        page = Mock(ok=True, text="<html><body><article>短いプレビュー</article></body></html>")
+        page.raise_for_status = Mock()
+        api = Mock()
+        api.raise_for_status = Mock()
+        api.json.return_value = {"data": {"body": "<p>短いリード</p>", "can_read": False, "price": 1480}}
+        with patch.object(edition.requests, "get", side_effect=[page, api]):
+            with self.assertRaises(ValueError) as caught:
+                edition.crawl_body(article)
+        self.assertIn("有料記事", str(caught.exception))
+
+    def test_one_unreadable_body_is_replaced_by_the_next_ranked_article(self):
+        articles = [
+            {
+                "id": f"a{i}",
+                "title": f"title {i}",
+                "summary": "summary",
+                "source": "Example",
+                "url": f"https://example.com/{i}",
+                "addedAt": "2026-09-27T08:00:00+09:00",
+                "date": "2026-09-27",
+            }
+            for i in range(6)
+        ]
+        ranked = [{**article, "on_topic": 1} for article in articles]
+
+        def crawl(article):
+            if article["id"] == "a2":
+                raise ValueError("short body")
+            return ("本文" * 200, "test")
+
+        captured = {}
+
+        def fake_copy(selected, bodies, refinement=""):
+            captured["ids"] = [article["id"] for article in selected]
+            captured["body_count"] = len(bodies)
+            return {"unused": True}
+
+        valid = {
+            "lead_line": "あ" * 20,
+            "summary": "い" * 400,
+            "deep_topics": [
+                {"heading": "◆一", "text": "う" * 300},
+                {"heading": "◆二", "text": "う" * 300},
+                {"heading": "◆三", "text": "う" * 280},
+            ],
+        }
+        claim = {"dropped_sentences": [], "checks": [], "checked_sentence_count": 1, "model": "test"}
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            input_path = root / "articles.json"
+            output = root / "daily"
+            output.mkdir()
+            input_path.write_text(
+                json.dumps({"articles": articles, "latestBatchAt": "2026-09-27T08:11:00+09:00"}),
+                encoding="utf-8",
+            )
+            with patch.object(edition, "run_jev", return_value=ranked), \
+                 patch.object(edition, "crawl_body", side_effect=crawl), \
+                 patch.object(edition, "generate_copy", side_effect=fake_copy), \
+                 patch.object(edition, "verify_and_filter", return_value=(valid, dict(claim))), \
+                 patch.object(parse_news, "generate_sitemap"):
+                edition.generate(input_path, date(2026, 9, 27), "am", output)
+            page = (output / "2026-09-27-am.html").read_text(encoding="utf-8")
+            check = json.loads((output / "2026-09-27-am.claim_check.json").read_text(encoding="utf-8"))
+            self.assertTrue((output / "2026-09-27-am.sns.json").exists())
+        self.assertEqual(captured["ids"], ["a0", "a1", "a3", "a4", "a5"])
+        self.assertEqual(captured["body_count"], 5)
+        self.assertEqual([row["id"] for row in check["crawl"]], ["a0", "a1", "a3", "a4", "a5"])
+        self.assertEqual(check["skipped_bodies"], [{"id": "a2", "url": "https://example.com/2", "error": "ValueError"}])
+        self.assertEqual(check["body_source_ids"], ["a0", "a1", "a3", "a4", "a5"])
+        self.assertIn("title 2", page)
+
+    def test_morning_edition_still_fails_when_readable_bodies_are_under_five(self):
+        articles = [
+            {
+                "id": f"a{i}",
+                "title": f"title {i}",
+                "summary": "summary",
+                "source": "Example",
+                "url": f"https://example.com/{i}",
+                "addedAt": "2026-09-27T08:00:00+09:00",
+                "date": "2026-09-27",
+            }
+            for i in range(5)
+        ]
+        ranked = [{**article, "on_topic": 1} for article in articles]
+
+        def crawl(article):
+            if article["id"] == "a0":
+                raise ValueError("short body")
+            return ("x" * 350, "test")
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            input_path = root / "articles.json"
+            output = root / "daily"
+            output.mkdir()
+            before = [{"date": "2026-09-26", "edition": "pm"}]
+            (output / "editions.json").write_text(json.dumps(before), encoding="utf-8")
+            input_path.write_text(json.dumps({"articles": articles}), encoding="utf-8")
+            with patch.object(edition, "run_jev", return_value=ranked), \
+                 patch.object(edition, "crawl_body", side_effect=crawl), \
+                 self.assertRaises(SystemExit):
+                edition.generate(input_path, date(2026, 9, 27), "am", output)
+            self.assertEqual(json.loads((output / "editions.json").read_text(encoding="utf-8")), before)
+            self.assertFalse((output / "2026-09-27-am.html").exists())
 
 
 if __name__ == "__main__":

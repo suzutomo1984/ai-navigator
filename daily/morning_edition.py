@@ -124,12 +124,62 @@ def crawl_body(article: dict) -> tuple[str, str]:
         note_key = url.rstrip("/").split("/")[-1].removeprefix("n/")
         note = requests.get(f"https://note.com/api/v3/notes/{note_key}", timeout=25)
         note.raise_for_status()
-        body = BeautifulSoup(note.json().get("data", {}).get("body", ""), "html.parser")
+        payload = note.json().get("data") or {}
+        body = BeautifulSoup(payload.get("body") or "", "html.parser")
         text = re.sub(r"\s+", " ", body.get_text(" ", strip=True)).strip()[:14000]
         if len(text) >= 300:
             return text, "note public API body"
+        if payload.get("can_read") is False:
+            raise ValueError(f"有料記事のため本文を取得できません ({article.get('id', 'unknown')})")
     response.raise_for_status()
     raise ValueError(f"記事本文を取得できません ({article.get('id', 'unknown')})")
+
+
+def collect_readable_bodies(ranked_on_topic: list[dict], needed: int = 5) -> tuple[list[dict], list[str], list[dict], list[dict]]:
+    """順位順に本文を読み、必要な本数まで集める。1本の失敗では止めない。"""
+    readable: list[dict] = []
+    bodies: list[str] = []
+    crawl: list[dict] = []
+    skipped: list[dict] = []
+    for article in ranked_on_topic:
+        if len(readable) >= needed:
+            break
+        try:
+            body, method = crawl_body(article)
+        except (requests.RequestException, ValueError, KeyError) as exc:
+            skipped.append({"id": article.get("id"), "url": article.get("url"), "error": type(exc).__name__})
+            print(f"記事本文をスキップ: {article.get('id')} ({type(exc).__name__})", file=sys.stderr)
+            continue
+        readable.append(article)
+        bodies.append(body)
+        crawl.append({
+            "index": len(readable),
+            "id": article.get("id"),
+            "url": article.get("url"),
+            "chars": len(body),
+            "method": method,
+        })
+    return readable, bodies, crawl, skipped
+
+
+def edition_selection(ranked_on_topic: list[dict], body_articles: list[dict], limit: int = 10) -> list[dict]:
+    """掲載は Jev 順を保つ。本文の根拠が上位10本の外なら、その記事を掲載に含める。"""
+    selected = list(ranked_on_topic[:limit])
+    selected_keys = {str(article.get("id") or article.get("url")) for article in selected}
+    missing = [article for article in body_articles if str(article.get("id") or article.get("url")) not in selected_keys]
+    if not missing:
+        return selected
+    merged: list[dict] = []
+    seen: set[str] = set()
+    for article in body_articles + selected:
+        key = str(article.get("id") or article.get("url"))
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(article)
+        if len(merged) >= limit:
+            break
+    return merged
 
 
 def generate_copy(selected: list[dict], bodies: list[str], refinement: str = "") -> dict:
@@ -391,24 +441,24 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
     data = json.loads(articles_path.read_text(encoding="utf-8-sig"))
     candidates = filter_candidates(data.get("articles", []), target, edition)
     ranked = run_jev(candidates)
-    selected = [row for row in ranked if row.get("on_topic", 0) >= 0.5][:10]
-    if not selected:
+    ranked_on_topic = [row for row in ranked if row.get("on_topic", 0) >= 0.5]
+    if not ranked_on_topic:
         fail("Jevで対象記事を選べませんでした")
-    body_rows, crawl = [], []
-    for index, article in enumerate(selected[:5], 1):
-        try:
-            body, method = crawl_body(article)
-        except (requests.RequestException, ValueError, KeyError) as exc:
-            fail(f"上位5本の記事本文を取得できません: {article.get('id')} ({type(exc).__name__})")
-        body_rows.append(body)
-        crawl.append({"index": index, "id": article.get("id"), "url": article.get("url"), "chars": len(body), "method": method})
+    body_articles, body_rows, crawl, skipped = collect_readable_bodies(ranked_on_topic, 5)
+    if len(body_articles) < 5:
+        failed = ", ".join(str(item.get("id")) for item in skipped) or "なし"
+        fail(
+            f"本文を取得できた記事が{len(body_articles)}本で、朝刊に必要な5本に足りません"
+            f"（取得できなかった記事: {failed}）"
+        )
+    selected = edition_selection(ranked_on_topic, body_articles)
     copy = None
     claim_check = None
     refinement = ""
     gemini_calls = 0
     for _ in range(6):
         try:
-            raw_copy = generate_copy(selected, body_rows, refinement)
+            raw_copy = generate_copy(body_articles, body_rows, refinement)
             gemini_calls += 1
             copy, claim_check = verify_and_filter(raw_copy, body_rows)
             refinement = copy_length_problem(copy) or ""
@@ -434,7 +484,13 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
     page_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_page = page_path.with_suffix(".html.tmp")
     tmp_page.write_text(html_text, encoding="utf-8")
-    claim_check.update({"crawl": crawl, "selectedIds": [x.get("id") for x in selected], "gemini_calls": gemini_calls})
+    claim_check.update({
+        "crawl": crawl,
+        "skipped_bodies": skipped,
+        "body_source_ids": [x.get("id") for x in body_articles],
+        "selectedIds": [x.get("id") for x in selected],
+        "gemini_calls": gemini_calls,
+    })
     tmp_claim = output_dir / f"{target.isoformat()}-{edition}.claim_check.json.tmp"
     tmp_claim.write_text(json.dumps(claim_check, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp_page.replace(page_path)
