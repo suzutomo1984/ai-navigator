@@ -94,6 +94,143 @@ class Phase3TrendingTests(unittest.TestCase):
         self.assertEqual(current["summary"], "日本語の既存形式要約")
         self.assertFalse(any(field in current for field in ("jaName", "workUse", "audience", "aiRelated")))
 
+    def test_missing_reader_fields_are_retried_once_for_only_those_repositories(self) -> None:
+        complete = repo("owner/complete")
+        complete["githubDescription"] = "An AI agent management app"
+        dropped = repo("obra/superpowers")
+        dropped["githubDescription"] = "An agentic skills framework"
+
+        def gemini(rows: list[dict]) -> MagicMock:
+            response = MagicMock()
+            response.__enter__.return_value.read.return_value = json.dumps({
+                "candidates": [{"content": {"parts": [{"text": json.dumps(rows, ensure_ascii=False)}]}}]
+            }).encode("utf-8")
+            return response
+
+        fields = {"workUse": "業務AIを作る時に使います。", "audience": "developer", "aiRelated": True}
+        first = gemini([
+            {"index": 1, "summary": "管理アプリです", "jaName": "AI管理アプリ", **fields},
+            {"index": 2, "summary": "スキル集です", "jaName": "AIスキル集", **fields, "aiRelated": "true"},
+        ])
+        second = gemini([{"index": 1, "summary": "別の要約", "jaName": "AIスキル開発基盤", **fields}])
+
+        with patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}), patch.object(
+            parse_news.urllib.request, "urlopen", side_effect=[first, second]
+        ) as urlopen:
+            parse_news.translate_trending_descriptions([complete, dropped])
+
+        self.assertEqual(urlopen.call_count, 2)
+        retry_prompt = json.loads(urlopen.call_args.args[0].data)["contents"][0]["parts"][0]["text"]
+        self.assertIn("1. [obra/superpowers]", retry_prompt)
+        self.assertNotIn("owner/complete", retry_prompt)
+        self.assertEqual(dropped["summary"], "スキル集です")
+        self.assertEqual(dropped["jaName"], "AIスキル開発基盤")
+        self.assertIs(dropped["aiRelated"], True)
+        self.assertEqual(complete["jaName"], "AI管理アプリ")
+
+    def test_same_day_rerun_keeps_dropped_repositories_and_their_days(self) -> None:
+        # 朝の実行で今日付けになった前日分（2日目）と、それより前の履歴
+        morning = [repo(f"owner/morning-{i}", "朝の要約", "2026-10-03") for i in range(3)]
+        for row in morning:
+            row["trendingDays"] = 2
+        older = repo("owner/older", "古い要約", "2026-09-23")
+        older["trendingDays"] = 1
+        evening = [repo("owner/morning-0", "朝の要約", "2026-10-03"),
+                   repo("owner/older", "古い要約", "2026-10-03"),
+                   repo("owner/new", "新しい要約", "2026-10-03")]
+
+        merged = parse_news.merge_trending_history(evening, morning + [older], "2026-10-03")
+
+        self.assertEqual([row["title"] for row in merged], [
+            "owner/morning-0", "owner/older", "owner/new", "owner/morning-1", "owner/morning-2",
+        ])
+        # morning-0 は同日なので同じ値、older は 9/23 から間が空いているので1
+        self.assertEqual([row["trendingDays"] for row in merged[:3]], [2, 1, 1])
+
+    def test_next_day_increments_days_from_latest_entry(self) -> None:
+        yesterday = repo("owner/tool", "要約", "2026-10-02")
+        yesterday["trendingDays"] = 3
+        legacy = repo("owner/legacy", "要約", "2026-04-07")
+        today = [repo("Owner/Tool", "要約", "2026-10-03"), repo("owner/legacy", "要約", "2026-10-03")]
+
+        merged = parse_news.merge_trending_history(today, [yesterday, legacy], "2026-10-03")
+
+        self.assertEqual(len(merged), 2)
+        # 昨日から続く分は+1、間が空いた旧データは1から数え直す
+        self.assertEqual([row["trendingDays"] for row in merged], [4, 1])
+
+    def test_days_continue_from_latest_snapshot_by_calendar_gap(self) -> None:
+        def days_after(previous_date: str, previous_days: int, snapshot_date: str) -> int:
+            previous = repo("owner/tool", "要約", previous_date)
+            previous["trendingDays"] = previous_days
+            # 直近スナップショット（最新日付）を別のリポジトリで表す
+            snapshot = repo("owner/other", "要約", snapshot_date)
+            current = repo("owner/tool", "要約", "2026-10-03")
+            parse_news.merge_trending_history([current], [snapshot, previous], "2026-10-03")
+            return current["trendingDays"]
+
+        # ① スナップショット10/01に居て、RSS未更新の10/02を挟んで10/03に継続 → +2
+        self.assertEqual(days_after("2026-10-01", 3, "2026-10-01"), 5)
+        # 昨日のスナップショットに居た → +1
+        self.assertEqual(days_after("2026-10-02", 2, "2026-10-02"), 3)
+        # ② 直近スナップショット(10/02)に居ない再登場 → 1
+        self.assertEqual(days_after("2026-10-01", 3, "2026-10-02"), 1)
+        # ③ 同じ日の再実行 → 同じ値
+        self.assertEqual(days_after("2026-10-03", 4, "2026-10-03"), 4)
+        # 日付が読めない → 1
+        self.assertEqual(days_after("not-a-date", 4, "not-a-date"), 1)
+
+    def test_month_boundary_counts_as_yesterday(self) -> None:
+        previous = repo("owner/tool", "要約", "2026-09-30")
+        previous["trendingDays"] = 2
+        current = repo("owner/tool", "要約", "2026-10-01")
+
+        parse_news.merge_trending_history([current], [previous], "2026-10-01")
+
+        self.assertEqual(current["trendingDays"], 3)
+
+    def test_unchanged_rss_set_keeps_dates_and_days(self) -> None:
+        latest = [repo(f"owner/r-{i}", "要約", "2026-10-02") for i in range(6)]
+        for row in latest:
+            row["trendingDays"] = 2
+        older = repo("owner/old", "要約", "2026-09-23")
+        existing = latest + [older]
+        # 同じ集合を順序違い・大文字違いで取得（翌朝の再実行を想定）
+        fetched = [repo(f"Owner/R-{i}", "", "2026-10-03") for i in reversed(range(6))]
+
+        self.assertTrue(parse_news.is_trending_snapshot_unchanged(fetched, existing))
+        # 片方のフィードが取れず件数が減っただけでも未更新扱い
+        self.assertTrue(parse_news.is_trending_snapshot_unchanged(fetched[:5], existing))
+        self.assertEqual(parse_news.latest_trending_snapshot(existing), latest)
+
+        existing_json = json.dumps(existing, ensure_ascii=False)
+        with patch.object(parse_news, "translate_trending_descriptions") as translate, patch.object(
+            parse_news, "enrich_trending_with_github_api"
+        ) as enrich:
+            output = parse_news.build_trending_output(fetched, existing, "2026-10-03")
+
+        self.assertIs(output, existing)
+        enrich.assert_not_called()
+        translate.assert_called_once_with(latest)  # 欠けた読者向け項目の補完だけは続ける
+        self.assertEqual(json.dumps(output, ensure_ascii=False), existing_json)
+        self.assertEqual({row["date"] for row in latest}, {"2026-10-02"})
+        self.assertEqual({row["trendingDays"] for row in latest}, {2})
+
+    def test_partially_replaced_rss_is_treated_as_update(self) -> None:
+        existing = [repo(f"owner/r-{i}", "要約", "2026-10-02") for i in range(6)]
+        fetched = [repo(f"owner/r-{i}", "新しい要約", "2026-10-03") for i in range(5)]
+        fetched.append(repo("owner/brand-new", "新しい要約", "2026-10-03"))
+
+        self.assertFalse(parse_news.is_trending_snapshot_unchanged(fetched, existing))
+        with patch.object(parse_news, "translate_trending_descriptions"), patch.object(
+            parse_news, "enrich_trending_with_github_api"
+        ):
+            output = parse_news.build_trending_output(fetched, existing, "2026-10-03")
+        self.assertEqual(output[0]["date"], "2026-10-03")
+        self.assertEqual([row["trendingDays"] for row in output[:6]], [2, 2, 2, 2, 2, 1])
+        self.assertFalse(parse_news.is_trending_snapshot_unchanged(fetched, []))
+        self.assertFalse(parse_news.is_trending_snapshot_unchanged([], existing))
+
     def test_malformed_gemini_output_falls_back_without_raising(self) -> None:
         current = repo("owner/repo")
         current["githubDescription"] = "A useful tool"
@@ -122,7 +259,7 @@ class Phase3TrendingTests(unittest.TestCase):
         self.assertIn("表示可能4件 (<5)・前回値を維持", status)
 
     def test_seven_displayable_repositories_adopt_today_snapshot(self) -> None:
-        previous = [repo(f"owner/old-{i}", "以前の日本語要約") for i in range(10)]
+        previous = [repo(f"owner/old-{i}", "以前の日本語要約", "2026-08-04") for i in range(10)]
         current = [repo(f"owner/new-{i}", "新しい日本語要約") for i in range(7)]
 
         selected, status = parse_news.select_trending_snapshot(

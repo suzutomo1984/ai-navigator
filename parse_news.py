@@ -555,29 +555,7 @@ def main():
     today_str = datetime.now(JST).strftime("%Y-%m-%d")
     today_trending = fetch_github_trending(limit=25)
     existing_trending = existing_data.get("trending", [])
-
-    if len(today_trending) < TRENDING_MIN_ADOPT:
-        # 候補が5件未満なら詳細補完を省き、選択関数に前回値の維持を任せる。
-        all_trending, snapshot_status = select_trending_snapshot(
-            today_trending, existing_trending, today_str
-        )
-        print(f"⚠️  GitHub Trending: {snapshot_status}")
-    else:
-        # GitHub APIキャッシュ（owner/repo→repo）を作成してレート制限と
-        # Geminiの再呼び出しを避ける。当日分も含む既存値全体が対象。
-        existing_trending_cache = build_trending_cache(existing_trending)
-
-        # GitHub APIで今日分の詳細情報を補完（stars・language・description・summary）
-        enrich_trending_with_github_api(today_trending, existing_trending_cache)
-
-        # AI無関係・説明なしの項目が混ざるため、取得した候補をまとめて翻訳する。
-        # 25件から表示条件を満たす10件を確保する。
-        translate_trending_descriptions(today_trending)
-
-        all_trending, snapshot_status = select_trending_snapshot(
-            today_trending, existing_trending, today_str
-        )
-        print(f"📊 Trending合計: {len(all_trending)}件 ({snapshot_status})")
+    all_trending = build_trending_output(today_trending, existing_trending, today_str)
 
     # addedAt 固定化 + 最新配信バッチ判定
     # 既出URLは前回の addedAt を引き継ぎ（＝初回登場時刻で固定）、
@@ -1221,31 +1199,128 @@ def parse_trending_enrichment_response(text: str, targets: list[dict]) -> int:
         ):
             repo.update(reader_fields)
             enriched += 1
+        else:
+            # 採用しなかった行を残し、どの項目が不正だったか後から追えるようにする。
+            rejected = {k: str(v)[:40] for k, v in reader_fields.items()}
+            print(f"⚠️  読者向け情報を不採用: {repo.get('title', '')} {rejected}")
     return enriched
 
 
 def merge_trending_history(
     today_repos: list[dict], existing_repos: list[dict], today: str
 ) -> list[dict]:
-    """今日のスナップショットを先頭にし、過去履歴を重複なく引き継ぐ。"""
-    past_repos = [repo for repo in existing_repos if repo.get("date") != today]
-    past_days: dict[str, int] = {}
-    for repo in past_repos:
+    """今日のスナップショットを先頭にし、過去履歴を重複なく引き継ぐ。
+
+    同じ日の再実行では、前回実行分の日数を引き継ぎ、今回外れた項目も履歴に残す。
+    （以前は同日分を丸ごと捨てていたため、朝の実行で今日付けに移った前日分が
+    夜の実行で消え、日数も1にリセットされていた）
+    """
+    latest_by_key: dict[str, dict] = {}
+    for repo in existing_repos:
         key = github_repo_key(repo.get("url", "") or repo.get("title", ""))
         if key:
-            past_days[key] = past_days.get(key, 0) + 1
+            # 入力は新しい順なので、同じリポジトリの最初（最新）を優先する。
+            latest_by_key.setdefault(key, repo)
+    snapshot = latest_trending_snapshot(existing_repos)
+    latest_date = snapshot[0].get("date") if snapshot else None
 
     today_keys = set()
     for repo in today_repos:
         key = github_repo_key(repo.get("url", "") or repo.get("title", ""))
-        repo["trendingDays"] = past_days.get(key, 0) + 1
+        previous = latest_by_key.get(key) if key else None
+        repo["trendingDays"] = next_trending_days(previous, today, latest_date)
         if key:
             today_keys.add(key)
 
     return today_repos + [
-        repo for repo in past_repos
+        repo for repo in existing_repos
         if github_repo_key(repo.get("url", "") or repo.get("title", "")) not in today_keys
     ]
+
+
+def next_trending_days(previous: dict | None, today: str, latest_date: str | None) -> int:
+    """直近スナップショットから続けて話題になっている日数を数える。
+
+    連続かどうかは「直近スナップショット（既存の最新日付）に居たか」で判定し、
+    日数は暦日の差だけ加える。RSSは2日おきにしか更新されないことがあるため、
+    暦日の「昨日」で判定すると続いている項目まで1に戻ってしまう。
+    """
+    if previous is None or previous.get("date") != latest_date:
+        return 1
+    days = previous.get("trendingDays")
+    days = days if type(days) is int and days >= 1 else 1
+    try:
+        elapsed = (
+            datetime.strptime(today, "%Y-%m-%d") - datetime.strptime(latest_date, "%Y-%m-%d")
+        ).days
+    except (TypeError, ValueError):
+        return 1
+    return days + elapsed if elapsed >= 0 else 1
+
+
+def latest_trending_snapshot(existing_repos: list[dict]) -> list[dict]:
+    """既存Trendingのうち、最新の日付を持つ項目（直近スナップショット）を返す。"""
+    dates = [repo.get("date") for repo in existing_repos if isinstance(repo.get("date"), str)]
+    if not dates:
+        return []
+    latest = max(dates)
+    return [repo for repo in existing_repos if repo.get("date") == latest]
+
+
+def is_trending_snapshot_unchanged(today_repos: list[dict], existing_repos: list[dict]) -> bool:
+    """今回取得した候補が、すべて直近スナップショットに含まれていればRSS未更新とみなす。
+
+    順序は見ない（同じ集合なら読者に出す内容は変わらない）。直近スナップショットには
+    同日の再実行で残した項目も含まれるため、完全一致ではなく包含で判定する。
+    取得件数が減っただけ（片方のフィードの取得失敗など）も未更新として扱う。
+    """
+    today_keys = {
+        github_repo_key(repo.get("url", "") or repo.get("title", "")) for repo in today_repos
+    } - {""}
+    if not today_keys:
+        return False
+    latest_keys = {
+        github_repo_key(repo.get("url", "") or repo.get("title", ""))
+        for repo in latest_trending_snapshot(existing_repos)
+    }
+    return today_keys <= latest_keys
+
+
+def build_trending_output(
+    today_trending: list[dict], existing_trending: list[dict], today_str: str
+) -> list[dict]:
+    """今回取得した候補と既存Trendingから、articles.json に書くTrendingを作る。"""
+    if len(today_trending) < TRENDING_MIN_ADOPT:
+        # 候補が5件未満なら詳細補完を省き、選択関数に前回値の維持を任せる。
+        all_trending, snapshot_status = select_trending_snapshot(
+            today_trending, existing_trending, today_str
+        )
+        print(f"⚠️  GitHub Trending: {snapshot_status}")
+        return all_trending
+
+    if is_trending_snapshot_unchanged(today_trending, existing_trending):
+        # RSSが前回から更新されていない実行では、日付と連続日数を動かさない。
+        # 読者向け項目が欠けた項目だけは、ここで補完を再試行する。
+        translate_trending_descriptions(latest_trending_snapshot(existing_trending))
+        print(f"⏸️  Trending RSS未更新のため前回スナップショットを維持 ({len(existing_trending)}件)")
+        return existing_trending
+
+    # GitHub APIキャッシュ（owner/repo→repo）を作成してレート制限と
+    # Geminiの再呼び出しを避ける。当日分も含む既存値全体が対象。
+    existing_trending_cache = build_trending_cache(existing_trending)
+
+    # GitHub APIで今日分の詳細情報を補完（stars・language・description・summary）
+    enrich_trending_with_github_api(today_trending, existing_trending_cache)
+
+    # AI無関係・説明なしの項目が混ざるため、取得した候補をまとめて翻訳する。
+    # 25件から表示条件を満たす10件を確保する。
+    translate_trending_descriptions(today_trending)
+
+    all_trending, snapshot_status = select_trending_snapshot(
+        today_trending, existing_trending, today_str
+    )
+    print(f"📊 Trending合計: {len(all_trending)}件 ({snapshot_status})")
+    return all_trending
 
 
 def select_trending_snapshot(
@@ -1416,6 +1491,30 @@ def translate_trending_descriptions(repos: list[dict]) -> None:
         print("🌐 翻訳対象なし（全件キャッシュ済み）")
         return
 
+    enriched = request_trending_enrichment(targets, api_key)
+    translated = sum(1 for r in targets if has_japanese_summary(r))
+    print(f"🌐 Gemini翻訳: {translated}/{len(targets)}件・読者向け情報{enriched}件")
+
+    # 一括応答では一部の行だけ欠けたり不正になったりする（2026-10-03 obra/superpowers）。
+    # 欠けた項目だけを1回だけ再依頼する。
+    missing = [
+        r for r in targets
+        if not has_japanese_summary(r) or not has_trending_reader_fields(r)
+    ]
+    if not missing:
+        return
+    print(f"🔁 Gemini再試行: {len(missing)}件 ({', '.join(r['title'] for r in missing)})")
+    retried = request_trending_enrichment(missing, api_key)
+    still_missing = [
+        r["title"] for r in missing
+        if not has_japanese_summary(r) or not has_trending_reader_fields(r)
+    ]
+    print(f"🌐 Gemini再試行: 読者向け情報{retried}件・未補完{len(still_missing)}件"
+          + (f" ({', '.join(still_missing)})" if still_missing else ""))
+
+
+def request_trending_enrichment(targets: list[dict], api_key: str) -> int:
+    """Geminiに1回だけ問い合わせ、要約と読者向け項目を反映した件数を返す。"""
     # 一括生成プロンプト（入力はGitHub APIのdescriptionのみ）
     lines = "\n".join(
         f"{i+1}. [{r['title']}] {r['githubDescription']}"
@@ -1449,12 +1548,10 @@ def translate_trending_descriptions(repos: list[dict]) -> None:
         with urllib.request.urlopen(req, timeout=30) as res:
             result = json.loads(res.read())
         text = result["candidates"][0]["content"]["parts"][0]["text"]
-
-        enriched = parse_trending_enrichment_response(text, targets)
-        translated = sum(1 for r in targets if has_japanese_summary(r))
-        print(f"🌐 Gemini翻訳: {translated}/{len(targets)}件・読者向け情報{enriched}件")
+        return parse_trending_enrichment_response(text, targets)
     except Exception as e:
         print(f"⚠️  Gemini翻訳失敗: {e}")
+        return 0
 
 
 def get_ogp_image(url: str) -> str | None:
