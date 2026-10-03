@@ -72,7 +72,7 @@ def main():
         proc = subprocess.Popen([sys.executable, str(ROOT / "daily" / "preview_server.py"), "--root", str(site), "--port", str(args.port)], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), close_fds=True)
         pid = proc.pid
         pid_file.write_text(str(pid), encoding="utf-8")
-    print(json.dumps({"date": target.isoformat(), "url": f"http://127.0.0.1:{args.port}/", "issue": f"http://127.0.0.1:{args.port}/daily/{target.isoformat()}-am.html", "pid": pid, "site": str(site)}, ensure_ascii=False, indent=2))
+    print(json.dumps({"date": target.isoformat(), "url": f"http://127.0.0.1:{args.port}/", "issue": f"http://127.0.0.1:{args.port}/daily/{target.isoformat()}-am", "pid": pid, "site": str(site)}, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
     main()

@@ -283,6 +283,349 @@ def issue_title(row: dict) -> str:
     return f"{issue_day.year}年{issue_day.month}月{issue_day.day}日（{day_names[issue_day.weekday()]}）{label}"
 
 
+SITE_ORIGIN = "https://ai-navigator.dev"
+BRAND = "AI Navigator"
+ARCHIVE_CANONICAL = f"{SITE_ORIGIN}/daily/"
+ARCHIVE_TITLE = f"AIニュースの朝刊・夕刊バックナンバー｜{BRAND}"
+# ブランド名の手前。全角1・半角0.5で数え、検索結果で日付だけが残らない範囲に収める。
+TITLE_PRE_BRAND_MAX = 35.0
+DESC_MIN = 80
+DESC_MAX = 120
+SEO_META_RE = re.compile(r"<!-- SEO_META:start -->.*?<!-- SEO_META:end -->", re.DOTALL)
+TITLE_RE = re.compile(r"<title>.*?</title>", re.DOTALL)
+ISSUE_HREF_RE = re.compile(r'href="(\d{4}-\d{2}-\d{2}-(?:am|pm))\.html(#[^"]*)?"')
+ARCHIVE_BODY = "AIニュースの朝刊・夕刊を日付順に並べたバックナンバーです。各号には、その日の30秒要約と、選んだ記事の見出しを掲載しています。"
+ARCHIVE_TAIL = "過去の号も、同じ構成のまま読めます。"
+
+
+def display_width(text: str) -> float:
+    """Full-width characters count as 1, ASCII as 0.5."""
+    return sum(0.5 if ord(ch) < 128 else 1.0 for ch in text)
+
+
+def clean_topic(text: str) -> str:
+    text = html.unescape(str(text or ""))
+    text = re.sub(r"\s+", " ", text).strip()
+    stripped = re.sub(r"^(?:【[^】]{1,16}】\s*)+", "", text).strip()
+    return stripped or text
+
+
+def cut_to_width(text: str, limit: float) -> str:
+    kept = []
+    width = 0.0
+    for ch in text:
+        char_width = 0.5 if ord(ch) < 128 else 1.0
+        if width + char_width > limit:
+            break
+        kept.append(ch)
+        width += char_width
+    return "".join(kept).rstrip(" 　、。・｜|—–-:：/／")
+
+
+def natural_head(text: str, budget: float) -> str:
+    for sep in ("｜", "|", "—", "–", "：", ":"):
+        if sep not in text:
+            continue
+        head = text.split(sep, 1)[0].strip(" 　")
+        if 8 <= display_width(head) <= budget:
+            return head
+    return ""
+
+
+def truncate_topic(text: str, budget: float) -> str:
+    marker = "ほか"
+    head = cut_to_width(text, budget - display_width(marker))
+    if display_width(head) < 8:
+        return cut_to_width(text, budget)
+    return head + marker
+
+
+def choose_topic(titles: list[str], lead: str, budget: float) -> str:
+    """Prefer the first 目次 title. The 15–25 character headline is the fallback.
+
+    A complete first title wins. If it is too long, keep the clause before a
+    separator such as ｜ or ：. The second title is used only when the first
+    still does not fit. ほか is the last resort.
+    """
+    options = []
+    for title in titles[:2]:
+        cleaned = clean_topic(title)
+        if cleaned:
+            options.append(cleaned)
+    if options and display_width(options[0]) <= budget:
+        return options[0]
+    if options:
+        head = natural_head(options[0], budget)
+        if head:
+            return head
+    for text in options[1:]:
+        if display_width(text) <= budget:
+            return text
+    if options:
+        return truncate_topic(options[0], budget)
+    lead_clean = clean_topic(lead)
+    if not lead_clean:
+        return ""
+    if display_width(lead_clean) <= budget:
+        return lead_clean
+    return truncate_topic(lead_clean, budget)
+
+
+def edition_label(edition: str) -> str:
+    return "朝刊" if edition == "am" else "夕刊"
+
+
+def short_issue_label(issue_day: date, edition: str) -> str:
+    return f"{issue_day.month}/{issue_day.day}{edition_label(edition)}"
+
+
+def build_issue_title(issue_day: date, edition: str, lead: str, titles: list[str]) -> str:
+    label = short_issue_label(issue_day, edition)
+    suffix = f"｜{label}"
+    budget = TITLE_PRE_BRAND_MAX - display_width(suffix)
+    topic = choose_topic(titles, lead, budget)
+    if not topic:
+        return f"{label}｜{BRAND}"
+    pre = f"{topic}{suffix}"
+    if display_width(pre) > TITLE_PRE_BRAND_MAX:
+        topic = truncate_topic(topic, budget)
+        pre = f"{topic}{suffix}"
+    return f"{pre}｜{BRAND}"
+
+
+def clamp_description(text: str) -> str:
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) <= DESC_MAX:
+        return text
+    window = text[:DESC_MAX]
+    period = window.rfind("。")
+    if period >= DESC_MIN - 1:
+        return window[: period + 1]
+    comma = window.rfind("、")
+    if comma >= DESC_MIN - 1:
+        return window[:comma] + "。"
+    return window[: DESC_MAX - 1] + "…"
+
+
+def dated_issue_fallback(issue_day: date, edition: str) -> str:
+    kind = edition_label(edition)
+    return (
+        f"{issue_day.year}年{issue_day.month}月{issue_day.day}日の{kind}です。"
+        "その日のAIニュースから選んだ記事の見出しと、30秒で読める要約を掲載しています。"
+        "目次の各項目から、記事ごとの要約へ移動できます。"
+    )
+
+
+def build_issue_description(summary: str, titles: list[str], issue_day: date, edition: str) -> str:
+    text = re.sub(r"\s+", " ", (summary or "").replace("ここまで読めば今日はOK。", "")).strip()
+    chosen = ""
+    for part in re.findall(r"[^。]*。", text):
+        part = part.strip()
+        if not part:
+            continue
+        if not chosen:
+            chosen = part
+        elif len(chosen) + len(part) <= DESC_MAX:
+            chosen += part
+        else:
+            break
+        if len(chosen) >= DESC_MIN:
+            break
+    if len(chosen) > DESC_MAX:
+        chosen = clamp_description(chosen)
+    if DESC_MIN <= len(chosen) <= DESC_MAX:
+        return chosen
+    names = [clean_topic(title) for title in titles[:2]]
+    names = [name for name in names if name]
+    if names:
+        listed = "」「".join(names)
+        supplement = f"{issue_day.month}月{issue_day.day}日の{edition_label(edition)}では「{listed}」を取り上げています。"
+    else:
+        supplement = dated_issue_fallback(issue_day, edition)
+    merged = f"{chosen}{supplement}" if chosen else supplement
+    if len(merged) < DESC_MIN:
+        merged += "各記事の要約は、その号のページに掲載しています。"
+    return clamp_description(merged)
+
+
+def schema_datetime(value: str) -> str:
+    if not value:
+        return ""
+    raw = str(value).strip().replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError:
+        try:
+            return date.fromisoformat(raw[:10]).isoformat()
+        except ValueError:
+            return ""
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=JST)
+    return parsed.isoformat(timespec="seconds")
+
+
+def issue_canonical(issue_day: date, edition: str) -> str:
+    return f"{SITE_ORIGIN}/daily/{issue_day.isoformat()}-{edition}"
+
+
+def json_ld_script(payload: dict) -> str:
+    raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
+    return f'<script type="application/ld+json">{raw}</script>'
+
+
+def seo_meta_block(title: str, description: str, canonical: str, og_type: str, payload: dict) -> str:
+    return (
+        "<!-- SEO_META:start -->"
+        f'<meta name="description" content="{esc(description)}">'
+        f'<link rel="canonical" href="{esc(canonical)}">'
+        f'<meta property="og:title" content="{esc(title)}">'
+        f'<meta property="og:description" content="{esc(description)}">'
+        f'<meta property="og:url" content="{esc(canonical)}">'
+        f'<meta property="og:type" content="{esc(og_type)}">'
+        f"{json_ld_script(payload)}"
+        "<!-- SEO_META:end -->"
+    )
+
+
+def issue_structured_data(title: str, description: str, canonical: str, batch_at: str, generated_at: str, issue_day: date) -> dict:
+    headline = title[: -(len(BRAND) + 1)] if title.endswith(f"｜{BRAND}") else title
+    published = schema_datetime(batch_at) or issue_day.isoformat()
+    payload = {
+        "@context": "https://schema.org",
+        "@type": "NewsArticle",
+        "headline": headline,
+        "datePublished": published,
+        "description": description,
+        "inLanguage": "ja",
+        "mainEntityOfPage": canonical,
+        "url": canonical,
+        "publisher": {"@type": "Organization", "name": BRAND, "url": f"{SITE_ORIGIN}/"},
+    }
+    modified = schema_datetime(generated_at)
+    if modified:
+        payload["dateModified"] = modified
+    return payload
+
+
+def issue_seo_markup(issue_day: date, edition: str, lead: str, summary: str, titles: list[str], batch_at: str = "", generated_at: str = "") -> tuple[str, str]:
+    title = build_issue_title(issue_day, edition, lead, titles)
+    description = build_issue_description(summary, titles, issue_day, edition)
+    canonical = issue_canonical(issue_day, edition)
+    payload = issue_structured_data(title, description, canonical, batch_at, generated_at, issue_day)
+    return title, seo_meta_block(title, description, canonical, "article", payload)
+
+
+def archive_description(editions: list[dict]) -> str:
+    rows = issue_rows(editions)
+    if not rows:
+        return ARCHIVE_BODY + ARCHIVE_TAIL
+    latest = rows[0]
+    issue_day = date.fromisoformat(latest["date"])
+    lead = clean_topic(str(latest.get("leadLine") or ""))
+    kind = edition_label(str(latest.get("edition") or "am"))
+    if lead:
+        open_quote, close_quote = ("『", "』") if ("「" in lead or "」" in lead) else ("「", "」")
+        prefix = f"最新号は{issue_day.month}月{issue_day.day}日{kind}{open_quote}{lead}{close_quote}。"
+    else:
+        prefix = f"最新号は{issue_day.month}月{issue_day.day}日{kind}です。"
+    return clamp_description(prefix + ARCHIVE_BODY)
+
+
+def archive_seo_markup(editions: list[dict]) -> tuple[str, str]:
+    description = archive_description(editions)
+    payload = {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": "AIニュースの朝刊・夕刊バックナンバー",
+        "description": description,
+        "url": ARCHIVE_CANONICAL,
+        "inLanguage": "ja",
+        "isPartOf": {"@type": "WebSite", "name": BRAND, "url": f"{SITE_ORIGIN}/"},
+    }
+    return ARCHIVE_TITLE, seo_meta_block(ARCHIVE_TITLE, description, ARCHIVE_CANONICAL, "website", payload)
+
+
+def apply_document_seo(page: str, title: str, block: str) -> str:
+    page = SEO_META_RE.sub("", page)
+    page = re.sub(r'<meta\b[^>]*\bname\s*=\s*["\']description["\'][^>]*>', "", page, flags=re.IGNORECASE)
+    page = re.sub(r'<link\b[^>]*\brel\s*=\s*["\']canonical["\'][^>]*>', "", page, flags=re.IGNORECASE)
+    page = re.sub(
+        r'<meta\b[^>]*\bproperty\s*=\s*["\']og:(?:title|description|url|type)["\'][^>]*>',
+        "",
+        page,
+        flags=re.IGNORECASE,
+    )
+    page = re.sub(
+        r'<script\b[^>]*\btype\s*=\s*["\']application/ld\+json["\'][^>]*>.*?</script>',
+        "",
+        page,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not TITLE_RE.search(page):
+        raise ValueError("titleがありません")
+    return TITLE_RE.sub(f"<title>{esc(title)}</title>{block}", page, count=1)
+
+
+def rewrite_issue_hrefs(page: str) -> str:
+    """Point issue links at the extensionless path listed in the sitemap."""
+    return ISSUE_HREF_RE.sub(lambda match: f'href="{match.group(1)}{match.group(2) or ""}"', page)
+
+
+def extract_issue_copy(page: str) -> dict | None:
+    brief = re.search(
+        r'<section class="brief">\s*<p class="brief-label">.*?</p>\s*<h2>(.*?)</h2>\s*<p>(.*?)</p>',
+        page,
+        re.DOTALL,
+    )
+    if not brief:
+        return None
+    def visible(fragment: str) -> str:
+        return html.unescape(re.sub(r"<[^>]+>", "", fragment)).strip()
+    toc = re.search(r'<nav class="toc">(.*?)</nav>', page, re.DOTALL)
+    titles = []
+    if toc:
+        for raw in re.findall(r"<a\b[^>]*>.*?</a>", toc.group(1), re.DOTALL):
+            without_num = re.sub(r"<span>.*?</span>", "", raw, count=1, flags=re.DOTALL)
+            text = visible(without_num)
+            if text:
+                titles.append(text)
+    return {"lead": visible(brief.group(1)), "summary": visible(brief.group(2)), "titles": titles}
+
+
+def sync_issue_seo(editions: list[dict], output_dir: Path) -> None:
+    """Refresh <head> metadata on already generated issues. Body copy stays as published."""
+    rows = {(row["date"], row["edition"]): row for row in issue_rows(editions)}
+    for path in sorted(output_dir.glob("*.html")):
+        match = re.fullmatch(r"(\d{4}-\d{2}-\d{2})-(am|pm)\.html", path.name)
+        if not match:
+            continue
+        try:
+            page = path.read_text(encoding="utf-8")
+            updated = rewrite_issue_hrefs(page)
+            issue_day = date.fromisoformat(match.group(1))
+            edition_name = match.group(2)
+            row = rows.get((match.group(1), edition_name), {})
+            extracted = extract_issue_copy(updated) or {}
+            lead = extracted.get("lead") or str(row.get("leadLine") or "")
+            summary = extracted.get("summary") or str(row.get("summaryExcerpt") or "")
+            titles = list(extracted.get("titles") or [])
+            if lead or summary or titles:
+                seo_title, block = issue_seo_markup(
+                    issue_day,
+                    edition_name,
+                    lead,
+                    summary,
+                    titles,
+                    str(row.get("batchAt") or ""),
+                    str(row.get("generatedAt") or ""),
+                )
+                updated = apply_document_seo(updated, seo_title, block)
+            if updated != page:
+                path.write_text(updated, encoding="utf-8")
+        except (OSError, ValueError) as exc:
+            print(f"朝刊SEOの更新をスキップ: {path.name} ({exc})", file=sys.stderr)
+
+
 def render_issue_navigation(current: dict, editions: list[dict]) -> str:
     """Render previous and next issue links as crawlable static HTML."""
     rows = issue_rows(editions)
@@ -295,9 +638,9 @@ def render_issue_navigation(current: dict, editions: list[dict]) -> str:
     following = rows[index - 1] if index > 0 else None
     links = []
     if previous:
-        links.append(f'<a class="issue-nav-link" href="{esc(previous["date"])}-{esc(previous["edition"])}.html"><span>← 前の号</span><small>{esc(issue_title(previous))}</small></a>')
+        links.append(f'<a class="issue-nav-link" href="{esc(previous["date"])}-{esc(previous["edition"])}"><span>← 前の号</span><small>{esc(issue_title(previous))}</small></a>')
     if following:
-        links.append(f'<a class="issue-nav-link issue-nav-link--next" href="{esc(following["date"])}-{esc(following["edition"])}.html"><span>次の号 →</span><small>{esc(issue_title(following))}</small></a>')
+        links.append(f'<a class="issue-nav-link issue-nav-link--next" href="{esc(following["date"])}-{esc(following["edition"])}"><span>次の号 →</span><small>{esc(issue_title(following))}</small></a>')
     if not links:
         return ""
     return """<!-- EDITION_NAV:start -->
@@ -364,19 +707,20 @@ def render_archive_html(editions: list[dict]) -> str:
     for index, row in enumerate(issue_rows(editions)):
         issue_type = "朝刊" if row["edition"] == "am" else "夕刊"
         title = issue_title(row)
-        href = f'{esc(row["date"])}-{esc(row["edition"])}.html'
+        href = f'{esc(row["date"])}-{esc(row["edition"])}'
         lead = esc(row.get("leadLine") or title)
         excerpt = esc(row.get("summaryExcerpt", ""))
         badge = '<span class="archive-latest">最新号</span>' if index == 0 else ""
         latest_class = " archive-card--latest" if index == 0 else ""
         cards.append(f'<article class="archive-card{latest_class}"><div class="archive-meta">{badge}<span>{esc(title)}</span><span class="archive-kind">{issue_type}</span></div><h2><a href="{href}">{lead}</a></h2><p>{excerpt}</p><a class="archive-read" href="{href}">この号を読む →</a></article>')
     empty = '<p class="archive-empty">朝刊を準備しています。</p>' if not cards else ""
-    return f'''<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light">{GTM_HEAD}<title>朝刊・夕刊の一覧｜AI Navigator</title><meta name="description" content="AI Navigator の朝刊・夕刊バックナンバー一覧。"><link rel="canonical" href="https://ai-navigator.dev/daily/"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="../style.css"><style>
+    archive_title, archive_block = archive_seo_markup(editions)
+    return f'''<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light">{GTM_HEAD}<title>{esc(archive_title)}</title>{archive_block}<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="../style.css"><style>
 .daily-archive{{width:min(100% - 32px,760px);margin:0 auto;padding:78px 0 40px;color:var(--ink)}}.archive-masthead{{border-bottom:1px solid var(--ink);padding:12px 0;font-size:11px;letter-spacing:.12em}}.archive-heading{{padding:24px 0 8px}}.archive-heading p{{margin:0;color:var(--ink-muted);font-size:14px}}.archive-heading h1{{font:800 clamp(30px,7vw,42px)/1.3 "Noto Serif JP","Yu Mincho",serif;margin:0 0 8px}}.archive-list{{display:grid;gap:14px;margin-top:22px}}.archive-card{{padding:18px 20px;border:1px solid var(--rule);background:var(--paper)}}.archive-card--latest{{border-left:4px solid var(--brand-red);padding-left:17px}}.archive-meta{{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:12px;color:var(--ink-muted)}}.archive-latest{{padding:2px 8px;background:var(--brand-red);color:var(--paper);font-weight:700}}.archive-kind{{padding-left:9px;border-left:1px solid var(--rule-strong)}}.archive-card h2{{font:700 clamp(19px,4vw,25px)/1.5 "Noto Serif JP","Yu Mincho",serif;margin:8px 0}}.archive-card h2 a{{text-decoration:none}}.archive-card h2 a:hover,.archive-read:hover{{color:var(--brand-red)}}.archive-card p{{margin:0 0 12px;color:var(--ink-muted);font-size:14px;line-height:1.8}}.archive-read{{display:inline-flex;font-size:13px;font-weight:700;color:var(--brand-red);text-decoration:none}}.archive-empty{{padding:24px 0;color:var(--ink-muted)}}.archive-footer{{width:min(100% - 32px,760px);margin:10px auto 0;padding:18px 0 38px;border-top:1px solid var(--ink);font-size:12px;color:var(--ink-muted)}}.archive-footer-links{{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px}}.archive-footer a{{color:inherit}}@media(max-width:768px){{.daily-archive{{padding-top:66px;padding-bottom:24px}}.archive-card{{padding:15px}}.archive-card--latest{{padding-left:12px}}}}
 </style></head><body>{GTM_NOSCRIPT}<header id="header"><a href="/" id="logo"><span id="logo-icon">Ai</span><span id="logo-group"><span id="logo-text">AI Navigator</span><span id="logo-tagline">AIニュースを、現場の言葉に。</span></span></a><nav id="tabbar"><a class="tab-btn" href="/">🏠 TOP</a><a class="tab-btn" href="/news">📰 AIニュース</a><a class="tab-btn active" href="/daily/">🌅 朝刊</a><a class="tab-btn" href="/official">📦 リリースノート</a><a class="tab-btn" href="/about">🛠️ 作り方</a></nav><span class="daily-header-spacer"></span></header><nav id="bottom-nav"><a class="bnav-item" href="/"><span class="bnav-icon">🏠</span><span class="bnav-label">TOP</span></a><a class="bnav-item" href="/news"><span class="bnav-icon">📰</span><span class="bnav-label">ニュース</span></a><a class="bnav-item active" href="/daily/"><span class="bnav-icon">🌅</span><span class="bnav-label">朝刊</span></a><a class="bnav-item" href="/official"><span class="bnav-icon">📦</span><span class="bnav-label">リリース</span></a><a class="bnav-item" href="/about"><span class="bnav-icon">🛠️</span><span class="bnav-label">作り方</span></a></nav><main class="daily-archive"><div class="archive-masthead">AI NAVIGATOR <span> / EDITION ARCHIVE</span></div><header class="archive-heading"><h1>朝刊・夕刊の一覧</h1><p>新しい号から順に掲載しています。</p></header><section class="archive-list" aria-label="朝刊・夕刊バックナンバー">{"".join(cards)}{empty}</section></main><footer class="archive-footer"><a href="/" class="footer-brand">AI Navigator</a><p>AIニュースを、現場の言葉に。</p><nav class="archive-footer-links"><a href="/">TOP</a><a href="/news">AIニュース</a><a href="/daily/">朝刊・夕刊</a><a href="/official">リリースノート</a><a href="/about">作り方</a></nav></footer></body></html>'''
 
 
-def render_html(target: date, edition: str, candidates: list[dict], selected: list[dict], content: dict, batch_at: str, editions: list[dict]) -> str:
+def render_html(target: date, edition: str, candidates: list[dict], selected: list[dict], content: dict, batch_at: str, editions: list[dict], generated_at: str = "") -> str:
     day_names = "月火水木金土日"
     weekday = day_names[target.weekday()]
     stories = []
@@ -400,12 +744,16 @@ def render_html(target: date, edition: str, candidates: list[dict], selected: li
         this_issue = issue_day == target and edition == "am"
         label = f'{issue_day.month}/{issue_day.day} ({day_names[issue_day.weekday()]})'
         name = "朝刊（この号）" if this_issue else "朝刊"
-        cell = f'<a class="{"current" if this_issue else ""}" href="{esc(issue_day.isoformat())}-am.html">{name}</a>'
+        cell = f'<a class="{"current" if this_issue else ""}" href="{esc(issue_day.isoformat())}-am">{name}</a>'
         count = f'{row.get("selectedCount", len(row.get("selectedIds", [])))}本'
         week.append(f'<div class="week-day"><b>{label}</b>{cell}<span>{count}</span></div>')
     summary = esc(content["summary"])
     time_label = datetime.fromisoformat(batch_at).astimezone(JST).strftime("%H:%M") if batch_at else ""
-    return f'''<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light">{GTM_HEAD}<title>{target.year}年{target.month}月{target.day}日（{weekday}）朝刊｜AI Navigator</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600;700;800&display=swap" rel="stylesheet"><style>
+    seo_title, seo_block = issue_seo_markup(
+        target, edition, str(content.get("lead_line") or ""), str(content.get("summary") or ""),
+        [str(article.get("title") or "") for article in selected], batch_at, generated_at,
+    )
+    return f'''<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light">{GTM_HEAD}<title>{esc(seo_title)}</title>{seo_block}<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600;700;800&display=swap" rel="stylesheet"><style>
 :root{{--soft:var(--ink-muted);--red:var(--brand-red);--card:var(--paper);--serif:"Noto Serif JP","Yu Mincho",serif;--sans:"Noto Sans JP",sans-serif}}*{{box-sizing:border-box}}html{{scroll-behavior:smooth;scroll-padding-top:18px}}body{{margin:0;background:var(--paper);color:var(--ink);font:16px/1.8 var(--sans)}}a{{color:inherit}}.page{{width:min(100% - 32px,680px);margin:auto}}.site-header{{position:fixed;z-index:10;top:0;left:0;right:0;height:58px;display:flex;align-items:center;gap:18px;padding:0 20px;background:var(--paper);color:var(--ink);font:14px/1.4 Inter,sans-serif}}.site-logo{{font-weight:700;text-decoration:none}}.site-tabs{{display:flex;gap:18px;margin:auto}}.site-tabs a{{color:var(--ink-muted);text-decoration:none}}.site-tabs a.active{{color:var(--brand-red)}}.site-bottom-nav{{display:none}}.page{{padding-top:76px;padding-bottom:30px}}.masthead{{border-bottom:1px solid var(--ink);padding:14px 0;font-size:12px;letter-spacing:.1em}}.hero{{padding:22px 0 13px}}h1{{font:800 clamp(29px,8vw,43px)/1.28 var(--serif);margin:0 0 10px}}.stats{{margin:0;color:var(--soft);font-size:13px}}.updated{{display:block;color:var(--soft);font-size:12px}}.brief{{margin:12px 0 30px;padding:14px 17px 18px;background:var(--card);border:1px solid var(--rule);border-left:4px solid var(--red)}}.brief-label{{font-size:11px;color:var(--red);font-weight:700}}.brief h2{{font:700 20px/1.55 var(--serif);margin:0 0 8px}}.brief p{{margin:0 0 13px;font-size:16px;line-height:1.8}}.brief-end{{border-top:1px solid var(--rule);padding-top:8px;font-weight:700;font-size:14px}}.section-title{{font:700 22px/1.5 var(--serif);margin:38px 0 12px}}.toc,.week{{border:1px solid var(--rule);background:var(--paper);padding:5px 15px}}.toc a{{display:grid;grid-template-columns:34px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid var(--rule);text-decoration:none;font-size:14px;line-height:1.55}}.toc a:last-child{{border:0}}.toc a span{{color:var(--red);font-weight:700}}.deep-head{{display:flex;justify-content:space-between;align-items:baseline;gap:8px}}.deep-head .section-title{{margin-bottom:4px}}.readtime{{font-size:12px;color:var(--soft);white-space:nowrap}}.topic{{padding:12px 0 17px;border-bottom:1px solid var(--rule)}}.topic h3,.story h3{{font:700 18px/1.55 var(--serif);margin:0 0 6px}}.topic p{{margin:0;line-height:1.85}}.story-list{{border-top:1px solid var(--ink)}}.story{{scroll-margin-top:20px;display:flex;gap:12px;padding:16px 0;border-bottom:1px solid var(--rule)}}.story-copy{{min-width:0;flex:1}}.story-kicker{{font-size:10px;color:var(--red);font-weight:700;margin:0}}.story-summary{{font-size:14px;line-height:1.75;color:var(--soft);margin:0 0 6px}}.source{{font-size:11px;color:var(--ink-soft);margin:0}}.read-link{{display:inline-block;margin-top:5px;font-size:12px;text-decoration-color:var(--red)}}.thumb{{width:78px;height:62px;object-fit:cover;border:1px solid var(--rule);flex:none;margin-top:14px}}.week-day{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:12px}}.week-day:last-child{{border:0}}.week-day a{{text-decoration:none}}.current{{color:var(--red);font-weight:700}}.muted{{color:var(--ink-muted)}}.next{{margin:32px 0;padding:12px 14px;border:1px solid var(--rule);font-size:13px;color:var(--soft)}}footer{{border-top:1px solid var(--ink);padding:18px 0 36px;margin-top:36px;font-size:12px;color:var(--soft)}}footer p{{margin:4px 0}}@media(max-width:768px){{.site-header{{height:52px;padding:0 12px}}.site-tabs{{display:none}}.page{{padding-top:65px;padding-bottom:78px}}.site-bottom-nav{{position:fixed;z-index:11;bottom:0;left:0;right:0;display:flex;height:56px;background:var(--paper)}}.site-bottom-nav a{{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--ink-muted);font:500 10px/1 Inter,sans-serif;text-decoration:none}}.site-bottom-nav a.active{{color:var(--brand-red)}}.nav-icon{{font-size:19px}}.hero{{padding-top:18px}}.brief{{padding:12px 14px 15px}}.section-title{{font-size:20px}}.story{{gap:9px}}.thumb{{width:68px;height:58px}}}}
 </style><link rel="stylesheet" href="../style.css"></head><body>{GTM_NOSCRIPT}<header id="header"><a href="../index.html" id="logo"><span id="logo-icon">Ai</span><span id="logo-group"><span id="logo-text">AI Navigator</span><span id="logo-tagline">AIニュースを、現場の言葉に。</span></span></a><nav id="tabbar"><a class="tab-btn" href="../index.html">🏠 TOP</a><a class="tab-btn" href="../news.html">📰 AIニュース</a><a class="tab-btn active" href="../daily/">🌅 朝刊</a><a class="tab-btn" href="../official.html">📦 リリースノート</a><a class="tab-btn" href="../about.html">🛠️ 作り方</a></nav><span class="daily-header-spacer"></span></header><nav id="bottom-nav"><a class="bnav-item" href="../index.html"><span class="bnav-icon">🏠</span><span class="bnav-label">TOP</span></a><a class="bnav-item" href="../news.html"><span class="bnav-icon">📰</span><span class="bnav-label">ニュース</span></a><a class="bnav-item active" href="../daily/"><span class="bnav-icon">🌅</span><span class="bnav-label">朝刊</span></a><a class="bnav-item" href="../official.html"><span class="bnav-icon">📦</span><span class="bnav-label">リリース</span></a><a class="bnav-item" href="../about.html"><span class="bnav-icon">🛠️</span><span class="bnav-label">作り方</span></a></nav><main class="page"><div class="masthead">AI NAVIGATOR <span> / MORNING EDITION</span></div><header class="hero"><h1>{target.year}年{target.month}月{target.day}日（{weekday}）朝刊</h1><p class="stats">毎日2回、<b>{len(candidates)}本</b>を集めて、<b>{len(selected)}本</b>を選びました。</p><span class="updated">更新 {time_label}</span></header><section class="brief"><p class="brief-label">30秒でわかる</p><h2>{esc(content['lead_line'])}</h2><p>{summary}</p><div class="brief-end">ここまで読めば今日はOK。</div></section><h2 class="section-title">今日の目次</h2><nav class="toc">{"".join(toc)}</nav><section><div class="deep-head"><h2 class="section-title">読みたい人だけ</h2><span class="readtime">約3分</span></div>{topic_html}</section><section><h2 class="section-title">選んだ記事 {len(selected)}本</h2><div class="story-list">{"".join(stories)}</div></section><section><h2 class="section-title">今週の朝刊</h2><div class="week">{"".join(week)}</div></section><aside class="next">次の朝刊は <b>明朝8時ごろ</b> の予定です。</aside><footer><p><a href="../index.html">AI Navigator トップへ</a></p><p>このサイトは非エンジニアがAIで全自動化して作っています。<a href="../about.html">作り方を見る</a></p></footer></main></body></html>'''
 
@@ -477,10 +825,10 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
         except (OSError, json.JSONDecodeError):
             fail("既存の editions.json を読み込めません")
     batch_at = data.get("latestBatchAt", "")
-    row = {"date": target.isoformat(), "edition": edition, "url": f"daily/{target.isoformat()}-{edition}.html", "candidateCount": len(candidates), "selectedCount": len(selected), "selectedIds": [x.get("id") for x in selected], "leadLine": copy["lead_line"], "summaryExcerpt": copy["summary"][:140], "batchAt": batch_at, "generatedAt": generated_at}
+    row = {"date": target.isoformat(), "edition": edition, "url": f"daily/{target.isoformat()}-{edition}", "candidateCount": len(candidates), "selectedCount": len(selected), "selectedIds": [x.get("id") for x in selected], "leadLine": copy["lead_line"], "summaryExcerpt": copy["summary"][:140], "batchAt": batch_at, "generatedAt": generated_at}
     edition_rows = upsert_edition(edition_rows, row)
     page_path = output_dir / f"{target.isoformat()}-{edition}.html"
-    html_text = render_html(target, edition, candidates, selected, copy, batch_at, edition_rows)
+    html_text = render_html(target, edition, candidates, selected, copy, batch_at, edition_rows, generated_at)
     page_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_page = page_path.with_suffix(".html.tmp")
     tmp_page.write_text(html_text, encoding="utf-8")
@@ -503,6 +851,7 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
     atomic_json(editions_path, edition_rows)
     (output_dir / "index.html").write_text(render_archive_html(edition_rows), encoding="utf-8")
     sync_issue_navigation(edition_rows, output_dir)
+    sync_issue_seo(edition_rows, output_dir)
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))  # 直接実行時は daily/ しか import パスに無い
     from parse_news import generate_sitemap
