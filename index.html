@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- 旧ドメイン(ai-news-eev.pages.dev)からの来訪を独自ドメインへ転送する。
+       note記事・過去のSNS投稿に旧URLが残っており、Cloudflare Pagesでは
+       pages.dev を301転送する手段が無いため（2026-08-16に_redirects・
+       Redirect Rulesの両方を実測して不可を確認）、クライアント側で転送する。
+       GA4より前に置き、旧ドメインでの計測発火とチラつきを防ぐ。 -->
+  <script>
+    (function () {
+      if (location.hostname === "ai-news-eev.pages.dev") {
+        location.replace("https://ai-navigator.dev" + location.pathname + location.search + location.hash);
+      }
+    })();
+  </script>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-NNQDZVDZ');</script>
+  <!-- End Google Tag Manager -->
+  <script>
+    // GTM移行後もJS側の gtag(...) 呼び出しを生かすためのスタブ。
+    // 実体は dataLayer.push なので、GTM がそのまま受け取る。
+    // ⚠️ これを消すと app.js の typeof ガードが false になり
+    //    select_content / select_item が静かに停止する（JSエラーは出ない）。
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+  </script>
+  <title>AI Navigator — AIニュースを、現場の言葉に。</title>
+  <meta name="description" content="AIニュースを、現場の言葉に。営業・マーケ・総務・経営戦略への活用ヒントを毎日自動配信。難しい技術用語をビジネスの言葉に翻訳。">
+  <meta property="og:title" content="AI Navigator — AIニュースを、現場の言葉に。">
+  <meta property="og:description" content="AIニュースを、現場の言葉に。営業・マーケ・総務・経営戦略への活用ヒントを毎日自動配信。難しい技術用語をビジネスの言葉に翻訳。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ai-navigator.dev/">
+  <meta property="og:image" content="https://ai-navigator.dev/ogp.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AI Navigator — AIニュースを、現場の言葉に。">
+  <meta name="twitter:description" content="非エンジニアのための AIビジネスニュース。営業・マーケ・総務・経営に使えるAI情報を毎日配信。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="canonical" href="https://ai-navigator.dev/">
+  <!-- Google Search Console 所有権確認（parse_news.pyのマーカー外に置き永続させる） -->
+  <meta name="google-site-verification" content="sMyt7yNITx-OGEmHm53QLi_ijx-3gliF_lUvUbxhm18" />
+  <!-- JSON_LD:start -->
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "WebSite", "name": "AI Navigator", "description": "中小企業の経営者・現場担当者向けAIビジネスニュース。", "url": "https://ai-navigator.dev/", "inLanguage": "ja"}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "CollectionPage", "name": "AI Navigator — 2026-10-11 のAIニュース", "description": "AIビジネスニュースを毎日自動収集・要約配信。", "url": "https://ai-navigator.dev/", "dateModified": "2026-10-11T05:14:15.890086+09:00", "mainEntity": {"@type": "ItemList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "商談後24時間のフォローメールは「引き金」から書く", "url": "https://zenn.dev/takumahayami/articles/eigyou-ai-follow-mail-24h"}, {"@type": "ListItem", "position": 2, "name": "自分のサムネ作りを自動化する「カタサムネ」の公開", "url": "https://note.com/cheeky_dietes758/n/n9c78b6d3ed2f"}, {"@type": "ListItem", "position": 3, "name": "大きな頼みが通る「小さな頼み」の積み上げ方（フット・イン・ザ・ドア）", "url": "https://note.com/takakuma_note/n/n06bf7cbc4444"}, {"@type": "ListItem", "position": 4, "name": "ReSO AI：AIによる検索・推薦で見つけてもらう新技術", "url": "https://www.producthunt.com/products/reso"}, {"@type": "ListItem", "position": 5, "name": "新モデル「Gemini 4 Argon」発表！AIがより賢く、速く", "url": "https://zenn.dev/densan_techblog/articles/b55141e636da7c"}, {"@type": "ListItem", "position": 6, "name": "Data Agent Kitで社内データの活用を簡単に実現", "url": "https://zenn.dev/non_miyan/articles/52d001e68a04cc"}, {"@type": "ListItem", "position": 7, "name": "AI費用が76分の1に。差を生んだのは「使い方」の工夫", "url": "https://zenn.dev/sugawara_ai/articles/ai-news-20261010"}, {"@type": "ListItem", "position": 8, "name": "手で写していた集計を、最新の関数で自動化する", "url": "https://zenn.dev/starken/articles/spreadsheet-xlookup-filter-unique"}, {"@type": "ListItem", "position": 9, "name": "Power Automateを「属人化」させないための設計原則", "url": "https://zenn.dev/sidejob/articles/a8a05f73cde30e6d4"}, {"@type": "ListItem", "position": 10, "name": "LINEの日程調整をAIがお手伝い", "url": "https://note.com/asomana_support/n/nf25aacda1d98"}, {"@type": "ListItem", "position": 11, "name": "AIで「複数のExcel」から必要な情報だけを30分で集める", "url": "https://note.com/ken_act/n/ne087df4e1aaa"}, {"@type": "ListItem", "position": 12, "name": "問い合わせ対応を1工程からAIエージェントに任せる方法", "url": "https://note.com/ittyplus/n/n5eaad53c2198"}, {"@type": "ListItem", "position": 13, "name": "【Excel付き】問い合わせの返信忘れを減らす管理キット", "url": "https://note.com/light_flea8285/n/nf2c143da43a5"}, {"@type": "ListItem", "position": 14, "name": "Skreno：ブラウザだけで完結する動画編集・共有ツール", "url": "https://www.producthunt.com/products/skreno"}, {"@type": "ListItem", "position": 15, "name": "PocketWebTools for Mac：ローカルAIによる文字起こし・翻訳", "url": "https://www.producthunt.com/products/pocketwebtools"}, {"@type": "ListItem", "position": 16, "name": "国内で相次ぐ不正アクセスに対する注意喚起のまとめ", "url": "https://piyolog.hatenadiary.jp/entry/2026/10/11/004353"}, {"@type": "ListItem", "position": 17, "name": "AIの費用対効果を、5日間の作業記録から見積もる", "url": "https://zenn.dev/kentaro36/articles/ai-cost-effectiveness-5days"}, {"@type": "ListItem", "position": 18, "name": "事業活動を AI Ready にする攻めと守りのデータ基盤", "url": "https://speakerdeck.com/pei0804/data-engineering-for-ai-ready-business"}, {"@type": "ListItem", "position": 19, "name": "AI駆動開発の時代における「トヨタ生産方式」の再評価", "url": "https://speakerdeck.com/terurou/ai-kudou-kaihatsu-no-jidai-ni-nata-node-toyota-seisan-houshiki-kara-minaosu"}, {"@type": "ListItem", "position": 20, "name": "「自分がいないと回らない仕事」を人に渡すための3つの問い", "url": "https://note.com/brave_carp7864/n/n405cf9c5d11e"}, {"@type": "ListItem", "position": 21, "name": "忙しいから人を増やすのは正解か？決算書から見る適正社員数", "url": "https://note.com/toda_naruhito/n/n179fb702835f"}, {"@type": "ListItem", "position": 22, "name": "Microsoftの意思決定モデル「Decision-1」がレースに参戦", "url": "https://the-decoder.com/microsofts-decision-1-model-enters-the-fast-growing-ai-decision-model-race/"}, {"@type": "ListItem", "position": 23, "name": "OpenAIのモデルが「環境を自ら破壊」？AIの安全性への警鐘", "url": "https://the-decoder.com/openai-says-a-misaligned-model-deliberately-destroyed-its-own-environment-hoping-for-a-fresh-start-with-better-data/"}, {"@type": "ListItem", "position": 24, "name": "AppleがポッドキャストAIスタートアップ「Huxe」のチームを雇用", "url": "https://techcrunch.com/2026/10/10/apple-discloses-deal-to-hire-team-and-license-tech-from-personalized-podcast-startup-huxe/"}, {"@type": "ListItem", "position": 25, "name": "【Excel付き】個人事業主のための入金確認・請求管理キット", "url": "https://note.com/light_flea8285/n/nd0788f3757ea"}, {"@type": "ListItem", "position": 26, "name": "海外発送ショップの英語問い合わせ対応 15ケース実務キット", "url": "https://note.com/shiny_kiwi1457/n/n9884563a413b"}, {"@type": "ListItem", "position": 27, "name": "請求書の督促メールを「未払いリスト」と同じ行に置く工夫", "url": "https://dev.to/369mmaker/put-the-reminder-in-the-same-row-as-the-overdue-invoice-1f4"}, {"@type": "ListItem", "position": 28, "name": "Bitwardenがデュアルライセンスモデルを導入", "url": "https://community.bitwarden.com/t/published-version-update-in-app-stores/102750"}, {"@type": "ListItem", "position": 29, "name": "デンマークで「123456」というパスワードが原因で大規模な情報漏洩", "url": "https://cphpost.dk/2026-10-10/news/round-up/123456-password-used-in-massive-danish-cpr-data-breach/"}, {"@type": "ListItem", "position": 30, "name": "Claude in Chrome と Obsidian で教材づくりを自動化する", "url": "https://zenn.dev/kaz_hira/articles/claude-in-chrome-obsidian-learning"}]}}
+</script>
+<!-- JSON_LD:end -->
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NNQDZVDZ"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <!-- ヘッダー: ロゴ | タブ | 検索 -->
+  <header id="header">
+    <a href="/" id="logo">
+      <span id="logo-icon">Ai</span>
+      <div id="logo-group">
+        <span id="logo-text">AI Navigator</span>
+        <span id="logo-tagline">AIニュースを、現場の言葉に。</span>
+      </div>
+    </a>
+
+    <nav id="tabbar">
+      <a class="tab-btn active" href="/">🏠 TOP</a>
+      <a class="tab-btn" href="/news">📰 AIニュース</a>
+      <a class="tab-btn" href="/daily/">🌅 朝刊</a>
+      <a class="tab-btn" href="/official">📦 リリースノート</a>
+      <a class="tab-btn" href="/about">🛠️ 作り方</a>
+    </nav>
+
+    <div style="flex-shrink:0; width:1px;"></div>
+  </header>
+
+  <!-- ボトムナビ -->
+  <nav id="bottom-nav">
+    <a class="bnav-item active" href="/">
+      <span class="bnav-icon">🏠</span>
+      <span class="bnav-label">TOP</span>
+    </a>
+    <a class="bnav-item" href="/news">
+      <span class="bnav-icon">📰</span>
+      <span class="bnav-label">ニュース</span>
+    </a>
+    <a class="bnav-item" href="/daily/">
+      <span class="bnav-icon">🌅</span>
+      <span class="bnav-label">朝刊</span>
+    </a>
+    <a class="bnav-item" href="/official">
+      <span class="bnav-icon">📦</span>
+      <span class="bnav-label">リリース</span>
+    </a>
+    <a class="bnav-item" href="/about">
+      <span class="bnav-icon">🛠️</span>
+      <span class="bnav-label">作り方</span>
+    </a>
+  </nav>
+
+  <!-- ランディング部。可視の main ランドマークは記事一覧側(#main)の1個だけにするため div にする -->
+  <!-- ランディングの主コンテンツ。記事一覧は news.html に分離済みなので、
+       このページの main ランドマークはここ1個だけ -->
+  <main id="landing-main">
+    <section class="top-intro" aria-label="AI Navigatorの案内">
+      <p>毎朝8時、中小企業のためのAIニュースをAIが選んでお届け <a href="/about">このサイトについて</a></p>
+    </section>
+
+    <section id="top-morning-edition" class="top-morning-edition" aria-live="polite">
+      <div class="top-morning-fallback"><p>最新ニュース</p><h1><a href="/news">AIニュース一覧を見る</a></h1></div>
+    </section>
+
+    <section id="top-new-arrivals" class="top-section top-pick-section" aria-labelledby="new-arrivals-title" hidden>
+      <div class="top-section-heading top-section-heading-row">
+        <div>
+          <p class="top-section-kicker">NEW STORIES</p>
+          <h2 id="new-arrivals-title">新着</h2>
+          <p id="top-new-arrivals-meta" class="top-pick-summary"></p>
+        </div>
+        <a class="top-text-link" href="/news">すべて見る →</a>
+      </div>
+      <div id="top-new-arrivals-articles" class="top-pickup" aria-live="polite"></div>
+    </section>
+
+    <div class="top-editorial-layout">
+      <section class="top-section top-release-section" aria-labelledby="recent-releases-title">
+        <div class="top-section-heading top-section-heading-row">
+          <div>
+            <p class="top-section-kicker">OFFICIAL UPDATES</p>
+            <h2 id="recent-releases-title">最近のリリース</h2>
+          </div>
+          <a class="top-text-link" href="/official">すべて見る →</a>
+        </div>
+        <div id="top-recent-releases" class="top-release-list" aria-live="polite">
+          <p class="top-loading">リリースを読み込み中...</p>
+        </div>
+      </section>
+
+      <section class="top-section top-trending-section" aria-labelledby="top-trending-title">
+        <div class="top-section-heading">
+          <p class="top-section-kicker">GitHub Trending（daily + weekly）</p>
+          <h2 id="top-trending-title">今、世界で話題のAIツール</h2>
+          <p class="top-trending-subtitle">エンジニアの間で急上昇中の無料ツール</p>
+        </div>
+        <div id="top-github-trending" class="top-trending-list" aria-live="polite">
+          <p class="top-loading">GitHubの情報を読み込み中...</p>
+        </div>
+      </section>
+
+      <section class="top-section" aria-labelledby="category-explore-title">
+        <div class="top-section-heading">
+          <p class="top-section-kicker">EXPLORE BY TOPIC</p>
+          <h2 id="category-explore-title">カテゴリから探す</h2>
+        </div>
+        <div id="top-category-tiles" class="top-category-grid" aria-live="polite"></div>
+      </section>
+    </div>
+
+    <section class="top-stats-bar" aria-labelledby="top-stats-title">
+      <div class="top-section-heading top-stats-heading">
+        <p class="top-section-kicker">LIVE SNAPSHOT</p>
+        <h2 id="top-stats-title">AI Navigator の今</h2>
+      </div>
+      <div class="top-stats-row">
+<!-- TOP_STATS_BAR:start -->
+        <div class="top-stat"><strong>11,057<small>本</small></strong><span>累計記事数</span></div>
+        <div class="top-stat"><strong>1,231<small>本</small></strong><span>うち公式リリース</span></div>
+        <div class="top-stat"><strong>253<small>日分</small></strong><span>カバー期間</span></div>
+        <div class="top-stat"><strong>1日2回</strong><span>更新頻度<br>JST 5:45 / 15:45</span></div>
+        <div class="top-stat"><strong>0<small>分/日</small></strong><span>人の運用作業</span></div>
+        <div class="top-stat"><strong>0<small>円/月</small></strong><span>運営コスト</span></div>
+        <div class="top-stat"><strong>ほぼ0<small>行</small></strong><span>手書きしたコード</span></div>
+<!-- TOP_STATS_BAR:end -->
+      </div>
+    </section>
+
+    <section class="top-section top-how-section" aria-labelledby="top-how-title">
+      <div class="top-section-heading top-centered-heading">
+        <p class="top-section-kicker">HOW IT WORKS</p>
+        <h2 id="top-how-title">ニュースが届くまで</h2>
+      </div>
+      <div class="top-step-list">
+        <div class="top-step"><span>1</span><div><h3>集める</h3><p>毎朝・毎夕、AI企業の公式発表やニュースサイトを自動で巡回します。</p></div></div>
+        <div class="top-step"><span>2</span><div><h3>AIが要約する</h3><p>集めた記事をAI（Gemini）が読んで、日本語でわかりやすく要約・分類します。</p></div></div>
+        <div class="top-step"><span>3</span><div><h3>勝手に公開される</h3><p>要約結果が自動でサイトに反映され、人が触らなくても公開されます。</p></div></div>
+      </div>
+      <p class="top-centered-action"><a class="top-action top-action-secondary" href="/about">このサイトの作り方を見る</a></p>
+    </section>
+
+    <section class="top-section top-note-section" aria-labelledby="top-note-title">
+      <div class="top-section-heading top-centered-heading">
+        <p class="top-section-kicker">MORE ON NOTE</p>
+        <h2 id="top-note-title">noteで詳しく</h2>
+      </div>
+      <div class="top-note-grid">
+        <a class="top-note-card" href="https://note.com/fresh_ixora3727/n/nfb9515e7ff0c?utm_source=ainavigator&amp;utm_medium=top&amp;utm_campaign=about" target="_blank" rel="noopener noreferrer"><span>note / STORY 01</span><h3>コードが1行も読めない私が、AIと言葉だけで155日動くサイトを育てた話</h3><b>読む →</b></a>
+        <a class="top-note-card" href="https://note.com/fresh_ixora3727/n/n1bf62249f3c2?utm_source=ainavigator&amp;utm_medium=top&amp;utm_campaign=about" target="_blank" rel="noopener noreferrer"><span>note / STORY 02</span><h3>毎日のAIニュース47日分を、ウェブサイトにしてみた</h3><b>読む →</b></a>
+      </div>
+    </section>
+
+    <section class="top-site-info" aria-label="AI Navigator サイト情報">
+      <div><strong>AI Navigator</strong><p>中小企業の経営者・現場担当者のためのAIビジネスニュース。</p></div>
+      <!-- 記事数は parse_news.py が TOP_STATS_COUNT マーカー間を自動更新する。手で編集しない -->
+      <dl><div><dt>運営</dt><dd>完全自動</dd></div><div><dt>記事数</dt>
+        <!-- TOP_STATS_COUNT:start -->
+        <dd>11,057本</dd>
+<!-- TOP_STATS_COUNT:end --></div><div><dt>運営開始</dt><dd>2026.01</dd></div></dl>
+    </section>
+  </main><!-- /#landing-main -->
+
+  <div id="article-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close-btn" aria-label="閉じる">✕</button>
+      <div class="modal-thumb-wrap" id="modal-thumb-wrap"></div>
+      <div class="modal-content">
+        <div class="modal-meta" id="modal-meta"></div>
+        <h2 class="modal-title" id="modal-title"></h2>
+        <p class="modal-summary" id="modal-summary"></p>
+        <a class="modal-read-btn" id="modal-read-btn" target="_blank" rel="noopener noreferrer">記事を読む →</a>
+      </div>
+    </div>
+  </div>
+
+  <footer id="site-footer" class="top-site-footer">
+    <div class="footer-column footer-brand-column">
+      <a href="/" class="footer-brand">AI Navigator</a>
+      <p>AIニュースを、現場の言葉に。</p>
+      <div class="footer-social"><a href="https://x.com/AINavigatorJP" target="_blank" rel="noopener noreferrer">X</a><a href="https://note.com/fresh_ixora3727" target="_blank" rel="noopener noreferrer">note</a></div>
+    </div>
+    <div class="footer-column"><h2>コンテンツ</h2><a href="/">TOP</a><a href="/news">AIニュース</a><a href="/official">リリースノート</a><a href="/about">作り方</a><a href="https://note.com/fresh_ixora3727" target="_blank" rel="noopener noreferrer">note</a><a href="/privacy">プライバシー</a></div>
+    <div class="footer-column"><h2>カテゴリ</h2><div id="footer-categories" class="footer-category-links"></div></div>
+    <div class="footer-column"><h2>その他</h2><a href="/about">このサイトの作り方</a><a href="/about">このサイトについて</a></div>
+  </footer>
+
+  <script src="app.js"></script>
+  <script src="ai-consult.js"></script>
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "899bb0ef97f74baa90f5584bb37ff9c4"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>
