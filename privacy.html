@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- 旧ドメイン(ai-news-eev.pages.dev)からの来訪を独自ドメインへ転送する。
+       note記事・過去のSNS投稿に旧URLが残っており、Cloudflare Pagesでは
+       pages.dev を301転送する手段が無いため（2026-08-16に_redirects・
+       Redirect Rulesの両方を実測して不可を確認）、クライアント側で転送する。
+       GA4より前に置き、旧ドメインでの計測発火とチラつきを防ぐ。 -->
+  <script>
+    (function () {
+      if (location.hostname === "ai-news-eev.pages.dev") {
+        location.replace("https://ai-navigator.dev" + location.pathname + location.search + location.hash);
+      }
+    })();
+  </script>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-NNQDZVDZ');</script>
+  <!-- End Google Tag Manager -->
+  <script>
+    // GTM移行後もJS側の gtag(...) 呼び出しを生かすためのスタブ。
+    // 実体は dataLayer.push なので、GTM がそのまま受け取る。
+    // ⚠️ これを消すと app.js の typeof ガードが false になり
+    //    select_content / select_item が静かに停止する（JSエラーは出ない）。
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+  </script>
+  <title>プライバシーポリシー | AI Navigator</title>
+  <meta name="description" content="AI Navigatorのプライバシーポリシー。アクセス解析（Googleアナリティクス4）の利用と、運営者が個人で使うGoogle APIツールにおけるデータの取り扱いについて説明します。">
+  <meta property="og:title" content="プライバシーポリシー | AI Navigator">
+  <meta property="og:description" content="AI Navigatorのプライバシーポリシー。アクセス解析の利用と、運営者が個人で使うGoogle APIツールにおけるデータの取り扱いについて説明します。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ai-navigator.dev/privacy">
+  <meta property="og:image" content="https://ai-navigator.dev/ogp.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="プライバシーポリシー | AI Navigator">
+  <meta name="twitter:description" content="AI Navigatorのプライバシーポリシー。アクセス解析と、運営者が個人で使うGoogle APIツールのデータの取り扱いについて。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="canonical" href="https://ai-navigator.dev/privacy">
+
+  <style>
+    /* privacy.html 専用スタイル（about.htmlのトーンを踏襲、サイドバー非使用の単カラムページ） */
+    #privacy-main {
+      margin-top: var(--header-h);
+      min-height: calc(100vh - var(--header-h));
+      max-width: 760px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0 22px 80px;
+    }
+
+    .privacy-hero {
+      padding: 56px 0 36px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .privacy-hero-eyebrow {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--accent-hover);
+      margin: 0 0 14px;
+    }
+    .privacy-hero h1 {
+      font-size: 26px;
+      line-height: 1.55;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 14px;
+    }
+    .privacy-hero p {
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .privacy-section {
+      padding: 36px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .privacy-section:last-of-type { border-bottom: none; }
+
+    .privacy-section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 16px;
+    }
+    .privacy-section p,
+    .privacy-section li {
+      font-size: 14px;
+      line-height: 1.9;
+      color: var(--text-secondary);
+    }
+    .privacy-section p { margin: 0 0 12px; }
+    .privacy-section ul {
+      margin: 0 0 12px;
+      padding-left: 1.4em;
+      list-style: disc;
+    }
+    .privacy-section li { margin-bottom: 4px; }
+    .privacy-section a {
+      color: var(--accent-hover);
+      word-break: break-all;
+    }
+    .privacy-enacted {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      text-align: right;
+      margin: 28px 0 0;
+    }
+
+    @media (max-width: 600px) {
+      .privacy-hero { padding: 40px 0 28px; }
+      .privacy-hero h1 { font-size: 21px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NNQDZVDZ"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <!-- ヘッダー: ロゴ | タブ | 検索（他ページと共通構造。privacy.htmlに検索対象コンテンツは無いため検索窓のみ非表示。どのタブもactiveにしない） -->
+  <header id="header">
+    <a href="/" id="logo">
+      <span id="logo-icon">Ai</span>
+      <div id="logo-group">
+        <span id="logo-text">AI Navigator</span>
+        <span id="logo-tagline">AIニュースを、現場の言葉に。</span>
+      </div>
+    </a>
+
+    <nav id="tabbar">
+      <a class="tab-btn" href="/">🏠 TOP</a>
+      <a class="tab-btn" href="/news">📰 AIニュース</a>
+      <a class="tab-btn" href="/daily/">🌅 朝刊</a>
+      <a class="tab-btn" href="/official">📦 リリースノート</a>
+      <a class="tab-btn" href="/about">🛠️ 作り方</a>
+    </nav>
+
+    <div style="flex-shrink:0; width:1px;"></div>
+  </header>
+
+  <!-- ボトムナビ -->
+  <nav id="bottom-nav">
+    <a class="bnav-item" href="/">
+      <span class="bnav-icon">🏠</span>
+      <span class="bnav-label">TOP</span>
+    </a>
+    <a class="bnav-item" href="/news">
+      <span class="bnav-icon">📰</span>
+      <span class="bnav-label">ニュース</span>
+    </a>
+    <a class="bnav-item" href="/daily/">
+      <span class="bnav-icon">🌅</span>
+      <span class="bnav-label">朝刊</span>
+    </a>
+    <a class="bnav-item" href="/official">
+      <span class="bnav-icon">📦</span>
+      <span class="bnav-label">リリース</span>
+    </a>
+    <a class="bnav-item" href="/about">
+      <span class="bnav-icon">🛠️</span>
+      <span class="bnav-label">作り方</span>
+    </a>
+  </nav>
+
+  <main id="privacy-main">
+
+    <section class="privacy-hero">
+      <p class="privacy-hero-eyebrow">PRIVACY POLICY</p>
+      <h1>プライバシーポリシー</h1>
+      <p>AI Navigator 運営者（以下「運営者」）が、このサイトと運営者個人のツールで、どんな情報をどう扱うかをまとめています。</p>
+    </section>
+
+    <section class="privacy-section">
+      <h2 class="privacy-section-title">1. アクセス解析について</h2>
+      <p>本サイトでは、氏名・メールアドレス等の個人情報を取得していません（お問い合わせフォームや会員登録はありません）。</p>
+      <p>このサイトでは、閲覧状況を把握するために、Googleタグマネージャー（GTM）経由で Google アナリティクス4（GA4）を使用しています。</p>
+      <p>GA4はCookieを使って、閲覧したページ、参照元、端末やブラウザの情報、おおよその地域などの閲覧データを匿名で収集します。これらのデータは、サイトを改善する目的のためだけに使い、個人を特定する情報は集めません。</p>
+      <p>収集を望まない場合は、次のいずれかの方法で止められます。</p>
+      <ul>
+        <li>ブラウザの設定でCookieを無効にする</li>
+        <li><a href="https://tools.google.com/dlpage/gaoptout?hl=ja" target="_blank" rel="noopener noreferrer">Google アナリティクス オプトアウト アドオン</a>を導入する</li>
+      </ul>
+      <p>Googleによるデータの取り扱いについては、<a href="https://policies.google.com/technologies/partner-sites?hl=ja" target="_blank" rel="noopener noreferrer">Googleのパートナーサイトのデータ利用について</a>をご確認ください。</p>
+    </section>
+
+    <section class="privacy-section">
+      <h2 class="privacy-section-title">2. 運営者が個人で使うツールについて</h2>
+      <p>運営者は、自分専用のツール（Google のAPIを使うコマンドラインツール）を利用しています。このページは、そのツールの OAuth 同意画面に掲載するプライバシーポリシーも兼ねています。</p>
+      <p>このツールは、運営者本人が、自分の Google アカウントのデータ（Gmail、カレンダー、ドライブ、スプレッドシート、ドキュメント、連絡先、タスクなど）に、運営者本人の端末からのみアクセスするためのものです。</p>
+      <ul>
+        <li>取得したデータは、運営者の端末内でのみ扱います。</li>
+        <li>第三者への提供、販売、外部への送信は一切行いません。</li>
+        <li>広告の目的には使いません。</li>
+      </ul>
+      <p>Google API から取得した情報の利用は、Limited Use（限定的な使用）の要件を含む「<a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">Google API Services User Data Policy</a>」に従います。</p>
+      <p>Googleアカウントへのアクセス許可は、いつでも <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">https://myaccount.google.com/permissions</a> から取り消せます。</p>
+    </section>
+
+    <section class="privacy-section">
+      <h2 class="privacy-section-title">3. ポリシーの変更について</h2>
+      <p>必要に応じて、このプライバシーポリシーを改定することがあります。改定した場合は、このページでお知らせします。</p>
+      <p class="privacy-enacted">運営者: AI Navigator 運営者<br>制定日: 2026年10月1日</p>
+    </section>
+
+  </main>
+
+  <footer id="site-footer">
+    <p class="footer-title">AI Navigator</p>
+    <p class="footer-desc">中小企業の経営者・現場担当者のためのAIビジネスニュース。主要なAI情報源から記事を毎日自動で収集し、生成AIが要約・分類して配信しています。</p>
+    <p class="footer-meta">運営: tomomo / 毎日自動更新 / <a href="/">TOP</a> / <a href="/news">AIニュース</a> / <a href="/official">リリースノート</a> / <a href="/about">作り方</a> / <a href="/privacy">プライバシー</a></p>
+  </footer>
+
+  <script src="ai-consult.js"></script>
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "899bb0ef97f74baa90f5584bb37ff9c4"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>
