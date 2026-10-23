@@ -2792,8 +2792,8 @@ a { color: inherit; }
 .news-card, .paper-cell, .paper-chapter, .release-item, .official-item { background: var(--paper); color: var(--ink); border-color: var(--rule); box-shadow: none; }
 .about-section, .about-hero, .daily-head, .story, .topic { border-color: var(--rule); }
 .about-section-title, .about-hero h1, .daily-title, .section-title, .brief h2, .story h3, .topic h3 { color: var(--ink); font-family: "Noto Serif JP", "Yu Mincho", serif; }
-.story h3 a.story-title { color: inherit; text-decoration: none; text-underline-offset: .18em; }
-.story h3 a.story-title:hover, .story h3 a.story-title:focus-visible { text-decoration: underline; text-decoration-color: var(--brand-red); }
+.story h3 a.story-title, .topic h3 a.topic-title { color: inherit; text-decoration: none; text-underline-offset: .18em; }
+.story h3 a.story-title:hover, .story h3 a.story-title:focus-visible, .topic h3 a.topic-title:hover, .topic h3 a.topic-title:focus-visible { text-decoration: underline; text-decoration-color: var(--brand-red); }
 .about-hero p, .about-section p, .daily-meta, .story-summary, .source { color: var(--ink-muted); }
 .about-section-label, .daily-eyebrow, .brief-label, .story-kicker, .read-link { color: var(--brand-red); }
 .daily-wrap { padding-top: calc(var(--header-h) + 14px); padding-bottom: 40px; }
