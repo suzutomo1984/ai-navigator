@@ -1,13 +1,87 @@
+import io
 import json
 import xml.etree.ElementTree as ET
 import tempfile
 import unittest
+from contextlib import contextmanager, redirect_stderr
 from datetime import date
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 from daily import morning_edition as edition
 import parse_news
+
+
+def _edition_copy(summary, lead=None):
+    return {
+        "lead_line": "あ" * 20 if lead is None else lead,
+        "summary": summary,
+        "deep_topics": [
+            {"heading": "◆一", "text": "う" * 300},
+            {"heading": "◆二", "text": "う" * 300},
+            {"heading": "◆三", "text": "う" * 280},
+        ],
+    }
+
+
+def _articles_for(day, count=5):
+    return [
+        {
+            "id": f"a{i}",
+            "title": f"title {i}",
+            "summary": "summary",
+            "source": "Example",
+            "url": f"https://example.com/{i}",
+            "addedAt": f"{day}T08:00:00+09:00",
+            "date": day,
+        }
+        for i in range(count)
+    ]
+
+
+def _gemini_http(text):
+    response = Mock()
+    response.raise_for_status = Mock()
+    response.json.return_value = {"candidates": [{"content": {"parts": [{"text": text}]}}]}
+    return response
+
+
+@contextmanager
+def _patched_generation(copies, day="2026-10-10"):
+    articles = _articles_for(day)
+    ranked = [{**article, "on_topic": 1} for article in articles]
+    queue = list(copies)
+    state = {"calls": 0, "refinements": []}
+
+    def fake_copy(selected, bodies, refinement=""):
+        state["calls"] += 1
+        state["refinements"].append(refinement)
+        return {"unused": True}
+
+    def verify(raw, bodies):
+        content = queue.pop(0) if len(queue) > 1 else queue[0]
+        return content, {
+            "dropped_sentences": [],
+            "checks": [],
+            "checked_sentence_count": 1,
+            "model": "test",
+        }
+
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        output = root / "daily"
+        output.mkdir()
+        input_path = root / "articles.json"
+        input_path.write_text(
+            json.dumps({"articles": articles, "latestBatchAt": f"{day}T08:11:00+09:00"}),
+            encoding="utf-8",
+        )
+        with patch.object(edition, "run_jev", return_value=ranked), \
+             patch.object(edition, "crawl_body", return_value=("本文" * 200, "test")), \
+             patch.object(edition, "generate_copy", side_effect=fake_copy), \
+             patch.object(edition, "verify_and_filter", side_effect=verify), \
+             patch.object(parse_news, "generate_sitemap"):
+            yield input_path, output, state
 
 
 class MorningEditionTests(unittest.TestCase):
@@ -361,6 +435,160 @@ class MorningEditionTests(unittest.TestCase):
                 edition.generate(input_path, date(2026, 9, 27), "am", output)
             self.assertEqual(json.loads((output / "editions.json").read_text(encoding="utf-8")), before)
             self.assertFalse((output / "2026-09-27-am.html").exists())
+
+    def test_copy_length_still_reports_a_343_character_summary(self):
+        content = _edition_copy("い" * 343)
+        problem = edition.copy_length_problem(content)
+        self.assertIn("要点は343字", problem)
+        self.assertIn("350〜450字", problem)
+
+    def test_soften_summary_accepts_near_miss_and_rejects_broken_text(self):
+        floor = edition.summary_soft_floor()
+        self.assertEqual(floor, 280)
+        kept, warning = edition.soften_summary("あ" * 343)
+        self.assertEqual(kept, "あ" * 343)
+        self.assertIn("343字", warning)
+        self.assertIn("採用します", warning)
+        at_floor, floor_warning = edition.soften_summary("あ" * floor)
+        self.assertEqual(len(at_floor), floor)
+        self.assertIn("採用します", floor_warning)
+        in_range, quiet = edition.soften_summary("あ" * 400)
+        self.assertEqual(in_range, "あ" * 400)
+        self.assertIsNone(quiet)
+        with self.assertRaises(ValueError):
+            edition.soften_summary("あ" * (floor - 1))
+        with self.assertRaises(ValueError):
+            edition.soften_summary("  ")
+
+    def test_soften_summary_trims_overlong_text_on_sentence_boundaries(self):
+        sentence = "これはテストの文章です。"
+        self.assertEqual(len(sentence), 12)
+        trimmed, warning = edition.soften_summary(sentence * 40)
+        self.assertEqual(trimmed, sentence * 37)
+        self.assertEqual(len(trimmed), 444)
+        self.assertIn("丸めました", warning)
+
+        slight = ("あ" * 300 + "。") + ("い" * 160 + "。")
+        self.assertEqual(len(slight), 462)
+        kept, slight_warning = edition.soften_summary(slight)
+        self.assertEqual(kept, slight)
+        self.assertIn("極端ではない", slight_warning)
+
+        blob = "あ" * 500
+        kept_blob, blob_warning = edition.soften_summary(blob)
+        self.assertEqual(kept_blob, blob)
+        self.assertIn("極端ではない", blob_warning)
+
+        long_sentence = "あ" * 300 + "。"
+        extreme = long_sentence * 3
+        self.assertGreater(len(extreme), edition.SUMMARY_EXTREME_MAX)
+        shortened, extreme_warning = edition.soften_summary(extreme)
+        self.assertEqual(shortened, long_sentence)
+        self.assertGreaterEqual(len(shortened), edition.summary_soft_floor())
+        self.assertIn("丸めました", extreme_warning)
+
+    def test_summary_343_chars_is_published_after_two_regenerations(self):
+        day = "2026-10-10"
+        summary = "い" * 343
+        err = io.StringIO()
+        with _patched_generation([_edition_copy(summary) for _ in range(3)], day) as (input_path, output, state):
+            with redirect_stderr(err):
+                edition.generate(input_path, date.fromisoformat(day), "am", output)
+            page = (output / f"{day}-am.html").read_text(encoding="utf-8")
+            check = json.loads((output / f"{day}-am.claim_check.json").read_text(encoding="utf-8"))
+            sns = json.loads((output / f"{day}-am.sns.json").read_text(encoding="utf-8"))
+            editions = json.loads((output / "editions.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["calls"], 3)
+        self.assertEqual(state["refinements"][0], "")
+        self.assertIn("要点は343字", state["refinements"][1])
+        self.assertIn("要点は343字", state["refinements"][2])
+        self.assertIn(summary, page)
+        self.assertEqual(sns["summary"], summary)
+        self.assertEqual(check["gemini_calls"], 3)
+        self.assertTrue(any("343字" in item for item in check["length_warnings"]))
+        self.assertIn("採用します", err.getvalue())
+        self.assertEqual(editions[0]["date"], day)
+
+    def test_summary_corrected_on_retry_is_used_without_a_warning(self):
+        day = "2026-10-10"
+        fixed = "い" * 400
+        err = io.StringIO()
+        with _patched_generation([_edition_copy("い" * 343), _edition_copy(fixed)], day) as (input_path, output, state):
+            with redirect_stderr(err):
+                edition.generate(input_path, date.fromisoformat(day), "am", output)
+            sns = json.loads((output / f"{day}-am.sns.json").read_text(encoding="utf-8"))
+            check = json.loads((output / f"{day}-am.claim_check.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["calls"], 2)
+        self.assertEqual(sns["summary"], fixed)
+        self.assertNotIn("length_warnings", check)
+        self.assertNotIn("採用します", err.getvalue())
+
+    def test_overlong_summary_is_trimmed_and_published(self):
+        day = "2026-10-11"
+        sentence = "これはテストの文章です。"
+        err = io.StringIO()
+        with _patched_generation([_edition_copy(sentence * 40) for _ in range(3)], day) as (input_path, output, state):
+            with redirect_stderr(err):
+                edition.generate(input_path, date.fromisoformat(day), "am", output)
+            sns = json.loads((output / f"{day}-am.sns.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["calls"], 3)
+        self.assertEqual(sns["summary"], sentence * 37)
+        self.assertIn("丸めました", err.getvalue())
+
+    def test_broken_summary_or_lead_still_stops_the_edition(self):
+        cases = {
+            "short-summary": _edition_copy("い" * 100),
+            "short-lead": _edition_copy("い" * 400, lead="短い"),
+        }
+        for name, copy in cases.items():
+            with self.subTest(name=name):
+                day = "2026-10-10"
+                err = io.StringIO()
+                with _patched_generation([copy], day) as (input_path, output, state):
+                    before = [{"date": "2026-10-09", "edition": "am"}]
+                    (output / "editions.json").write_text(json.dumps(before), encoding="utf-8")
+                    with redirect_stderr(err), self.assertRaises(SystemExit):
+                        edition.generate(input_path, date.fromisoformat(day), "am", output)
+                    self.assertEqual(json.loads((output / "editions.json").read_text(encoding="utf-8")), before)
+                    self.assertFalse((output / f"{day}-am.html").exists())
+                    self.assertFalse((output / f"{day}-am.sns.json").exists())
+                self.assertEqual(state["calls"], 6)
+                self.assertIn("文字数条件を6回以内に満たせませんでした", err.getvalue())
+
+    def test_parse_gemini_json_accepts_fences_and_preamble(self):
+        self.assertEqual(edition.parse_gemini_json('{"ok": true}'), {"ok": True})
+        self.assertEqual(edition.parse_gemini_json('```json\n{"ok": true}\n```'), {"ok": True})
+        self.assertEqual(
+            edition.parse_gemini_json('結果です。\n```JSON\n{"ok": true}\n```\n以上'),
+            {"ok": True},
+        )
+        self.assertEqual(edition.parse_gemini_json('説明\n{"lead": "x"} 完'), {"lead": "x"})
+        with self.assertRaises(json.JSONDecodeError):
+            edition.parse_gemini_json("not json")
+        with self.assertRaises(json.JSONDecodeError):
+            edition.parse_gemini_json("[1, 2, 3]")
+        with self.assertRaises(json.JSONDecodeError):
+            edition.parse_gemini_json(None)
+
+    def test_generate_copy_retries_unparseable_json_then_reads_a_fence(self):
+        bad = _gemini_http("これはJSONではありません")
+        good = _gemini_http('```json\n{"ok": true}\n```')
+        err = io.StringIO()
+        with patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}), \
+             patch.object(edition.requests, "post", side_effect=[bad, good]) as post, \
+             redirect_stderr(err):
+            self.assertEqual(edition.generate_copy([], []), {"ok": True})
+        self.assertEqual(post.call_count, 2)
+        self.assertIn("再試行します", err.getvalue())
+
+    def test_generate_copy_stops_after_three_unparseable_replies(self):
+        bad = _gemini_http("{")
+        with patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}), \
+             patch.object(edition.requests, "post", side_effect=[bad, bad, bad]) as post, \
+             redirect_stderr(io.StringIO()):
+            with self.assertRaises(json.JSONDecodeError):
+                edition.generate_copy([], [])
+        self.assertEqual(post.call_count, 3)
 
 
 if __name__ == "__main__":
