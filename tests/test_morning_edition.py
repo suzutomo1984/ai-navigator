@@ -196,6 +196,62 @@ class MorningEditionTests(unittest.TestCase):
         self.assertIn("次の朝刊は <b>明朝8時ごろ</b>", page)
         self.assertNotIn("次の夕刊", page)
 
+    def test_selected_story_headings_link_to_the_source_url(self):
+        selected = [
+            {
+                "title": "広告集計スプレッドシートの「重さ」を解消するAI診断",
+                "summary": "要約A",
+                "source": "Example",
+                "url": "https://example.com/sheet?q=1&x=2",
+                "thumbnail": "https://example.com/thumb.jpg",
+            },
+            {
+                "title": "URLなし記事",
+                "summary": "要約B",
+                "source": "Local",
+                "url": "   ",
+            },
+        ]
+        page = edition.render_html(
+            date(2026, 10, 23), "am", selected, selected,
+            {
+                "lead_line": "今日の一言",
+                "summary": "要点",
+                "deep_topics": [{"heading": "◆深掘り見出し", "text": "本文"}],
+            },
+            "2026-10-23T08:11:00+09:00",
+            [],
+        )
+        linked = (
+            '<article class="story" id="story-1"><div class="story-copy">'
+            '<p class="story-kicker">ARTICLE 01</p>'
+            '<h3><a class="story-title" href="https://example.com/sheet?q=1&amp;x=2" '
+            'target="_blank" rel="noopener">広告集計スプレッドシートの「重さ」を解消するAI診断</a></h3>'
+        )
+        plain = (
+            '<article class="story" id="story-2"><div class="story-copy">'
+            '<p class="story-kicker">ARTICLE 02</p><h3>URLなし記事</h3>'
+        )
+        self.assertIn(linked, page)
+        self.assertIn(
+            '<a class="read-link" href="https://example.com/sheet?q=1&amp;x=2" '
+            'target="_blank" rel="nofollow noopener">元記事を読む →</a>',
+            page,
+        )
+        self.assertIn(plain, page)
+        story2 = page.split('id="story-2"', 1)[1].split("</article>", 1)[0]
+        self.assertNotIn("<a ", story2)
+        self.assertNotIn("元記事を読む", story2)
+        self.assertIn(
+            '<a href="#story-1"><span>01</span>広告集計スプレッドシートの「重さ」を解消するAI診断</a>',
+            page,
+        )
+        self.assertIn('<a href="#story-2"><span>02</span>URLなし記事</a>', page)
+        self.assertIn('<article class="topic"><h3>◆深掘り見出し</h3>', page)
+        self.assertNotIn("story-title", page.split("<article class=\"topic\">", 1)[1].split("</article>", 1)[0])
+        self.assertIn(".story h3 a.story-title:hover", page)
+        self.assertIn("text-decoration:underline", page)
+
     def test_rendered_update_time_uses_batch_at(self):
         page = edition.render_html(
             date(2026, 9, 27), "am", [], [],
