@@ -23,6 +23,12 @@ DAILY = Path(__file__).resolve().parent
 RANKER = DAILY / "rank_with_jev.mjs"
 MODEL = "gemini-3-flash-preview"
 JST = ZoneInfo("Asia/Tokyo")
+# 要点の字数は目安。少し外れただけで朝刊全体を落とさない（2026-10-10は343字で失敗した）。
+SUMMARY_TARGET_MIN = 350
+SUMMARY_TARGET_MAX = 450
+SUMMARY_REGENERATIONS = 2
+SUMMARY_EXTREME_MAX = SUMMARY_TARGET_MAX * 3 // 2
+_SENTENCE_PIECE = re.compile(r"[^。！？!?]+[。！？!?]?")
 GTM_HEAD = '''  <!-- Google Tag Manager -->
   <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
   new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -182,6 +188,63 @@ def edition_selection(ranked_on_topic: list[dict], body_articles: list[dict], li
     return merged
 
 
+def parse_gemini_json(text: object) -> dict:
+    """Geminiの返答からJSONオブジェクトを取り出す。
+
+    コードフェンスや前後の説明文が付いていても読む。2026-10-15はここが
+    JSONDecodeError になり、朝刊全体が止まっていた。
+    """
+    if not isinstance(text, str):
+        raise json.JSONDecodeError("Geminiの返答が文字列ではありません", "", 0)
+    raw = text.strip().lstrip("\ufeff")
+    candidates: list[str] = []
+
+    def add(candidate: object) -> None:
+        if not isinstance(candidate, str):
+            return
+        cleaned = candidate.strip()
+        if cleaned and cleaned not in candidates:
+            candidates.append(cleaned)
+
+    add(raw)
+    add(re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.IGNORECASE))
+    for match in re.finditer(r"```(?:json)?\s*(.*?)```", raw, flags=re.IGNORECASE | re.DOTALL):
+        add(match.group(1))
+
+    decoder = json.JSONDecoder()
+    errors: list[json.JSONDecodeError] = []
+
+    def parse_one(candidate: str) -> dict | None:
+        try:
+            value, _ = decoder.raw_decode(candidate)
+        except json.JSONDecodeError as exc:
+            errors.append(exc)
+        else:
+            if isinstance(value, dict):
+                return value
+            errors.append(json.JSONDecodeError("JSONの最上位がオブジェクトではありません", candidate, 0))
+            return None
+        start = candidate.find("{")
+        if start > 0:
+            try:
+                value, _ = decoder.raw_decode(candidate[start:])
+            except json.JSONDecodeError as exc:
+                errors.append(exc)
+            else:
+                if isinstance(value, dict):
+                    return value
+                errors.append(json.JSONDecodeError("JSONの最上位がオブジェクトではありません", candidate[start:], 0))
+        return None
+
+    for candidate in candidates:
+        parsed = parse_one(candidate)
+        if parsed is not None:
+            return parsed
+    if errors:
+        raise errors[-1]
+    raise json.JSONDecodeError("JSONを解釈できません", raw, 0)
+
+
 def generate_copy(selected: list[dict], bodies: list[str], refinement: str = "") -> dict:
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
@@ -198,18 +261,32 @@ JSONのみ。各文章を文単位に分け、各文に根拠記事番号 source
     )
     payload = {"contents": [{"parts": [{"text": prompt + ("\n\n修正指示: " + refinement if refinement else "") + "\n\n" + body}]}],
                "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"}}
-    for attempt in range(2):
+    parse_failures = 0
+    timeout_failures = 0
+    for _ in range(5):
         try:
             response = requests.post(
                 f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={key}",
                 json=payload, timeout=300,
             )
-            break
         except requests.Timeout:
-            if attempt == 1:
+            timeout_failures += 1
+            if timeout_failures > 1:
                 raise
-    response.raise_for_status()
-    return json.loads(response.json()["candidates"][0]["content"]["parts"][0]["text"])
+            continue
+        response.raise_for_status()
+        try:
+            text = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+            return parse_gemini_json(text)
+        except (KeyError, TypeError, IndexError, json.JSONDecodeError) as exc:
+            parse_failures += 1
+            if parse_failures >= 3:
+                raise
+            print(
+                f"Geminiの返答をJSONとして読めなかったため再試行します: {type(exc).__name__}: {str(exc)[:120]}",
+                file=sys.stderr,
+            )
+    fail("Gemini文章生成の返答を解釈できませんでした")
 
 
 def _sentence(text: str, sources: list[int], evidence_terms: list[str], source_text: str) -> tuple[bool, list[dict]]:
@@ -245,15 +322,78 @@ def verify_and_filter(content: dict, bodies: list[str]) -> tuple[dict, dict]:
     }
 
 
-def copy_length_problem(content: dict) -> str | None:
+def length_issues(content: dict) -> dict[str, str]:
     lead_len = len(content["lead_line"])
     summary_len = len(content["summary"])
     deep_len = sum(len(topic["text"]) for topic in content["deep_topics"])
-    issues = []
-    if not 15 <= lead_len <= 25: issues.append(f"今日の一言は{lead_len}字（15〜25字に調整）")
-    if not 350 <= summary_len <= 450: issues.append(f"要点は{summary_len}字（350〜450字に調整）")
-    if not 800 <= deep_len <= 1200: issues.append(f"深掘りは{deep_len}字（800〜1200字に調整）")
+    issues: dict[str, str] = {}
+    if not 15 <= lead_len <= 25:
+        issues["lead_line"] = f"今日の一言は{lead_len}字（15〜25字に調整）"
+    if not SUMMARY_TARGET_MIN <= summary_len <= SUMMARY_TARGET_MAX:
+        issues["summary"] = f"要点は{summary_len}字（{SUMMARY_TARGET_MIN}〜{SUMMARY_TARGET_MAX}字に調整）"
+    if not 800 <= deep_len <= 1200:
+        issues["deep"] = f"深掘りは{deep_len}字（800〜1200字に調整）"
+    return issues
+
+
+def copy_length_problem(content: dict) -> str | None:
+    issues = list(length_issues(content).values())
     return "。".join(issues) if issues else None
+
+
+def summary_soft_floor() -> int:
+    """空・極端に短い要点と、目安を少し下回るだけの要点の境目。下限の8割。"""
+    return SUMMARY_TARGET_MIN * 4 // 5
+
+
+def _trim_summary_at_sentence(text: str, limit: int) -> str:
+    pieces = [piece for piece in _SENTENCE_PIECE.findall(text) if piece]
+    if len(pieces) <= 1:
+        return ""
+    kept = ""
+    for piece in pieces:
+        if len(kept) + len(piece) > limit:
+            break
+        kept += piece
+    return kept
+
+
+def soften_summary(summary: str) -> tuple[str, str | None]:
+    """目安を外れた要点を、壊れていなければ朝刊に載せられる形にする。
+
+    空、または下限の8割未満のときだけ ValueError。上限超過は、文の区切りで
+    目安内に収まるときだけ丸める。それ以外の超過は極端でなければそのまま通す。
+    """
+    text = str(summary or "").strip()
+    length = len(text)
+    floor = summary_soft_floor()
+    if length < floor:
+        raise ValueError(f"要点は{length}字（{floor}字未満のため不採用）")
+    if SUMMARY_TARGET_MIN <= length <= SUMMARY_TARGET_MAX:
+        return text, None
+    if length < SUMMARY_TARGET_MIN:
+        return text, (
+            f"要点は{length}字で目安{SUMMARY_TARGET_MIN}〜{SUMMARY_TARGET_MAX}字を下回っていますが、"
+            f"下限の8割（{floor}字）以上のため採用します"
+        )
+    trimmed = _trim_summary_at_sentence(text, SUMMARY_TARGET_MAX)
+    if trimmed and SUMMARY_TARGET_MIN <= len(trimmed) <= SUMMARY_TARGET_MAX:
+        return trimmed, (
+            f"要点は{length}字で上限{SUMMARY_TARGET_MAX}字を超えたため、文の区切りで{len(trimmed)}字に丸めました"
+        )
+    if length <= SUMMARY_EXTREME_MAX:
+        return text, (
+            f"要点は{length}字で目安{SUMMARY_TARGET_MIN}〜{SUMMARY_TARGET_MAX}字を超えていますが、"
+            "極端ではないため採用します"
+        )
+    if trimmed and len(trimmed) >= floor and len(trimmed) < length:
+        return trimmed, (
+            f"要点は{length}字で上限を大きく超えたため、文の区切りで{len(trimmed)}字に丸めました"
+        )
+    return text, (
+        f"要点は{length}字で目安{SUMMARY_TARGET_MIN}〜{SUMMARY_TARGET_MAX}字を大きく超えていますが、"
+        "文の区切りで丸められないため採用します"
+    )
 
 
 def esc(value: object) -> str:
@@ -474,17 +614,42 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
     claim_check = None
     refinement = ""
     gemini_calls = 0
-    for _ in range(6):
+    summary_regenerations = 0
+    length_warnings: list[str] = []
+    for attempt in range(6):
         try:
             raw_copy = generate_copy(body_articles, body_rows, refinement)
             gemini_calls += 1
             copy, claim_check = verify_and_filter(raw_copy, body_rows)
-            refinement = copy_length_problem(copy) or ""
-            if not refinement:
-                break
         except (requests.RequestException, KeyError, ValueError, json.JSONDecodeError) as exc:
             fail(f"Gemini文章生成または照合に失敗しました: {type(exc).__name__}: {str(exc)[:160]}")
-    if refinement or copy is None or claim_check is None:
+        issues = length_issues(copy)
+        summary_issue = issues.get("summary")
+        other_issues = [text for key, text in issues.items() if key != "summary"]
+        can_retry = attempt < 5
+        if summary_issue and can_retry and summary_regenerations < SUMMARY_REGENERATIONS:
+            summary_regenerations += 1
+            refinement = "。".join(issues.values())
+            continue
+        if summary_issue:
+            try:
+                softened, warning = soften_summary(copy["summary"])
+            except ValueError:
+                if can_retry:
+                    refinement = "。".join(issues.values())
+                    continue
+                fail("Gemini文章生成の文字数条件を6回以内に満たせませんでした: " + "。".join(issues.values()))
+            copy["summary"] = softened
+            if warning:
+                print(warning, file=sys.stderr)
+                length_warnings.append(warning)
+        if other_issues:
+            if can_retry:
+                refinement = "。".join(other_issues)
+                continue
+            fail("Gemini文章生成の文字数条件を6回以内に満たせませんでした: " + "。".join(other_issues))
+        break
+    if copy is None or claim_check is None:
         fail("Gemini文章生成の文字数条件を6回以内に満たせませんでした: " + refinement)
     generated_at = datetime.now(JST).isoformat(timespec="seconds")
     edition_rows = []
@@ -509,6 +674,8 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
         "selectedIds": [x.get("id") for x in selected],
         "gemini_calls": gemini_calls,
     })
+    if length_warnings:
+        claim_check["length_warnings"] = length_warnings
     tmp_claim = output_dir / f"{target.isoformat()}-{edition}.claim_check.json.tmp"
     tmp_claim.write_text(json.dumps(claim_check, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp_page.replace(page_path)
