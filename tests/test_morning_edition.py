@@ -326,6 +326,173 @@ class MorningEditionTests(unittest.TestCase):
         self.assertIn(".story h3 a.story-title:hover", page)
         self.assertIn("text-decoration:underline", page)
 
+    def test_deep_topic_source_index_requires_every_sentence_to_cite_one_article(self):
+        def sentence(sources):
+            return {"text": "本文の説明です。", "sources": sources, "evidence_terms": []}
+
+        copy, _ = edition.verify_and_filter({
+            "lead_line": sentence([1]),
+            "summary": [sentence([1])],
+            "deep_topics": [
+                {"heading": "◆同じ記事", "sentences": [sentence([2]), sentence([2])]},
+                {"heading": "◆記事が混ざる", "sentences": [sentence([1]), sentence([2])]},
+                {"heading": "◆一文が複数記事", "sentences": [sentence([1, 3])]},
+            ],
+        }, ["本文の説明です。"])
+        by_heading = {topic["heading"]: topic for topic in copy["deep_topics"]}
+        self.assertEqual(by_heading["◆同じ記事"]["source_index"], 2)
+        self.assertNotIn("source_index", by_heading["◆記事が混ざる"])
+        self.assertNotIn("source_index", by_heading["◆一文が複数記事"])
+
+        dropped, _ = edition.verify_and_filter({
+            "lead_line": sentence([1]),
+            "summary": [sentence([1])],
+            "deep_topics": [
+                {
+                    "heading": "◆落ちた文が別記事",
+                    "sentences": [
+                        sentence([1]),
+                        {"text": "売上は99%増えた。", "sources": [2], "evidence_terms": ["99%"]},
+                    ],
+                },
+                {
+                    "heading": "◆同じ記事で一文だけ落ちる",
+                    "sentences": [
+                        sentence([4]),
+                        {"text": "売上は99%増えた。", "sources": [4], "evidence_terms": ["99%"]},
+                    ],
+                },
+                {"heading": "◆番号が真偽値", "sentences": [sentence([True])]},
+            ],
+        }, ["本文の説明です。"])
+        dropped_by_heading = {topic["heading"]: topic for topic in dropped["deep_topics"]}
+        self.assertNotIn("99%", dropped_by_heading["◆落ちた文が別記事"]["text"])
+        self.assertNotIn("source_index", dropped_by_heading["◆落ちた文が別記事"])
+        self.assertEqual(dropped_by_heading["◆同じ記事で一文だけ落ちる"]["source_index"], 4)
+        self.assertNotIn("source_index", dropped_by_heading["◆番号が真偽値"])
+        self.assertIsNone(edition.topic_source_index([sentence(["1"])]))
+        self.assertIsNone(edition.topic_source_index([sentence([0])]))
+        self.assertIsNone(edition.topic_source_index([sentence([6])]))
+        self.assertIsNone(edition.topic_source_index([]))
+
+    def test_topic_source_url_uses_body_order_not_selected_order(self):
+        topics = [
+            {"heading": "◆三番", "text": "本文", "source_index": 3},
+            {"heading": "◆対応なし", "text": "本文"},
+            {"heading": "◆URLなし", "text": "本文", "source_index": 2},
+            {"heading": "◆範囲外", "text": "本文", "source_index": 9},
+        ]
+        articles = [
+            {"id": "a0", "url": "https://example.com/body-1"},
+            {"id": "a1", "url": "   "},
+            {"id": "a3", "url": "https://example.com/body-3?q=1&x=2"},
+        ]
+        edition.bind_topic_source_urls(topics, articles)
+        self.assertEqual(topics[0]["source_url"], "https://example.com/body-3?q=1&x=2")
+        self.assertNotIn("source_url", topics[1])
+        self.assertNotIn("source_url", topics[2])
+        self.assertNotIn("source_url", topics[3])
+
+    def test_deep_topic_headings_link_only_when_source_url_is_known(self):
+        page = edition.render_html(
+            date(2026, 10, 23), "am", [], [],
+            {
+                "lead_line": "今日の一言",
+                "summary": "要点",
+                "deep_topics": [
+                    {
+                        "heading": "◆スプレッドシートの「重さ」をAIで診断し解消する手法",
+                        "text": "診断の本文。",
+                        "source_url": "https://example.com/sheet?q=1&x=2",
+                        "source_index": 2,
+                    },
+                    {"heading": "◆対応が取れない深掘り", "text": "本文だけ。", "source_index": 1},
+                ],
+            },
+            "2026-10-23T08:11:00+09:00",
+            [],
+        )
+        self.assertIn(
+            '<article class="topic"><h3><a class="topic-title" href="https://example.com/sheet?q=1&amp;x=2" '
+            'target="_blank" rel="noopener">◆スプレッドシートの「重さ」をAIで診断し解消する手法</a></h3>'
+            '<p>診断の本文。</p></article>',
+            page,
+        )
+        self.assertIn('<article class="topic"><h3>◆対応が取れない深掘り</h3><p>本文だけ。</p></article>', page)
+        topic_plain = page.split("<h3>◆対応が取れない深掘り</h3>", 1)[1].split("</article>", 1)[0]
+        self.assertNotIn("<a ", topic_plain)
+        self.assertIn(".topic h3 a.topic-title:hover", page)
+        self.assertIn(".topic h3 a.topic-title:focus-visible", page)
+        self.assertNotIn("source_index", page)
+        payload = edition.sns_post_payload(date(2026, 10, 23), "am", {
+            "lead_line": "今日の一言",
+            "summary": "要点。",
+            "deep_topics": [
+                {"heading": "◆リンクあり", "text": "本文", "source_url": "https://example.com/a", "source_index": 1},
+            ],
+        })
+        self.assertEqual(payload["deep_topics"], [{"heading": "◆リンクあり"}])
+        self.assertNotIn("source_url", payload["deep_topics"][0])
+
+    def test_generate_binds_deep_topic_url_from_crawled_body_order(self):
+        articles = [
+            {
+                "id": f"a{i}",
+                "title": f"title {i}",
+                "summary": "summary",
+                "source": "Example",
+                "url": f"https://example.com/{i}",
+                "addedAt": "2026-09-27T08:00:00+09:00",
+                "date": "2026-09-27",
+            }
+            for i in range(6)
+        ]
+        ranked = [{**article, "on_topic": 1} for article in articles]
+
+        def crawl(article):
+            if article["id"] == "a2":
+                raise ValueError("short body")
+            return ("本文" * 200, "test")
+
+        valid = {
+            "lead_line": "あ" * 20,
+            "summary": "い" * 400,
+            "deep_topics": [
+                {"heading": "◆本文3番目", "text": "う" * 300, "source_index": 3},
+                {"heading": "◆対応なし", "text": "う" * 300},
+                {"heading": "◆範囲外", "text": "う" * 280, "source_index": 9},
+            ],
+        }
+        claim = {"dropped_sentences": [], "checks": [], "checked_sentence_count": 1, "model": "test"}
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            input_path = root / "articles.json"
+            output = root / "daily"
+            output.mkdir()
+            input_path.write_text(
+                json.dumps({"articles": articles, "latestBatchAt": "2026-09-27T08:11:00+09:00"}),
+                encoding="utf-8",
+            )
+            with patch.object(edition, "run_jev", return_value=ranked), \
+                 patch.object(edition, "crawl_body", side_effect=crawl), \
+                 patch.object(edition, "generate_copy", return_value={"unused": True}), \
+                 patch.object(edition, "verify_and_filter", return_value=(valid, dict(claim))), \
+                 patch.object(parse_news, "generate_sitemap"):
+                edition.generate(input_path, date(2026, 9, 27), "am", output)
+            page = (output / "2026-09-27-am.html").read_text(encoding="utf-8")
+            sns = json.loads((output / "2026-09-27-am.sns.json").read_text(encoding="utf-8"))
+        self.assertIn(
+            '<h3><a class="topic-title" href="https://example.com/3" target="_blank" rel="noopener">◆本文3番目</a></h3>',
+            page,
+        )
+        self.assertNotIn('href="https://example.com/2">◆本文3番目', page)
+        self.assertIn("<h3>◆対応なし</h3>", page)
+        self.assertIn("<h3>◆範囲外</h3>", page)
+        self.assertEqual(
+            sns["deep_topics"],
+            [{"heading": "◆本文3番目"}, {"heading": "◆対応なし"}, {"heading": "◆範囲外"}],
+        )
+
     def test_rendered_update_time_uses_batch_at(self):
         page = edition.render_html(
             date(2026, 9, 27), "am", [], [],
