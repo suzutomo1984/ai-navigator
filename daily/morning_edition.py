@@ -23,11 +23,19 @@ DAILY = Path(__file__).resolve().parent
 RANKER = DAILY / "rank_with_jev.mjs"
 MODEL = "gemini-3-flash-preview"
 JST = ZoneInfo("Asia/Tokyo")
-# 要点の字数は目安。少し外れただけで朝刊全体を落とさない（2026-10-10は343字で失敗した）。
+# 字数は目安。再生成を2回試したあとも少し外れているだけなら警告して朝刊を出す。
+# 空や極端な短さ・長さだけ失敗にする（2026-10-10の要点343字、2026-10-24の一言29字・深掘り755字）。
+# 許容の下限は目安下限の8割、上限は目安上限の1.5倍。
+LEAD_TARGET_MIN = 15
+LEAD_TARGET_MAX = 25
 SUMMARY_TARGET_MIN = 350
 SUMMARY_TARGET_MAX = 450
-SUMMARY_REGENERATIONS = 2
-SUMMARY_EXTREME_MAX = SUMMARY_TARGET_MAX * 3 // 2
+DEEP_TARGET_MIN = 800
+DEEP_TARGET_MAX = 1200
+LENGTH_REGENERATIONS = 2
+LEAD_EXTREME_MAX = LEAD_TARGET_MAX * 3 // 2  # 37
+SUMMARY_EXTREME_MAX = SUMMARY_TARGET_MAX * 3 // 2  # 675
+DEEP_EXTREME_MAX = DEEP_TARGET_MAX * 3 // 2  # 1800
 _SENTENCE_PIECE = re.compile(r"[^。！？!?]+[。！？!?]?")
 GTM_HEAD = '''  <!-- Google Tag Manager -->
   <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -384,12 +392,12 @@ def length_issues(content: dict) -> dict[str, str]:
     summary_len = len(content["summary"])
     deep_len = sum(len(topic["text"]) for topic in content["deep_topics"])
     issues: dict[str, str] = {}
-    if not 15 <= lead_len <= 25:
-        issues["lead_line"] = f"今日の一言は{lead_len}字（15〜25字に調整）"
+    if not LEAD_TARGET_MIN <= lead_len <= LEAD_TARGET_MAX:
+        issues["lead_line"] = f"今日の一言は{lead_len}字（{LEAD_TARGET_MIN}〜{LEAD_TARGET_MAX}字に調整）"
     if not SUMMARY_TARGET_MIN <= summary_len <= SUMMARY_TARGET_MAX:
         issues["summary"] = f"要点は{summary_len}字（{SUMMARY_TARGET_MIN}〜{SUMMARY_TARGET_MAX}字に調整）"
-    if not 800 <= deep_len <= 1200:
-        issues["deep"] = f"深掘りは{deep_len}字（800〜1200字に調整）"
+    if not DEEP_TARGET_MIN <= deep_len <= DEEP_TARGET_MAX:
+        issues["deep"] = f"深掘りは{deep_len}字（{DEEP_TARGET_MIN}〜{DEEP_TARGET_MAX}字に調整）"
     return issues
 
 
@@ -401,6 +409,16 @@ def copy_length_problem(content: dict) -> str | None:
 def summary_soft_floor() -> int:
     """空・極端に短い要点と、目安を少し下回るだけの要点の境目。下限の8割。"""
     return SUMMARY_TARGET_MIN * 4 // 5
+
+
+def lead_soft_floor() -> int:
+    """空・極端に短い今日の一言と、目安を少し下回るだけの境目。下限の8割。"""
+    return LEAD_TARGET_MIN * 4 // 5
+
+
+def deep_soft_floor() -> int:
+    """空・極端に短い深掘りと、目安を少し下回るだけの境目。下限の8割。"""
+    return DEEP_TARGET_MIN * 4 // 5
 
 
 def _trim_summary_at_sentence(text: str, limit: int) -> str:
@@ -451,6 +469,130 @@ def soften_summary(summary: str) -> tuple[str, str | None]:
         f"要点は{length}字で目安{SUMMARY_TARGET_MIN}〜{SUMMARY_TARGET_MAX}字を大きく超えていますが、"
         "文の区切りで丸められないため採用します"
     )
+
+
+def soften_lead(lead: str) -> tuple[str, str | None]:
+    """目安を外れた今日の一言を、壊れていなければ朝刊に載せられる形にする。
+
+    空、下限の8割未満、上限の1.5倍を超えるときは ValueError。
+    その間で目安から外れているだけなら、切らずに警告つきで採用する。
+    """
+    text = str(lead or "").strip()
+    length = len(text)
+    floor = lead_soft_floor()
+    if length < floor or length > LEAD_EXTREME_MAX:
+        raise ValueError(f"今日の一言は{length}字（{floor}〜{LEAD_EXTREME_MAX}字の範囲外のため不採用）")
+    if LEAD_TARGET_MIN <= length <= LEAD_TARGET_MAX:
+        return text, None
+    if length < LEAD_TARGET_MIN:
+        return text, (
+            f"今日の一言は{length}字で目安{LEAD_TARGET_MIN}〜{LEAD_TARGET_MAX}字を下回っていますが、"
+            f"下限の8割（{floor}字）以上のため採用します"
+        )
+    return text, (
+        f"今日の一言は{length}字で目安{LEAD_TARGET_MIN}〜{LEAD_TARGET_MAX}字を超えていますが、"
+        "極端ではないため採用します"
+    )
+
+
+def _topic_sentences(text: str) -> list[str]:
+    pieces = [piece for piece in _SENTENCE_PIECE.findall(text) if piece]
+    if pieces:
+        return pieces
+    return [text] if text else []
+
+
+def _trim_deep_to_limit(topics: list[dict], limit: int) -> list[dict] | None:
+    """末尾の文から順に落として、合計が limit 以下になるまで短くする。
+
+    各トピックは1文以上残す。空のトピックがある、または1文ずつでは
+    limit 以下にできないときは None。
+    """
+    pieces: list[list[str]] = []
+    for topic in topics:
+        found = _topic_sentences(str(topic.get("text") or ""))
+        if not found:
+            return None
+        pieces.append(found)
+    original = sum(len("".join(parts)) for parts in pieces)
+    if original <= limit:
+        return None
+    while sum(len("".join(parts)) for parts in pieces) > limit:
+        donor = next((i for i in range(len(pieces) - 1, -1, -1) if len(pieces[i]) > 1), None)
+        if donor is None:
+            return None
+        pieces[donor].pop()
+    trimmed: list[dict] = []
+    for topic, parts in zip(topics, pieces):
+        row = dict(topic)
+        row["text"] = "".join(parts)
+        trimmed.append(row)
+    return trimmed
+
+
+def _deep_length(topics: list[dict]) -> int:
+    return sum(len(str(topic.get("text") or "")) for topic in topics)
+
+
+def soften_deep(topics: list[dict]) -> tuple[list[dict], str | None]:
+    """目安を外れた深掘りを、壊れていなければ朝刊に載せられる形にする。
+
+    空、下限の8割未満は ValueError。上限超過は、文の区切りで目安内に
+    収まるときだけ丸める。上限の1.5倍以内なら警告して通す。それを超え、
+    文の区切りでも収まらないときは ValueError。
+    """
+    rows = []
+    for topic in topics:
+        row = dict(topic)
+        row["text"] = str(row.get("text") or "").strip()
+        rows.append(row)
+    length = _deep_length(rows)
+    floor = deep_soft_floor()
+    if length < floor:
+        raise ValueError(f"深掘りは{length}字（{floor}字未満のため不採用）")
+    if DEEP_TARGET_MIN <= length <= DEEP_TARGET_MAX:
+        return rows, None
+    if length < DEEP_TARGET_MIN:
+        return rows, (
+            f"深掘りは{length}字で目安{DEEP_TARGET_MIN}〜{DEEP_TARGET_MAX}字を下回っていますが、"
+            f"下限の8割（{floor}字）以上のため採用します"
+        )
+    trimmed = _trim_deep_to_limit(rows, DEEP_TARGET_MAX)
+    if trimmed:
+        trimmed_len = _deep_length(trimmed)
+        if DEEP_TARGET_MIN <= trimmed_len <= DEEP_TARGET_MAX:
+            return trimmed, (
+                f"深掘りは{length}字で上限{DEEP_TARGET_MAX}字を超えたため、文の区切りで{trimmed_len}字に丸めました"
+            )
+    if length <= DEEP_EXTREME_MAX:
+        return rows, (
+            f"深掘りは{length}字で目安{DEEP_TARGET_MIN}〜{DEEP_TARGET_MAX}字を超えていますが、"
+            "極端ではないため採用します"
+        )
+    trimmed = _trim_deep_to_limit(rows, DEEP_EXTREME_MAX)
+    if trimmed:
+        trimmed_len = _deep_length(trimmed)
+        if floor <= trimmed_len <= DEEP_EXTREME_MAX and trimmed_len < length:
+            return trimmed, (
+                f"深掘りは{length}字で上限を大きく超えたため、文の区切りで{trimmed_len}字に丸めました"
+            )
+    raise ValueError(f"深掘りは{length}字（{DEEP_EXTREME_MAX}字を超え、文の区切りで丸められないため不採用）")
+
+
+def _soften_length_field(copy: dict, key: str) -> str | None:
+    if key == "lead_line":
+        text, warning = soften_lead(copy["lead_line"])
+        copy["lead_line"] = text
+        return warning
+    if key == "summary":
+        text, warning = soften_summary(copy["summary"])
+        copy["summary"] = text
+        return warning
+    if key == "deep":
+        topics, warning = soften_deep(copy["deep_topics"])
+        copy["deep_topics"] = topics
+        return warning
+    raise ValueError(f"未知の文字数項目です: {key}")
 
 
 def esc(value: object) -> str:
@@ -682,7 +824,7 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
     claim_check = None
     refinement = ""
     gemini_calls = 0
-    summary_regenerations = 0
+    regenerations = {"lead_line": 0, "summary": 0, "deep": 0}
     length_warnings: list[str] = []
     for attempt in range(6):
         try:
@@ -692,30 +834,38 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
         except (requests.RequestException, KeyError, ValueError, json.JSONDecodeError) as exc:
             fail(f"Gemini文章生成または照合に失敗しました: {type(exc).__name__}: {str(exc)[:160]}")
         issues = length_issues(copy)
-        summary_issue = issues.get("summary")
-        other_issues = [text for key, text in issues.items() if key != "summary"]
         can_retry = attempt < 5
-        if summary_issue and can_retry and summary_regenerations < SUMMARY_REGENERATIONS:
-            summary_regenerations += 1
+        # 文字数だけの再生成は2回まで。それでも少し外れていれば警告して採用する。
+        # 空や極端な長さは、残りの回数も使って直し、6回までに直らなければ失敗にする。
+        needs_retry = False
+        if can_retry:
+            for key in regenerations:
+                if issues.get(key) and regenerations[key] < LENGTH_REGENERATIONS:
+                    regenerations[key] += 1
+                    needs_retry = True
+        if needs_retry:
             refinement = "。".join(issues.values())
             continue
-        if summary_issue:
-            try:
-                softened, warning = soften_summary(copy["summary"])
-            except ValueError:
-                if can_retry:
-                    refinement = "。".join(issues.values())
-                    continue
-                fail("Gemini文章生成の文字数条件を6回以内に満たせませんでした: " + "。".join(issues.values()))
-            copy["summary"] = softened
-            if warning:
-                print(warning, file=sys.stderr)
-                length_warnings.append(warning)
-        if other_issues:
-            if can_retry:
-                refinement = "。".join(other_issues)
+        accepted_warnings: list[str] = []
+        blocked = False
+        for key in ("lead_line", "summary", "deep"):
+            if key not in issues:
                 continue
-            fail("Gemini文章生成の文字数条件を6回以内に満たせませんでした: " + "。".join(other_issues))
+            try:
+                warning = _soften_length_field(copy, key)
+            except ValueError:
+                blocked = True
+                break
+            if warning:
+                accepted_warnings.append(warning)
+        if blocked:
+            if can_retry:
+                refinement = "。".join(issues.values())
+                continue
+            fail("Gemini文章生成の文字数条件を6回以内に満たせませんでした: " + "。".join(issues.values()))
+        for warning in accepted_warnings:
+            print(warning, file=sys.stderr)
+            length_warnings.append(warning)
         break
     if copy is None or claim_check is None:
         fail("Gemini文章生成の文字数条件を6回以内に満たせませんでした: " + refinement)

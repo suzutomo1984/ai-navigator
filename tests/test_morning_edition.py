@@ -12,16 +12,23 @@ from daily import morning_edition as edition
 import parse_news
 
 
-def _edition_copy(summary, lead=None):
-    return {
-        "lead_line": "あ" * 20 if lead is None else lead,
-        "summary": summary,
-        "deep_topics": [
+def _edition_copy(summary, lead=None, deep=None):
+    if deep is None:
+        deep = [
             {"heading": "◆一", "text": "う" * 300},
             {"heading": "◆二", "text": "う" * 300},
             {"heading": "◆三", "text": "う" * 280},
-        ],
+        ]
+    return {
+        "lead_line": "あ" * 20 if lead is None else lead,
+        "summary": summary,
+        "deep_topics": deep,
     }
+
+
+def _deep(*lengths: int) -> list[dict]:
+    headings = ("◆一", "◆二", "◆三")
+    return [{"heading": headings[i], "text": "う" * length} for i, length in enumerate(lengths)]
 
 
 def _articles_for(day, count=5):
@@ -777,6 +784,189 @@ class MorningEditionTests(unittest.TestCase):
                     self.assertFalse((output / f"{day}-am.sns.json").exists())
                 self.assertEqual(state["calls"], 6)
                 self.assertIn("文字数条件を6回以内に満たせませんでした", err.getvalue())
+
+    def test_near_miss_lengths_are_still_reported_before_softening(self):
+        content = _edition_copy("い" * 400, lead="あ" * 29, deep=_deep(252, 252, 251))
+        problem = edition.copy_length_problem(content)
+        self.assertIn("今日の一言は29字", problem)
+        self.assertIn("15〜25字", problem)
+        self.assertIn("深掘りは755字", problem)
+        self.assertIn("800〜1200字", problem)
+        self.assertNotIn("要点は", problem)
+
+    def test_soften_lead_accepts_near_miss_and_rejects_extremes(self):
+        floor = edition.lead_soft_floor()
+        self.assertEqual(floor, 12)
+        self.assertEqual(edition.LEAD_EXTREME_MAX, 37)
+        kept, warning = edition.soften_lead("あ" * 29)
+        self.assertEqual(kept, "あ" * 29)
+        self.assertIn("29字", warning)
+        self.assertIn("採用します", warning)
+        at_floor, floor_warning = edition.soften_lead("あ" * floor)
+        self.assertEqual(len(at_floor), floor)
+        self.assertIn("採用します", floor_warning)
+        at_ceiling, ceiling_warning = edition.soften_lead("あ" * edition.LEAD_EXTREME_MAX)
+        self.assertEqual(len(at_ceiling), edition.LEAD_EXTREME_MAX)
+        self.assertIn("極端ではない", ceiling_warning)
+        in_range, quiet = edition.soften_lead("あ" * 20)
+        self.assertEqual(in_range, "あ" * 20)
+        self.assertIsNone(quiet)
+        for broken in ("あ" * (floor - 1), "あ" * (edition.LEAD_EXTREME_MAX + 1), "短い", "  ", ""):
+            with self.subTest(broken=broken):
+                with self.assertRaises(ValueError):
+                    edition.soften_lead(broken)
+
+    def test_soften_deep_accepts_near_miss_trims_overlong_and_rejects_extremes(self):
+        floor = edition.deep_soft_floor()
+        self.assertEqual(floor, 640)
+        self.assertEqual(edition.DEEP_EXTREME_MAX, 1800)
+        kept, warning = edition.soften_deep(_deep(252, 252, 251))
+        self.assertEqual(sum(len(topic["text"]) for topic in kept), 755)
+        self.assertIn("755字", warning)
+        self.assertIn("採用します", warning)
+        at_floor, floor_warning = edition.soften_deep(_deep(214, 213, 213))
+        self.assertEqual(sum(len(topic["text"]) for topic in at_floor), floor)
+        self.assertIn("採用します", floor_warning)
+        in_range, quiet = edition.soften_deep(_deep(300, 300, 280))
+        self.assertIsNone(quiet)
+        self.assertEqual(sum(len(topic["text"]) for topic in in_range), 880)
+
+        slight = _deep(500, 500, 500)
+        kept_slight, slight_warning = edition.soften_deep(slight)
+        self.assertEqual(sum(len(topic["text"]) for topic in kept_slight), 1500)
+        self.assertIn("極端ではない", slight_warning)
+        self.assertEqual(slight[0]["text"], "う" * 500)
+
+        sentence = "これはテストの文章です。"
+        topics = [
+            {"heading": "◆一", "text": sentence * 40, "source_url": "https://example.com/1"},
+            {"heading": "◆二", "text": sentence * 40, "source_url": "https://example.com/2"},
+            {"heading": "◆三", "text": sentence * 40, "source_url": "https://example.com/3"},
+        ]
+        trimmed, trim_warning = edition.soften_deep(topics)
+        self.assertEqual([len(topic["text"]) for topic in trimmed], [480, 480, 240])
+        self.assertEqual(trimmed[2]["text"], sentence * 20)
+        self.assertEqual(trimmed[2]["source_url"], "https://example.com/3")
+        self.assertEqual(trimmed[2]["heading"], "◆三")
+        self.assertIn("丸めました", trim_warning)
+        self.assertEqual(topics[2]["text"], sentence * 40)
+
+        long_sentence = "あ" * 449 + "。"
+        extreme = [
+            {"heading": "◆一", "text": long_sentence * 3},
+            {"heading": "◆二", "text": long_sentence * 3},
+            {"heading": "◆三", "text": long_sentence * 3},
+        ]
+        shortened, extreme_warning = edition.soften_deep(extreme)
+        self.assertEqual([len(topic["text"]) for topic in shortened], [900, 450, 450])
+        self.assertIn("丸めました", extreme_warning)
+        self.assertIn("大きく超えた", extreme_warning)
+
+        for broken in (_deep(213, 213, 213), _deep(700, 700, 701), [], [{"heading": "◆一", "text": "  "}]):
+            with self.subTest(length=sum(len(str(topic.get("text") or "").strip()) for topic in broken)):
+                with self.assertRaises(ValueError):
+                    edition.soften_deep(broken)
+
+    def test_lead_29_and_deep_755_are_published_after_two_regenerations(self):
+        day = "2026-10-24"
+        lead = "あ" * 29
+        deep = _deep(252, 252, 251)
+        err = io.StringIO()
+        with _patched_generation([_edition_copy("い" * 400, lead=lead, deep=deep) for _ in range(3)], day) as (
+            input_path,
+            output,
+            state,
+        ):
+            with redirect_stderr(err):
+                edition.generate(input_path, date.fromisoformat(day), "am", output)
+            page = (output / f"{day}-am.html").read_text(encoding="utf-8")
+            check = json.loads((output / f"{day}-am.claim_check.json").read_text(encoding="utf-8"))
+            sns = json.loads((output / f"{day}-am.sns.json").read_text(encoding="utf-8"))
+            editions = json.loads((output / "editions.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["calls"], 3)
+        self.assertEqual(state["refinements"][0], "")
+        self.assertIn("今日の一言は29字", state["refinements"][1])
+        self.assertIn("深掘りは755字", state["refinements"][1])
+        self.assertIn("今日の一言は29字", state["refinements"][2])
+        self.assertIn("深掘りは755字", state["refinements"][2])
+        self.assertIn(f"<h2>{lead}</h2>", page)
+        self.assertEqual(page.count(f"<p>{'う' * 252}</p>"), 2)
+        self.assertIn(f"<p>{'う' * 251}</p>", page)
+        self.assertEqual(sns["lead_line"], lead)
+        self.assertEqual(check["gemini_calls"], 3)
+        self.assertEqual(len(check["length_warnings"]), 2)
+        self.assertTrue(any("29字" in item and "採用します" in item for item in check["length_warnings"]))
+        self.assertTrue(any("755字" in item and "採用します" in item for item in check["length_warnings"]))
+        self.assertIn("採用します", err.getvalue())
+        self.assertEqual(editions[0]["date"], day)
+        self.assertEqual(editions[0]["leadLine"], lead)
+
+    def test_lead_and_deep_corrected_on_retry_are_used_without_a_warning(self):
+        day = "2026-10-24"
+        fixed = _edition_copy("い" * 400)
+        err = io.StringIO()
+        with _patched_generation(
+            [_edition_copy("い" * 400, lead="あ" * 29, deep=_deep(252, 252, 251)), fixed],
+            day,
+        ) as (input_path, output, state):
+            with redirect_stderr(err):
+                edition.generate(input_path, date.fromisoformat(day), "am", output)
+            sns = json.loads((output / f"{day}-am.sns.json").read_text(encoding="utf-8"))
+            check = json.loads((output / f"{day}-am.claim_check.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["calls"], 2)
+        self.assertIn("今日の一言は29字", state["refinements"][1])
+        self.assertIn("深掘りは755字", state["refinements"][1])
+        self.assertEqual(sns["lead_line"], fixed["lead_line"])
+        self.assertNotIn("length_warnings", check)
+        self.assertNotIn("採用します", err.getvalue())
+
+    def test_overlong_deep_is_trimmed_and_published(self):
+        day = "2026-10-24"
+        sentence = "これはテストの文章です。"
+        topics = [
+            {"heading": "◆一", "text": sentence * 40, "source_url": "https://example.com/1"},
+            {"heading": "◆二", "text": sentence * 40},
+            {"heading": "◆三", "text": sentence * 40},
+        ]
+        err = io.StringIO()
+        with _patched_generation([_edition_copy("い" * 400, deep=topics) for _ in range(3)], day) as (
+            input_path,
+            output,
+            state,
+        ):
+            with redirect_stderr(err):
+                edition.generate(input_path, date.fromisoformat(day), "am", output)
+            page = (output / f"{day}-am.html").read_text(encoding="utf-8")
+            check = json.loads((output / f"{day}-am.claim_check.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["calls"], 3)
+        self.assertEqual(page.count(f"<p>{sentence * 40}</p>"), 2)
+        self.assertIn(f"<p>{sentence * 20}</p>", page)
+        self.assertIn('href="https://example.com/1"', page)
+        self.assertIn("丸めました", err.getvalue())
+        self.assertTrue(any("丸めました" in item for item in check["length_warnings"]))
+
+    def test_extreme_lead_or_deep_still_stops_the_edition(self):
+        cases = {
+            "tiny-lead": _edition_copy("い" * 400, lead="あ" * 11),
+            "huge-lead": _edition_copy("い" * 400, lead="あ" * 38),
+            "tiny-deep": _edition_copy("い" * 400, deep=_deep(213, 213, 213)),
+            "huge-deep": _edition_copy("い" * 400, deep=_deep(700, 700, 701)),
+        }
+        for name, copy in cases.items():
+            with self.subTest(name=name):
+                day = "2026-10-24"
+                err = io.StringIO()
+                with _patched_generation([copy], day) as (input_path, output, state):
+                    before = [{"date": "2026-10-23", "edition": "am"}]
+                    (output / "editions.json").write_text(json.dumps(before), encoding="utf-8")
+                    with redirect_stderr(err), self.assertRaises(SystemExit):
+                        edition.generate(input_path, date.fromisoformat(day), "am", output)
+                    self.assertEqual(json.loads((output / "editions.json").read_text(encoding="utf-8")), before)
+                    self.assertFalse((output / f"{day}-am.html").exists())
+                    self.assertFalse((output / f"{day}-am.sns.json").exists())
+                self.assertEqual(state["calls"], 6)
+                self.assertIn("文字数条件を6回以内に満たせませんでした", err.getvalue())
+                self.assertNotIn("採用します", err.getvalue())
 
     def test_parse_gemini_json_accepts_fences_and_preamble(self):
         self.assertEqual(edition.parse_gemini_json('{"ok": true}'), {"ok": True})
