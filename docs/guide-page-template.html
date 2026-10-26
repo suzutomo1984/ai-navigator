@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!--
+    悩みごとページのひな形。本番の guide/ には置かない（置くとデプロイで公開される）。
+    実際のページを足すときは、このファイルを guide/<slug>.html にコピーしてから中身を書き換える。
+
+    1. ファイル名は guide/<slug>.html。_ で始まるファイル（下書き・このひな形）は sitemap に入らない。
+    2. 公開URLは https://ai-navigator.dev/guide/<slug> 。拡張子 .html は付けない。
+       Cloudflare Pages は /guide/<slug>.html を拡張子なしへ 308 で転送する。
+       canonical と og:url は、sitemap に載るURLと完全一致させる（.html も末尾スラッシュも付けない）。
+    3. article:published_time と article:modified_time を、そのページの公開日・更新日（YYYY-MM-DD）にする。
+       sitemap の lastmod は article:modified_time を使う。無ければ article:published_time。
+       どちらも無い、日付が読めない、canonical が一致しないページは sitemap から外れる（ビルドは止まらない）。
+       lastmod にビルド日やデプロイ日は使わない。
+    4. CSS と JS は /style.css のようにサイトルートからのパスにする。
+       guide/ 配下では style.css のような相対パスは /guide/style.css になり読めない。
+    5. 下の SLUG と【】のプレースホルダを、コピー先の slug と本文に置き換える。
+  -->
+  <script>
+    (function () {
+      if (location.hostname === "ai-news-eev.pages.dev") {
+        location.replace("https://ai-navigator.dev" + location.pathname + location.search + location.hash);
+      }
+    })();
+  </script>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-NNQDZVDZ');</script>
+  <!-- End Google Tag Manager -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+  </script>
+  <title>【悩みを一文で】 | AI Navigator</title>
+  <meta name="description" content="【検索結果に出す説明。120字前後で、何に困っていて何が分かるか】">
+  <meta property="og:title" content="【悩みを一文で】 | AI Navigator">
+  <meta property="og:description" content="【検索結果に出す説明。120字前後で、何に困っていて何が分かるか】">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://ai-navigator.dev/guide/SLUG">
+  <meta property="og:image" content="https://ai-navigator.dev/ogp.png">
+  <meta property="article:published_time" content="YYYY-MM-DD">
+  <meta property="article:modified_time" content="YYYY-MM-DD">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="【悩みを一文で】 | AI Navigator">
+  <meta name="twitter:description" content="【検索結果に出す説明。120字前後で、何に困っていて何が分かるか】">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="canonical" href="https://ai-navigator.dev/guide/SLUG">
+
+  <style>
+    /* 悩みごとページ専用。privacy.html と同じ単カラム。スタイルはページ内に閉じる。 */
+    #guide-main {
+      margin-top: var(--header-h);
+      min-height: calc(100vh - var(--header-h));
+      max-width: 760px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0 22px 80px;
+    }
+
+    .guide-hero {
+      padding: 56px 0 36px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .guide-hero-eyebrow {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--accent-hover);
+      margin: 0 0 14px;
+    }
+    .guide-hero h1 {
+      font-size: 26px;
+      line-height: 1.55;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 14px;
+    }
+    .guide-hero p {
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .guide-section {
+      padding: 36px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .guide-section:last-of-type { border-bottom: none; }
+
+    .guide-section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 16px;
+    }
+    .guide-section p,
+    .guide-section li {
+      font-size: 14px;
+      line-height: 1.9;
+      color: var(--text-secondary);
+    }
+    .guide-section p { margin: 0 0 12px; }
+    .guide-section ul {
+      margin: 0 0 12px;
+      padding-left: 1.4em;
+      list-style: disc;
+    }
+    .guide-section li { margin-bottom: 4px; }
+    .guide-section a {
+      color: var(--accent-hover);
+      word-break: break-all;
+    }
+    .guide-updated {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      text-align: right;
+      margin: 28px 0 0;
+    }
+
+    @media (max-width: 600px) {
+      .guide-hero { padding: 40px 0 28px; }
+      .guide-hero h1 { font-size: 21px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NNQDZVDZ"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <header id="header">
+    <a href="/" id="logo">
+      <span id="logo-icon">Ai</span>
+      <div id="logo-group">
+        <span id="logo-text">AI Navigator</span>
+        <span id="logo-tagline">AIニュースを、現場の言葉に。</span>
+      </div>
+    </a>
+
+    <nav id="tabbar">
+      <a class="tab-btn" href="/">🏠 TOP</a>
+      <a class="tab-btn" href="/news">📰 AIニュース</a>
+      <a class="tab-btn" href="/daily/">🌅 朝刊</a>
+      <a class="tab-btn" href="/official">📦 リリースノート</a>
+      <a class="tab-btn" href="/about">🛠️ 作り方</a>
+    </nav>
+
+    <div style="flex-shrink:0; width:1px;"></div>
+  </header>
+
+  <nav id="bottom-nav">
+    <a class="bnav-item" href="/">
+      <span class="bnav-icon">🏠</span>
+      <span class="bnav-label">TOP</span>
+    </a>
+    <a class="bnav-item" href="/news">
+      <span class="bnav-icon">📰</span>
+      <span class="bnav-label">ニュース</span>
+    </a>
+    <a class="bnav-item" href="/daily/">
+      <span class="bnav-icon">🌅</span>
+      <span class="bnav-label">朝刊</span>
+    </a>
+    <a class="bnav-item" href="/official">
+      <span class="bnav-icon">📦</span>
+      <span class="bnav-label">リリース</span>
+    </a>
+    <a class="bnav-item" href="/about">
+      <span class="bnav-icon">🛠️</span>
+      <span class="bnav-label">作り方</span>
+    </a>
+  </nav>
+
+  <main id="guide-main">
+
+    <section class="guide-hero">
+      <p class="guide-hero-eyebrow">GUIDE</p>
+      <h1>【悩みを一文で。例: PDFが文字として読めない】</h1>
+      <p>【誰が、どの場面で困るか。結論を先に一文。】</p>
+    </section>
+
+    <section class="guide-section">
+      <h2 class="guide-section-title">こんなとき</h2>
+      <p>【症状を、現場の言葉で。専門用語はここに閉じ込めて、あとで言い換える。】</p>
+      <ul>
+        <li>【症状1】</li>
+        <li>【症状2】</li>
+      </ul>
+    </section>
+
+    <section class="guide-section">
+      <h2 class="guide-section-title">なぜ起きるか</h2>
+      <p>【原因は一つに絞る。複数あるときは、最初に試すものだけを残す。】</p>
+    </section>
+
+    <section class="guide-section">
+      <h2 class="guide-section-title">対処</h2>
+      <p>【手順は短く。クリック先や設定名は、画面に出ている言葉のまま書く。】</p>
+      <ul>
+        <li>【手順1】</li>
+        <li>【手順2】</li>
+      </ul>
+    </section>
+
+    <section class="guide-section">
+      <h2 class="guide-section-title">まだ直らないとき</h2>
+      <p>【次に疑う一点だけ。関係する朝刊や外部記事があれば、ここにリンクする。】</p>
+      <p class="guide-updated">公開: YYYY-MM-DD<br>更新: YYYY-MM-DD</p>
+    </section>
+
+  </main>
+
+  <footer id="site-footer">
+    <p class="footer-title">AI Navigator</p>
+    <p class="footer-desc">中小企業の経営者・現場担当者のためのAIビジネスニュース。主要なAI情報源から記事を毎日自動で収集し、生成AIが要約・分類して配信しています。</p>
+    <p class="footer-meta">運営: tomomo / 毎日自動更新 / <a href="/">TOP</a> / <a href="/news">AIニュース</a> / <a href="/official">リリースノート</a> / <a href="/about">作り方</a> / <a href="/privacy">プライバシー</a></p>
+  </footer>
+
+  <script src="/ai-consult.js"></script>
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "899bb0ef97f74baa90f5584bb37ff9c4"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>
