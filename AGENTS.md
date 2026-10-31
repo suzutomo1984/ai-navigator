@@ -1,106 +1,100 @@
-# AGENTS.md — AIエージェント向け作業ガイド
+# AGENTS.md — AI が守る約束事
 
-> このリポジトリ（ai-navigator）を改修するAI（Claude / Codex 等）は、**作業前に必ずこのファイルを読むこと**。
-> 過去に実際に起きた事故と、その再発防止ルールを記載している。読まずに触ると同じ轍を踏む。
+このリポジトリ（ai-navigator）を触る AI（Claude / Codex など）は、**作業の前にこのファイルと [README.md](README.md) を読んでください。**
+手順は README.md にあります。ここには「やってはいけないこと」と「必ずやること」だけを、過去の事故の理由と一緒に書きます。
 
-## このプロジェクトの全体像
-
-AI・自動化ニュースを毎日自動収集して表示するニュースサイト。**2リポジトリ構成**：
-
-- **ai-navigator（このリポ）** = フロントエンド + 変換ロジック
-  - `parse_news.py`: `自動ニュース配信/*_テックニュース.md` → `articles.json` に変換
-  - `app.js` / `*.html` / `style.css`: 表示
-- **suzutomo-organization/my-vault** = 収集 + Actions オーケストレーション
-  - `.github/scripts/auto_news.py`: RSS収集 → Gemini要約 → MD生成
-  - `.github/workflows/auto-news.yml`（収集）→ `personal-pick.yml`（変換+デプロイ）
-
-このリポは my-vault の**サブモジュール**。本番配信は `gh-pages` ブランチ → Cloudflare Pages（https://ai-navigator.dev）。
+最終確認日: 2026-10-31（各項目の「確認」に、何を見て今も当たっていると判断したかを書いた）
 
 ---
 
-## 🚨 絶対に守るルール（過去の事故ベース）
+## 1. 本番に出すのは、友也の「OK」をもらってから
 
-### 1. OGPサムネ取得は「並列」を維持する。直列に戻すな
-- **事故（2026-06-17）**: サムネ取得を直列HTTP（1件最大8秒）にしていたため、記事が増えると `articles.json` の書き出し前にActionsがタイムアウトし、**本番が約2ヶ月前の日付で更新停止**した（Actionsはsuccess表示のまま＝気づきにくい）。
-- **現在の実装**: `parse_news.py` のサムネ付与は `ThreadPoolExecutor`（`OGP_WORKERS`, 既定20）で**並列化**済み。新規2400件超でも約70秒で完走する。
-- **禁止**: 並列を直列に戻すこと。`OGP_BUDGET_SEC` を極端に小さくしてサムネを大量スキップさせること。
-- **要件**: サムネは原則全件出す。一度取得すれば `articles.json` の `thumbnail` がキャッシュとして次回引き継がれる。サムネ無しが残るのはOGP画像を持たないサイト（数%）のみで許容。
-- **環境変数**: `OGP_WORKERS`（並列数, 既定20）, `OGP_BUDGET_SEC`（全体時間上限秒, 既定600。0で新規取得停止＝キャッシュのみ）。
+- 本番への push と配信の実行は、友也の「OK」「反映して」をもらってからやる。
+- 「何を入れるか」の確認を、「出してよいか」の確認と取り違えない。
+- 理由: 2026-06-28、確認を取らずに本番へ出して指摘された。
+- 手順: README の [③ 本番に出す](README.md#-本番に出す)
 
-### 2. カテゴリを追加/変更するときは「3点同期」する
-カテゴリ分類の真実源は **「Geminiが出力するMarkdownのH2見出し」だけ**。`auto_news.py` のSOURCESの `category` フィールドは**分類に使われないデッドメタデータ**（Geminiにはソース名+記事タイトル+URLしか渡らない）。
+## 2. 本番に出たかは、本文で確かめる。緑や `200` を信じない
 
-新カテゴリを足すときに同期すべき3箇所（1つでも抜けると空振りする）：
-1. **my-vault `auto_news.py`**: SOURCESに収集元RSS追加 ＋ `summarize_with_gemini` のプロンプト出力フォーマットに `## 絵文字 カテゴリ名` セクションを追加
-2. **このリポ `parse_news.py`**: `CATEGORY_MAP` に `(id, label, 絵文字, [keywords])` を1行追加（`normalize_category` がH2見出しをkeywordで先勝ち走査して分類する）
-3. **このリポ `app.js`**: `CAT_COLORS` に `"id": "#色"` を追加（**無いとサイドバーでその色だけグレーになり浮く**）
+- パーソナルピックの実行が success でも、配信の段だけ失敗していることがある。配信の段は `continue-on-error: true` だから。
+- 本番の URL は、存在しないパスにも TOP の HTML を `200` で返す。
+- だから「`gh-pages` の最終時刻」と「本番の本文に直した箇所があるか」で確かめる。
+- 理由: 2026-06-22、push が弾かれたのに気づかず配信し、古い版を本番に出した。2026-08-12、`200` で返った HTML をデータと取り違えた。`ai-consult.js` は今も `200` だが中身は HTML で、本番では動いていない。
+- 確認: `personal-pick.yml` 170行（`continue-on-error: true`）。2026-10-31 に本番 `/ai-consult.js` が `text/html` で返ることを確かめた。
+- 手順: README の [③ 3-1 の手順 6〜8](README.md#3-1-手順)
 
-フロントのサイドバーは `articles.json` の `categories` を動的描画する（`articleCount>0` かつ `id!="official"` で自動表示）。HTML自体の改修は不要。
+## 3. `main` への push で `gh-pages` を書き換えるワークフローを作らない。`articles.json` を commit しない
 
-### 3. mainに `push: main` トリガーのデプロイworkflowを復活させるな（過去の重大事故）
-- **事故（2026-06-17）**: かつて `.github/workflows/deploy.yml` が `on: push: main` で `git push origin HEAD:gh-pages --force` を実行していた。これがPRマージのたびに発火し、**mainに残る古い `articles.json` で本番(gh-pages)を上書き**して、本番が繰り返し約2ヶ月前に巻き戻った（1日で3回発生）。
-- **根治済み**: deploy.yml は**削除**し、`articles.json` は**gitignore**（自動生成物なのでmainで追跡しない）。フロント配信は my-vault の `personal-pick.yml` が完全に担う（html/js/css/articles.json をビルドして gh-pages に force push）。
-- **禁止**: このリポに `on: push: main` で gh-pages を更新するworkflowを再追加すること。`articles.json` をmainにコミットすること（gitignore済み）。
-- 「PRをマージしたら本番が古い日付になった」が再発したら、まず `push: main` トリガーのworkflowが復活していないか・articles.jsonがmainに混入していないか確認する。
-- 本番(gh-pages)を手動で再生成したいときは my-vault で `gh workflow run auto-news.yml`（→ personal-pick が連鎖デプロイ）。
+- このリポジトリに `on: push: main` で `gh-pages` を更新するワークフローを足さない。
+- `articles.json` は `.gitignore` 済み。`main` に入れない。
+- 理由: 2026-06-17、昔の `deploy.yml` が PR をマージするたびに `main` の古い `articles.json` で本番を上書きし、本番が約2か月前に1日3回巻き戻った。`deploy.yml` を消し、`articles.json` を `.gitignore` に入れて根治した。
+- 本番を作るのは保管庫の `personal-pick.yml` だけ。
+- 確認: `.github/workflows/` には `probe-release-notes.yml`（手動起動・読み取りのみ）しかない。`.gitignore` に `articles.json` がある。
+
+## 4. `parse_news.py` と `build_articles.py --publish` を手元で走らせたら、書き換わったファイルを commit しない
+
+- `parse_news.py` は、git で追跡している `index.html`・`news.html`・`official.html`・`about.html` を書き換える。手元の md は古いので、数字も古くなる。
+- `build_articles.py --publish` は、git で追跡している `llms.txt` を書き換える。
+- 手元で確かめるときは、本番の `articles.json` を落として使う。
+- 走らせてしまったら、commit の前に `git status --short` を見て、自分が直していないファイルを `git checkout -- <ファイル>` で戻す。
+- 理由: 2026-08-12、手元で走らせた TOP の記事数が 34本、本番は 57本だった。
+- 確認: `parse_news.py` 29〜37行・772行・824〜825行・881行、`build_articles.py` 231〜232行。
+- 手順: README の [② 2-2](README.md#2-2-手元で確かめる)
+
+## 5. 新しいファイルを本番に出すときは、`personal-pick.yml` の2か所に足す
+
+- 配信は、決まったファイルしか本番にコピーしない。
+- 足すのは、存在を確かめる一覧（284行）と `cp`（297〜330行）の2か所。片方だけだと、配信が止まるか、本番に出ない。
+- `personal-pick.yml` は保管庫（my-vault）にある。足したら保管庫の `master` に push しないと効かない。
+- 例外: `assets/*.webp`・`articles/*.html`・`daily/` はまとめてコピーされる。写真は `.webp` にする。
+- 理由: 2026-08-20、`ai-consult.js` を一覧に入れ忘れ、AI 相談ボタンが本番で一度も動いていなかった。
+- 確認: `personal-pick.yml` 284・297〜330行。
+
+## 6. OGP サムネの取得は並列のままにする
+
+- `parse_news.py` のサムネ取得は `ThreadPoolExecutor` で並列にしている（環境変数 `OGP_WORKERS`、既定 20）。直列に戻さない。
+- `OGP_BUDGET_SEC`（既定 600秒。0 で新しい取得を止める）を極端に小さくして、サムネを大量に飛ばさない。サムネは原則全部出す。
+- 理由: 2026-06-17、直列で取っていたため書き出しの前に Actions が打ち切られ、本番が約2か月前の日付で止まった。Actions は success のままだった。
+- 切り分け: `$env:OGP_BUDGET_SEC='0'; python parse_news.py` を走らせて、最新の日付が出れば犯人は OGP（終わったら `Remove-Item Env:OGP_BUDGET_SEC` と、約束事 4 のとおり戻す）。
+- 確認: `parse_news.py` 592〜593行・610行。
+
+## 7. カテゴリを足すときは3か所をそろえる
+
+- 分類を決めるのは、Gemini が出す md の `##` 見出しだけ。`auto_news.py` の SOURCES にある `category` は分類に使われない。
+- 足すときにそろえる3か所:
+  1. 保管庫 `.github/scripts/auto_news.py`: SOURCES に収集元を足し、Gemini への指示の出力形式に `## 絵文字 カテゴリ名` を足す
+  2. このリポジトリ `parse_news.py`: `CATEGORY_MAP` に `(id, 表示名, 絵文字, [キーワード])` を1行足す
+  3. このリポジトリ `app.js`: `CAT_LABELS` に `"id": "【読者向けの言い換え】"` を足す（無いと「【今週の話題】」になる）
+- 理由: 1か所でも抜けると、分類されないか、表示が浮く（2026-06-17 に副業カテゴリを足したときに確立）。
+- 確認: `parse_news.py` 65〜74行、`app.js` 269〜279行・531行、`auto_news.py` 1954〜1968行（Gemini に渡すのはソース名・タイトル・URL・本文で、`category` は渡していない）と 2125〜2171行の `##` 見出し。旧版の `CAT_COLORS` は今の `app.js` に無い。
+
+## 8. `index.html` などの目印を消さない
+
+- `parse_news.py` は `<!-- 名前:start -->` 〜 `<!-- 名前:end -->` の間を書き換える。
+- 今ある目印: `index.html` の `JSON_LD`・`TOP_STATS_BAR`・`TOP_STATS_COUNT`、`news.html` の `NEWS_ARTICLE_COUNT`、`official.html` の `OFFICIAL_ARTICLE_COUNT`。
+- 目印が欠けると `parse_news.py` がエラーで止まり、その回は配信されない。
+- 確認: `index.html` 50・179・219行、`news.html` 161行、`official.html` 158行、`parse_news.py` 720〜733行。
+
+## 9. `articles.json` を直接書き換えない
+
+- `articles.json` は毎回、保管庫の `自動ニュース配信/*.md` と `parse_news.py` から作り直される。直接直しても次の配信で元に戻る。
+- 直すなら `parse_news.py` か元の md を直す。
+- 理由: 2026-06-28 のリリースノート再設計で確かめた（メモリ `project_ai_navigator.md`）。今回は実物で再確認していない。
+
+## 10. `posts/_README.md` は友也に確かめてから直す。中身を README に写さない
+
+- 友也向けの記事の書き方の説明書。友也が自分で読んで原稿を直すためのもの。
+- 直すのは、友也が頼んだときか、友也に確かめてから（例: 2026-10-31、公開後に Google に知らせる手順を友也の OK で足した）。
+- README からはリンクを張るだけにして、中身を写さない。写すと2か所の食い違いが起きる。
+- 記事の公開手順で KURO がやることは README の [① 記事を出す](README.md#-記事を出す) にある。
 
 ---
 
-## デバッグの定石
+## 変更したあとに確かめること
 
-### 「Actionsはsuccessなのに本番が古い日付で止まっている」
-→ **OGP取得を疑え**。切り分け方：
-```bash
-# OGP無効で即完走するか確認（最新日付・全記事が出れば犯人はOGP）
-OGP_BUDGET_SEC=0 python parse_news.py
-```
-
-### ローカルでの確認
-```bash
-# 並列OGP込みで本番同等に生成（約70秒）
-python parse_news.py
-# articles.json の記事数・最新日付・サムネ率を確認してから本番反映すること
-```
-
-### 「修正したのに本番の見た目が変わらない」
-→ **キャッシュと結論する前に実物を見て切り分けろ**（思い込みで「キャッシュ」と断定しない）。
-- まず本番に修正が届いているか: `curl -sf "https://ai-navigator.dev/style.css?nc=$(date +%s)" | grep "<修正の目印>"`
-- 届いている → ブラウザ/エッジのキャッシュ。スマホはシークレットタブ / `?v=xxx` 付きURL / サイトデータ削除で新版を確認。
-- 届いていない → デプロイ未完了（Cloudflareビルド待ち20〜60秒）か、そもそも別カードが未修正（実機スクショ/動画のフレームを実際に見て、どのカードタイプが崩れているか特定する。CSSは `.paper-cell-onside`(サイド) と `.paper-cell-small`(メイン下段) で別物。片方直してももう片方は残る）。
-
----
-
-## フロント（CSS / app.js / レスポンシブ）を改修したとき
-
-`parse_news.py` ではなく見た目（HTML/CSS/JS）を触った場合の検証・反映手順。
-
-### ローカル検証（本番に出す前に必ず）
-1. **no-cache サーバーで配信**。`python -m http.server` はブラウザがキャッシュして古い版を掴むので不可。`Cache-Control: no-store` を返す簡易サーバーを別ポート（例8799）で立てる。
-2. **本番同等データで確認**したいなら gh-pages の articles.json を落とす: `curl -sf "https://ai-navigator.dev/articles.json" -o articles.json`（gitignore対象なのでコミットされない）。
-3. **レスポンシブ確認は Playwright CLI を使う**（Claude-in-Chrome は viewport が効かず `@media` が発火しない）。
-   ```bash
-   playwright-cli open && playwright-cli resize 390 844   # スマホ幅
-   playwright-cli goto "http://localhost:8799/?v=test"
-   playwright-cli eval "getComputedStyle(...).flexDirection" # 計測
-   playwright-cli screenshot --filename=check.png            # 見た目も必ず目視
-   ```
-4. **数値（getComputedStyle）だけで判断しない**。向き・左右配置のミスは数値に出ない（例: `order` 忘れでサムネが左右逆になる。サイドカードは `body=order:1 / thumb=order:2` でサムネを右に置いている）。スクショで実際の見た目を確認する。
-5. **友也（ユーザー）にもローカルで確認してもらい、OKが出てから本番へ**。
-
-### 本番反映（必ずユーザーの明示GOを取ってから実行）
-本番への push / デプロイは「OK / 反映して」を取ってから。確認なしで反映しない。
-1. `git add <file> && git commit && git push origin HEAD:main`（このリポ ai-navigator）
-2. 新SHAがリモートに在るか確認: `gh api repos/suzutomo1984/ai-navigator/commits/<sha> --jq '.sha'`（未pushのSHAを親が参照するとCIが `not our ref` で死ぬ）
-3. my-vault でサブモジュール参照更新 → commit → `git pull --rebase origin master && git push`
-4. `gh workflow run 229227365`（personal-pick）→ gh-pages へデプロイ → Cloudflare が自動ビルド（20〜60秒）
-5. 反映確認: personal-pick の success、gh-pages のデプロイ時刻、本番 Cloudflare に curl で修正が届いたか、を確認（緑だけ信じない）。
-
----
-
-## 変更後に必ず確認すること
-- [ ] `python -c "import py_compile; py_compile.compile('parse_news.py', doraise=True)"` が通る
-- [ ] ローカル生成で記事数・最新日付が想定通り（前回から激減していないか）
-- [ ] サムネ率が大きく落ちていないか（OGP関連を触った場合）
-- [ ] カテゴリを足したなら上記「3点同期」が揃っているか
-- [ ] フロント（CSS/JS/HTML）を触ったなら、Playwright で PC幅・スマホ幅(390px)の両方をスクショ目視したか
-- [ ] 本番反映は、ユーザーの明示GOを取ってから実行したか（確認なしで本番に出さない）
+- [ ] `git status --short` に、自分が直したファイルだけが出ている（約束事 4）
+- [ ] `parse_news.py` を直したら `python -c "import py_compile; py_compile.compile('parse_news.py', doraise=True)"` が通る
+- [ ] サムネに触ったら、サムネの割合が大きく落ちていない（約束事 6）
+- [ ] カテゴリを足したら、3か所がそろっている（約束事 7）
+- [ ] 見た目を直したら、PC 幅とスマホ幅（390px）のスクショを両方見た（README の [② 2-3](README.md#2-3-スマホ幅で確かめる)）
+- [ ] 本番に出す前に、友也の「OK」をもらった（約束事 1）
