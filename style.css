@@ -2989,3 +2989,6 @@ button, input, select, textarea { color: var(--ink); }
   .top-trending-section .top-trending-list { grid-template-columns: minmax(0, 1fr); }
   .top-trending-section .top-trending-item { grid-template-columns: 24px minmax(0, 1fr); }
 }
+
+/* Six navigation items fit on narrow screens. */
+@media (max-width: 768px) { #bottom-nav .bnav-item { min-width: 0; } #bottom-nav .bnav-label { font-size: 10px; white-space: nowrap; } }
