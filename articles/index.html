@@ -1,0 +1,113 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">  <!-- 旧ドメイン(ai-news-eev.pages.dev)からの来訪を独自ドメインへ転送する。
+       note記事・過去のSNS投稿に旧URLが残っており、Cloudflare Pagesでは
+       pages.dev を301転送する手段が無いため（2026-08-16に_redirects・
+       Redirect Rulesの両方を実測して不可を確認）、クライアント側で転送する。
+       GA4より前に置き、旧ドメインでの計測発火とチラつきを防ぐ。 -->
+  <script>
+    (function () {
+      if (location.hostname === "ai-news-eev.pages.dev") {
+        location.replace("https://ai-navigator.dev" + location.pathname + location.search + location.hash);
+      }
+    })();
+  </script>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-NNQDZVDZ');</script>
+  <!-- End Google Tag Manager -->
+  <script>
+    // GTM移行後もJS側の gtag(...) 呼び出しを生かすためのスタブ。
+    // 実体は dataLayer.push なので、GTM がそのまま受け取る。
+    // ⚠️ これを消すと app.js の typeof ガードが false になり
+    //    select_content / select_item が静かに停止する（JSエラーは出ない）。
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+  </script>
+
+<title>記事 | AI Navigator</title><meta name="description" content="AI Navigatorの記事一覧"><meta property="og:title" content="記事"><meta property="og:description" content="AI Navigatorの記事一覧"><meta property="og:type" content="website"><meta property="og:url" content="https://ai-navigator.dev/articles/"><meta property="og:image" content="https://ai-navigator.dev/ogp.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="記事"><meta name="twitter:description" content="AI Navigatorの記事一覧">  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css"><link rel="canonical" href="https://ai-navigator.dev/articles/"><style>
+#article-main { max-width:760px; margin:var(--header-h) auto 0; padding:30px 22px 100px; line-height:1.8; overflow-wrap:anywhere; }
+#article-main h1 { font-family:"Noto Serif JP",serif; font-size:clamp(27px,5vw,40px); line-height:1.4; margin:12px 0; }
+#article-main h2 { font-size:23px; border-bottom:1px solid var(--rule-strong); margin:42px 0 14px; padding-bottom:8px; scroll-margin-top:calc(var(--header-h) + 16px); }
+#article-main h3 { font-size:18px; font-weight:700; margin:28px 0 8px; }
+#article-main p, #article-main ul, #article-main ol { margin:14px 0; line-height:1.8; }
+#article-main ul, #article-main ol { padding-left:1.5em; }
+.crumb,.article-meta { color:var(--ink-muted); font-size:12px; }
+.eyebrow { color:var(--brand-red); font-weight:700; font-size:12px; margin-top:20px; }
+.answer { border-left:3px solid var(--brand-red); background:rgba(255,51,95,.06); padding:16px; margin:24px 0; }
+.answer-label { display:block; color:var(--brand-red); font-size:12px; font-weight:700; }
+.draft-banner { padding:14px 16px; margin-bottom:24px; border:2px solid var(--brand-red); border-radius:var(--radius-sm); background:var(--paper); color:var(--brand-red); font-weight:700; overflow-wrap:anywhere; }
+.draft-badge { display:inline-block; color:var(--brand-red); border:1px solid var(--brand-red); border-radius:var(--radius-sm); padding:1px 7px; font-size:12px; font-weight:700; }
+.article-image { margin:22px 0; } .article-image img { display:block; max-width:100%; height:auto; }
+.article-body ul > li, .sources ul > li { list-style:disc; }
+.article-body ol > li { list-style:decimal; }
+.article-toc { border:1px solid var(--rule); border-radius:var(--radius-sm); background:var(--paper); padding:14px 18px; }
+.article-toc summary { cursor:pointer; font-weight:700; }
+.article-toc summary::before { content:'＋'; margin-right:8px; }
+.article-toc[open] summary::before { content:'−'; }
+#article-main .article-toc ol { margin:12px 0 0; padding-left:1.6em; }
+.article-toc li { list-style:decimal; margin:6px 0; line-height:1.7; }
+.article-toc a { color:var(--ink); }
+.placeholder { border:1px dashed var(--rule-strong); aspect-ratio:16/9; display:grid; place-items:center; margin:22px 0; padding:16px; text-align:center; color:var(--ink-muted); }
+.sources { border-top:1px solid var(--rule); margin-top:40px; padding-top:16px; font-size:13px; }
+.table-wrap { overflow-x:auto; max-width:100%; } table { border-collapse:collapse; font-size:14px; } th,td { border:1px solid var(--rule); padding:8px; }
+.article-card { display:block; padding:22px 0; border-bottom:1px solid var(--rule); color:inherit; } .article-card h2 { margin:0 0 8px!important; border:0!important; } .article-card p { margin:4px 0!important; }
+</style></head><body>  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NNQDZVDZ"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <header id="header">
+    <a href="/" id="logo">
+      <span id="logo-icon">Ai</span>
+      <div id="logo-group">
+        <span id="logo-text">AI Navigator</span>
+        <span id="logo-tagline">AIニュースを、現場の言葉に。</span>
+      </div>
+    </a>
+
+    <nav id="tabbar">
+      <a class="tab-btn" href="/">🏠 TOP</a>
+      <a class="tab-btn" href="/news">📰 AIニュース</a>
+      <a class="tab-btn" href="/daily/">🌅 朝刊</a>
+      <a class="tab-btn" href="/official">📦 リリースノート</a>
+      <a class="tab-btn active" href="/articles/">📝 記事</a>
+      <a class="tab-btn" href="/about">🛠️ 作り方</a>
+    </nav>
+
+    <div style="flex-shrink:0; width:1px;"></div>
+  </header>
+
+  <!-- ボトムナビ -->
+  <nav id="bottom-nav">
+    <a class="bnav-item" href="/">
+      <span class="bnav-icon">🏠</span>
+      <span class="bnav-label">TOP</span>
+    </a>
+    <a class="bnav-item" href="/news">
+      <span class="bnav-icon">📰</span>
+      <span class="bnav-label">ニュース</span>
+    </a>
+    <a class="bnav-item" href="/daily/">
+      <span class="bnav-icon">🌅</span>
+      <span class="bnav-label">朝刊</span>
+    </a>
+    <a class="bnav-item" href="/official">
+      <span class="bnav-icon">📦</span>
+      <span class="bnav-label">リリース</span>
+    </a>
+    <a class="bnav-item active" href="/articles/">
+      <span class="bnav-icon">📝</span>
+      <span class="bnav-label">記事</span>
+    </a>
+    <a class="bnav-item" href="/about">
+      <span class="bnav-icon">🛠️</span>
+      <span class="bnav-label">作り方</span>
+    </a>
+  </nav>
+
+<main id="article-main"><nav class="crumb"><a href="/">TOP</a> › 記事</nav><h1>記事</h1><a class="article-card" href="/articles/bitwarden-to-1password"><h2>Bitwarden→1Password移行。パスキーはiPhone転送</h2><p>Bitwardenから1Passwordへ移行すると、パスキーはファイル取り込みで移りません。iPhoneの直接転送で移した手順と、二重になった項目の片付け方を書いた体験記です。</p><span class="article-meta">確認日 2026-10-27</span></a></main></body></html>
