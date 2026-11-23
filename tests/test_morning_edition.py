@@ -53,6 +53,64 @@ def _gemini_http(text):
     return response
 
 
+def _cited(text, sources=None):
+    return {"text": text, "sources": [1] if sources is None else sources, "evidence_terms": []}
+
+
+def _gemini_verified_copy():
+    return {
+        "lead_line": _cited("あ" * 20),
+        "summary": [_cited("い" * 400)],
+        "deep_topics": [
+            {"heading": "◆一", "sentences": [_cited("う" * 300)]},
+            {"heading": "◆二", "sentences": [_cited("う" * 300)]},
+            {"heading": "◆三", "sentences": [_cited("う" * 280)]},
+        ],
+    }
+
+
+def _gemini_unsupported_copy():
+    sentence = _cited("売上は99%増えた。")
+    sentence["evidence_terms"] = ["99%"]
+    return {
+        "lead_line": sentence,
+        "summary": [sentence],
+        "deep_topics": [
+            {"heading": "◆一", "sentences": [sentence]},
+            {"heading": "◆二", "sentences": [sentence]},
+            {"heading": "◆三", "sentences": [sentence]},
+        ],
+    }
+
+
+@contextmanager
+def _patched_real_verify(payloads, day="2026-11-24", body=None):
+    articles = _articles_for(day)
+    ranked = [{**article, "on_topic": 1} for article in articles]
+    queue = list(payloads)
+    state = {"calls": 0, "refinements": []}
+
+    def fake_copy(selected, bodies, refinement=""):
+        state["calls"] += 1
+        state["refinements"].append(refinement)
+        return queue[min(state["calls"] - 1, len(queue) - 1)]
+
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        output = root / "daily"
+        output.mkdir()
+        input_path = root / "articles.json"
+        input_path.write_text(
+            json.dumps({"articles": articles, "latestBatchAt": f"{day}T08:11:00+09:00"}),
+            encoding="utf-8",
+        )
+        with patch.object(edition, "run_jev", return_value=ranked), \
+             patch.object(edition, "crawl_body", return_value=(body if body is not None else "本文" * 200, "test")), \
+             patch.object(edition, "generate_copy", side_effect=fake_copy), \
+             patch.object(parse_news, "generate_sitemap"):
+            yield input_path, output, state
+
+
 @contextmanager
 def _patched_generation(copies, day="2026-10-10"):
     articles = _articles_for(day)
@@ -65,7 +123,7 @@ def _patched_generation(copies, day="2026-10-10"):
         state["refinements"].append(refinement)
         return {"unused": True}
 
-    def verify(raw, bodies):
+    def verify(raw, bodies, articles=None):
         content = queue.pop(0) if len(queue) > 1 else queue[0]
         return content, {
             "dropped_sentences": [],
@@ -1002,6 +1060,185 @@ class MorningEditionTests(unittest.TestCase):
             with self.assertRaises(json.JSONDecodeError):
                 edition.generate_copy([], [])
         self.assertEqual(post.call_count, 3)
+
+
+    def test_notation_differences_stay_and_unsupported_numbers_still_drop(self):
+        body = "価格は100円です。費用は1000円。OpenAIとChatGPTを比べた。Claude 3.5を公開した。比率は32%です。"
+        kept = [
+            "価格は100 円です。",
+            "費用は１，０００円です。",
+            "OpenAI ChatGPTを比べた。",
+            "Claude 3.5 を公開した。",
+            "比率は32％です。",
+        ]
+        copy, check = edition.verify_and_filter({
+            "lead_line": _cited("価格は100円です"),
+            "summary": [_cited(text) for text in kept],
+            "deep_topics": [
+                {"heading": "◆一", "sentences": [_cited("価格は100円です。")]},
+                {"heading": "◆二", "sentences": [_cited("価格は100円です。")]},
+                {"heading": "◆三", "sentences": [_cited("価格は100円です。")]},
+            ],
+        }, [body])
+        for text in kept:
+            self.assertIn(text, copy["summary"])
+        self.assertEqual(check["dropped_sentences"], [])
+        with self.assertRaises(edition.IncompleteEdition):
+            edition.verify_and_filter({
+                "lead_line": _cited("売上は99%増えた"),
+                "summary": [_cited("売上は99%増えた。")],
+                "deep_topics": [
+                    {"heading": "◆一", "sentences": [_cited("本文の説明です。")]},
+                    {"heading": "◆二", "sentences": [_cited("本文の説明です。")]},
+                    {"heading": "◆三", "sentences": [_cited("本文の説明です。")]},
+                ],
+            }, ["本文の説明です。"])
+
+    def test_title_and_media_count_as_sources_and_string_ids_link(self):
+        body = "更新の案内だけが本文にあります。"
+        content = {
+            "lead_line": _cited("Canvasを更新した", ["1"]),
+            "summary": [_cited("ITmediaがCanvasを伝えた。", ["１"])],
+            "deep_topics": [
+                {"heading": "◆一", "text": "Canvasを更新した。", "sources": ["2"]},
+                {"heading": "◆二", "sentences": [_cited("更新の案内だけが本文にあります。", [2])]},
+                {"heading": "◆三", "sentences": [_cited("更新の案内だけが本文にあります。", [2])]},
+            ],
+        }
+        articles = [
+            {"title": "Gemini Canvasを更新", "source": "ITmedia"},
+            {"title": "別の記事", "source": "Example"},
+        ]
+        err = io.StringIO()
+        with redirect_stderr(err), self.assertRaises(edition.IncompleteEdition) as caught:
+            edition.verify_and_filter(content, [body])
+        self.assertIn("今日の一言", str(caught.exception))
+        self.assertIn("本文に無い語", err.getvalue())
+        self.assertIn("Canvas", err.getvalue())
+        copy, _ = edition.verify_and_filter(content, [body], articles)
+        self.assertIn("Canvas", copy["lead_line"])
+        self.assertIn("ITmedia", copy["summary"])
+        self.assertEqual(copy["deep_topics"][0]["source_index"], 2)
+
+    def test_zero_based_sources_and_string_shape_are_logged_and_incomplete(self):
+        err = io.StringIO()
+        with redirect_stderr(err), self.assertRaises(edition.IncompleteEdition) as caught:
+            edition.verify_and_filter({
+                "lead_line": _cited("本文の説明です。", [0]),
+                "summary": "本文の説明です。",
+                "deep_topics": [{"heading": "◆一", "text": "本文の説明です。"}],
+            }, ["本文の説明です。"])
+        self.assertIn("照合後に必須の朝刊文章が残りませんでした", str(caught.exception))
+        self.assertIn("今日の一言", str(caught.exception))
+        log = err.getvalue()
+        self.assertIn("照合で除外", log)
+        self.assertIn("根拠記事番号が1〜5ではありません", log)
+        self.assertNotIn("AttributeError", log)
+
+    def test_extra_verified_topics_are_trimmed_with_a_warning(self):
+        content = _gemini_verified_copy()
+        content["deep_topics"].append({"heading": "◆四", "sentences": [_cited("え" * 20)]})
+        err = io.StringIO()
+        with redirect_stderr(err):
+            copy, check = edition.verify_and_filter(content, ["本文"])
+        self.assertEqual([topic["heading"] for topic in copy["deep_topics"]], ["◆一", "◆二", "◆三"])
+        self.assertIn("4本", check["verification_warnings"][0])
+        self.assertEqual(err.getvalue(), "")
+
+    def test_minimum_copy_uses_body_excerpts_inside_length_targets(self):
+        sentence = "クロールした記事の本文です。"
+        body = sentence * 40
+        articles = _articles_for("2026-11-24")
+        copy = edition.build_minimum_copy(articles, [body] * 5)
+        self.assertEqual(copy["lead_line"], "今日の記事から5本を選びました")
+        self.assertGreaterEqual(len(copy["summary"]), edition.SUMMARY_TARGET_MIN)
+        self.assertLessEqual(len(copy["summary"]), edition.SUMMARY_TARGET_MAX)
+        self.assertEqual(len(copy["deep_topics"]), 3)
+        total = sum(len(topic["text"]) for topic in copy["deep_topics"])
+        self.assertGreaterEqual(total, edition.DEEP_TARGET_MIN)
+        self.assertLessEqual(total, edition.DEEP_TARGET_MAX)
+        self.assertIn(sentence, copy["summary"])
+        self.assertEqual(copy["deep_topics"][0]["source_index"], 1)
+        self.assertTrue(copy["deep_topics"][0]["heading"].startswith("◆title 0"))
+
+    def test_unsupported_copy_is_regenerated_then_published(self):
+        day = "2026-11-24"
+        err = io.StringIO()
+        with _patched_real_verify([_gemini_unsupported_copy(), _gemini_verified_copy()], day) as (
+            input_path,
+            output,
+            state,
+        ):
+            with redirect_stderr(err):
+                edition.generate(input_path, date.fromisoformat(day), "am", output)
+            page = (output / f"{day}-am.html").read_text(encoding="utf-8")
+            check = json.loads((output / f"{day}-am.claim_check.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["calls"], 2)
+        self.assertEqual(state["refinements"][0], "")
+        self.assertIn("本文に無い語", state["refinements"][1])
+        self.assertIn("99%", state["refinements"][1])
+        self.assertIn("あ" * 20, page)
+        self.assertNotIn("99%", page)
+        self.assertEqual(check["gemini_calls"], 2)
+        self.assertEqual(check["claim_failures"], 1)
+        self.assertNotIn("verification_warnings", check)
+        log = err.getvalue()
+        self.assertIn("照合で除外", log)
+        self.assertIn("99%", log)
+        self.assertIn("再生成します（1/2）", log)
+        self.assertNotIn("抜粋", log)
+
+    def test_repeated_claim_failure_publishes_excerpt_with_warning(self):
+        day = "2026-11-24"
+        sentence = "クロールした記事の本文です。"
+        err = io.StringIO()
+        with _patched_real_verify([_gemini_unsupported_copy()], day, body=sentence * 40) as (
+            input_path,
+            output,
+            state,
+        ):
+            with redirect_stderr(err):
+                edition.generate(input_path, date.fromisoformat(day), "am", output)
+            page = (output / f"{day}-am.html").read_text(encoding="utf-8")
+            check = json.loads((output / f"{day}-am.claim_check.json").read_text(encoding="utf-8"))
+            sns = json.loads((output / f"{day}-am.sns.json").read_text(encoding="utf-8"))
+            editions = json.loads((output / "editions.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["calls"], 3)
+        self.assertIn("99%", state["refinements"][1])
+        self.assertIn("99%", state["refinements"][2])
+        self.assertIn("今日の記事から5本を選びました", page)
+        self.assertIn(sentence, page)
+        self.assertNotIn("99%", page)
+        self.assertIn('class="topic-title" href="https://example.com/0"', page)
+        self.assertEqual(sns["lead_line"], "今日の記事から5本を選びました")
+        self.assertGreaterEqual(len(sns["summary"]), edition.SUMMARY_TARGET_MIN)
+        self.assertEqual(check["claim_failures"], 3)
+        self.assertEqual(check["gemini_calls"], 3)
+        self.assertTrue(any("抜粋" in item for item in check["verification_warnings"]))
+        self.assertEqual(editions[0]["date"], day)
+        self.assertEqual(editions[0]["leadLine"], "今日の記事から5本を選びました")
+        log = err.getvalue()
+        self.assertIn("照合で除外", log)
+        self.assertIn("再生成します（1/2）", log)
+        self.assertIn("再生成します（2/2）", log)
+        self.assertIn("記事本文の抜粋で朝刊を出します", log)
+
+    def test_excerpt_fallback_still_publishes_when_bodies_are_too_short(self):
+        day = "2026-11-24"
+        err = io.StringIO()
+        with _patched_real_verify([_gemini_unsupported_copy()], day, body="あ" * 50) as (
+            input_path,
+            output,
+            state,
+        ):
+            with redirect_stderr(err):
+                edition.generate(input_path, date.fromisoformat(day), "am", output)
+            self.assertTrue((output / f"{day}-am.html").is_file())
+            self.assertTrue((output / f"{day}-am.sns.json").is_file())
+        self.assertEqual(state["calls"], 3)
+        log = err.getvalue()
+        self.assertIn("抜粋のためこのまま出します", log)
+        self.assertIn("記事本文の抜粋で朝刊を出します", log)
 
 
 if __name__ == "__main__":
