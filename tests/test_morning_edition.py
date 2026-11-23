@@ -1173,6 +1173,7 @@ class MorningEditionTests(unittest.TestCase):
                 edition.generate(input_path, date.fromisoformat(day), "am", output)
             page = (output / f"{day}-am.html").read_text(encoding="utf-8")
             check = json.loads((output / f"{day}-am.claim_check.json").read_text(encoding="utf-8"))
+            self.assertTrue((output / f"{day}-am.sns.json").is_file())
         self.assertEqual(state["calls"], 2)
         self.assertEqual(state["refinements"][0], "")
         self.assertIn("本文に無い語", state["refinements"][1])
@@ -1187,6 +1188,7 @@ class MorningEditionTests(unittest.TestCase):
         self.assertIn("99%", log)
         self.assertIn("再生成します（1/2）", log)
         self.assertNotIn("抜粋", log)
+        self.assertNotIn("sns_skipped", check)
 
     def test_repeated_claim_failure_publishes_excerpt_with_warning(self):
         day = "2026-11-24"
@@ -1197,24 +1199,27 @@ class MorningEditionTests(unittest.TestCase):
             output,
             state,
         ):
+            stale = output / f"{day}-am.sns.json"
+            stale.write_text('{"lead_line":"前回の一言"}', encoding="utf-8")
             with redirect_stderr(err):
                 edition.generate(input_path, date.fromisoformat(day), "am", output)
             page = (output / f"{day}-am.html").read_text(encoding="utf-8")
             check = json.loads((output / f"{day}-am.claim_check.json").read_text(encoding="utf-8"))
-            sns = json.loads((output / f"{day}-am.sns.json").read_text(encoding="utf-8"))
             editions = json.loads((output / "editions.json").read_text(encoding="utf-8"))
+            self.assertFalse(stale.exists())
         self.assertEqual(state["calls"], 3)
         self.assertIn("99%", state["refinements"][1])
         self.assertIn("99%", state["refinements"][2])
         self.assertIn("今日の記事から5本を選びました", page)
         self.assertIn(sentence, page)
         self.assertNotIn("99%", page)
+        self.assertNotIn("この記事をシェア", page)
         self.assertIn('class="topic-title" href="https://example.com/0"', page)
-        self.assertEqual(sns["lead_line"], "今日の記事から5本を選びました")
-        self.assertGreaterEqual(len(sns["summary"]), edition.SUMMARY_TARGET_MIN)
+        self.assertGreaterEqual(len(editions[0]["summaryExcerpt"]), 20)
         self.assertEqual(check["claim_failures"], 3)
         self.assertEqual(check["gemini_calls"], 3)
         self.assertTrue(any("抜粋" in item for item in check["verification_warnings"]))
+        self.assertIn("sns.jsonは書きません", check["sns_skipped"])
         self.assertEqual(editions[0]["date"], day)
         self.assertEqual(editions[0]["leadLine"], "今日の記事から5本を選びました")
         log = err.getvalue()
@@ -1222,6 +1227,8 @@ class MorningEditionTests(unittest.TestCase):
         self.assertIn("再生成します（1/2）", log)
         self.assertIn("再生成します（2/2）", log)
         self.assertIn("記事本文の抜粋で朝刊を出します", log)
+        self.assertIn("朝刊のSNSお知らせは投稿しません", log)
+        self.assertIn("::warning title=朝刊SNSを見送り::", log)
 
     def test_excerpt_fallback_still_publishes_when_bodies_are_too_short(self):
         day = "2026-11-24"
@@ -1234,11 +1241,52 @@ class MorningEditionTests(unittest.TestCase):
             with redirect_stderr(err):
                 edition.generate(input_path, date.fromisoformat(day), "am", output)
             self.assertTrue((output / f"{day}-am.html").is_file())
-            self.assertTrue((output / f"{day}-am.sns.json").is_file())
+            self.assertFalse((output / f"{day}-am.sns.json").is_file())
         self.assertEqual(state["calls"], 3)
         log = err.getvalue()
         self.assertIn("抜粋のためこのまま出します", log)
         self.assertIn("記事本文の抜粋で朝刊を出します", log)
+        self.assertIn("朝刊のSNSお知らせは投稿しません", log)
+
+    def test_excerpt_drops_chrome_and_keeps_the_article_sentence(self):
+        sentence = "クロールした記事の本文です。"
+        chrome = (
+            "ホーム メニュー この記事をシェア 関連記事 あわせて読みたい "
+            "Cookieの使用に同意 ニュースレターに登録 購読案内 スポンサーリンク "
+        )
+        articles = _articles_for("2026-11-24")
+        copy = edition.build_minimum_copy(articles, [chrome + sentence * 40] * 5)
+        self.assertIn(sentence, copy["summary"])
+        self.assertIn(sentence, copy["deep_topics"][0]["text"])
+        for banned in (
+            "この記事をシェア",
+            "関連記事",
+            "あわせて読みたい",
+            "Cookieの使用に同意",
+            "ニュースレターに登録",
+            "購読案内",
+            "スポンサーリンク",
+        ):
+            self.assertNotIn(banned, copy["summary"])
+            self.assertNotIn(banned, copy["deep_topics"][0]["text"])
+
+    def test_excerpt_keeps_news_that_mentions_ads_or_cookies(self):
+        sentence = "Cookieの新しい規制が広告配信のルールを変えます。"
+        copy = edition.build_minimum_copy(_articles_for("2026-11-24"), [sentence * 40] * 5)
+        self.assertIn(sentence, copy["summary"])
+        self.assertIn(sentence, copy["deep_topics"][0]["text"])
+
+    def test_chrome_only_body_uses_article_summary(self):
+        chrome = "ホーム メニュー この記事をシェア 関連記事 Cookieの使用に同意 ニュースレターに登録"
+        articles = _articles_for("2026-11-24")
+        for index, article in enumerate(articles):
+            article["summary"] = f"記事{index}の要点です。"
+        copy = edition.build_minimum_copy(articles, [chrome] * 5)
+        self.assertIn("記事0の要点です。", copy["summary"])
+        self.assertIn("記事0の要点です。", copy["deep_topics"][0]["text"])
+        self.assertNotIn("この記事をシェア", copy["summary"])
+        self.assertNotIn("この記事をシェア", copy["deep_topics"][0]["text"])
+        self.assertNotIn("Cookieの使用に同意", copy["summary"])
 
 
 if __name__ == "__main__":

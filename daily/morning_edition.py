@@ -1064,13 +1064,123 @@ def claim_retry_note(exc: IncompleteEdition) -> str:
     return "\n".join(lines)
 
 
+# ボタンや案内の定型。話題としての「広告」「Cookie」そのものは含めない。
+_BOILERPLATE_PHRASE = re.compile(
+    r"(?:"
+    r"この記事をシェア(?:する)?"
+    r"|記事をシェア(?:する)?"
+    r"|シェアする"
+    r"|ツイートする"
+    r"|ポストする"
+    r"|リンクをコピー(?:する)?"
+    r"|URLをコピー(?:する)?"
+    r"|関連記事"
+    r"|おすすめ記事"
+    r"|あわせて読みたい"
+    r"|こちらもおすすめ"
+    r"|人気記事"
+    r"|最新記事一覧"
+    r"|アクセスランキング"
+    r"|Cookie(?:の使用|の利用|利用)?に同意(?:する)?"
+    r"|クッキーに同意(?:する)?"
+    r"|すべて(?:に)?同意(?:する)?"
+    r"|同意する"
+    r"|プライバシーポリシー"
+    r"|ニュースレター(?:に登録|を購読)(?:する)?"
+    r"|メルマガ(?:登録|購読)"
+    r"|メールマガジン(?:に登録)?"
+    r"|購読(?:する|案内|はこちら)"
+    r"|会員登録(?:はこちら|する)?"
+    r"|無料(?:で)?登録"
+    r"|ログイン(?:する)?"
+    r"|新規登録"
+    r"|前の記事(?:へ|を読む)?"
+    r"|次の記事(?:へ|を読む)?"
+    r"|コメントを(?:書く|投稿する|する)"
+    r"|ページの先頭(?:へ(?:戻る)?)?"
+    r"|トップへ戻る"
+    r"|サイト内検索"
+    r"|メニューを(?:開く|閉じる)"
+    r"|フォロー(?:する)?"
+    r"|LINEで(?:送る|シェア)"
+    r"|Facebookでシェア"
+    r"|X(?:（Twitter）)?で(?:ポスト|シェア)(?:する)?"
+    r"|はてなブックマーク"
+    r"|スポンサーリンク"
+    r"|広告掲載(?:について)?"
+    r"|この記事は(?:広告|PR|プロモーション|アフィリエイト)を含"
+    r"|印刷する"
+    r"|文字サイズ"
+    r"|アプリで読む"
+    r"|有料会員(?:限定)?"
+    r"|続きは会員"
+    r"|登録はこちら"
+    r"|メールアドレスを入力"
+    r")"
+)
+_NAV_TOKEN = re.compile(
+    r"^(?:"
+    r"ホーム|メニュー|ニュース|ビジネス|テクノロジー|エンタメ|スポーツ|経済|"
+    r"シェア|検索|ログイン|会員登録|関連記事|おすすめ|人気記事|最新記事|"
+    r"フォロー|コメント|PR|購読|トップ|記事一覧|ランキング|メルマガ|"
+    r"Cookie|クッキー|同意|広告"
+    r")$"
+)
+_TOKEN_PUNCT = "。！？!?、,・"
+
+
+def _token_is_chrome(token: str) -> bool:
+    return _nav_token(token) or bool(_BOILERPLATE_PHRASE.search(token))
+
+
+def _is_boilerplate_fragment(text: str) -> bool:
+    """ボタン、メニュー、同意や購読の案内なら True。本文の一文は残す。"""
+    raw = str(text or "").strip()
+    if not raw:
+        return True
+    tokens = [token for token in re.split(r"[\s　]+", raw) if token]
+    if len(tokens) > 1 and all(_token_is_chrome(token) for token in tokens):
+        return True
+    if len(tokens) == 1 and _nav_token(tokens[0]):
+        return True
+    if not _BOILERPLATE_PHRASE.search(raw):
+        return False
+    remainder = _BOILERPLATE_PHRASE.sub("", raw)
+    remainder = re.sub(r"[\s　、,。！？!?・|/／「」『』（）()\[\]【】]+", "", remainder)
+    # 定型を除いても文が残るなら、話題としてその語を使っているので残す。
+    return len(remainder) < 12
+
+
+def _nav_token(token: str) -> bool:
+    core = token.strip(_TOKEN_PUNCT)
+    return bool(core) and bool(_NAV_TOKEN.match(core))
+
+
+def _clean_body_for_excerpt(text: str) -> str:
+    """抜粋に入れる前に、ナビ・シェア・同意・購読の定型を除く。"""
+    pieces: list[str] = []
+    for piece in _SENTENCE_PIECE.findall(str(text or "")):
+        tokens = [token for token in re.split(r"[\s　]+", piece.strip()) if token]
+        kept = [token for token in tokens if not _nav_token(token) and not _is_boilerplate_fragment(token)]
+        cleaned = " ".join(kept).strip()
+        if cleaned and not _is_boilerplate_fragment(cleaned):
+            pieces.append(cleaned)
+    return "".join(pieces)
+
+
 def _collect_excerpt(chunks: list[str], floor: int, limit: int) -> str:
-    """本文を文の区切りで floor 以上 limit 以下に収める。無ければ limit まで切る。"""
+    """定型を除いた本文を、文の区切りで floor 以上 limit 以下に収める。
+
+    足りなくても、除く前の本文には戻さない。ナビや同意文で字数を埋めない。
+    """
     pieces: list[str] = []
     for chunk in chunks:
-        pieces.extend(piece for piece in _SENTENCE_PIECE.findall(str(chunk or "")) if piece.strip())
+        cleaned = _clean_body_for_excerpt(str(chunk or ""))
+        pieces.extend(piece for piece in _SENTENCE_PIECE.findall(cleaned) if piece.strip())
     kept = ""
     for piece in pieces:
+        if _is_boilerplate_fragment(piece):
+            continue
         if kept and len(kept) >= floor and len(kept) + len(piece) > limit:
             break
         if len(kept) + len(piece) > limit:
@@ -1078,12 +1188,15 @@ def _collect_excerpt(chunks: list[str], floor: int, limit: int) -> str:
                 return piece[:limit]
             break
         kept += piece
-    if len(kept) >= floor:
-        return kept
-    blob = "".join(str(chunk or "") for chunk in chunks).strip()
-    if len(blob) >= floor:
-        return blob[:limit]
-    return kept or blob[:limit]
+    return kept
+
+
+def _article_fallback_text(article: dict) -> str:
+    """クロール本文が定型だけだったとき、サイト側の要点か題名を使う。"""
+    text = str(article.get("summary") or article.get("title") or "").strip()
+    if text and not text.endswith(("。", "！", "？", "!", "?")):
+        text += "。"
+    return text
 
 
 def _minimum_lead(count: int) -> str:
@@ -1111,17 +1224,17 @@ def build_minimum_copy(articles: list[dict], bodies: list[str]) -> dict:
         title = str(article.get("title") or f"記事{index}").strip() or f"記事{index}"
         if not title.startswith("◆"):
             title = "◆" + title
+        text = _collect_excerpt([str(body or "")], 270, excerpt_max)
+        if not text:
+            text = _article_fallback_text(article)
         topics.append({
             "heading": title,
-            "text": _collect_excerpt([str(body or "")], 270, excerpt_max),
+            "text": text,
             "source_index": index,
         })
     summary = _collect_excerpt([str(body or "") for body in bodies], SUMMARY_TARGET_MIN, SUMMARY_TARGET_MAX)
     if not summary:
-        titles = [str(article.get("title") or "").strip() for article in articles]
-        summary = "。".join(title for title in titles if title)
-        if summary and not summary.endswith("。"):
-            summary += "。"
+        summary = "".join(_article_fallback_text(article) for article in articles)
     return {"lead_line": _minimum_lead(count), "summary": summary, "deep_topics": topics}
 
 
@@ -1159,6 +1272,7 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
     regenerations = {"lead_line": 0, "summary": 0, "deep": 0}
     length_warnings: list[str] = []
     claim_failures = 0
+    fallback_edition = False
     for attempt in range(6):
         try:
             raw_copy = generate_copy(body_articles, body_rows, refinement)
@@ -1176,6 +1290,7 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
             print(f"照合の再生成でも必須の文章が揃いませんでした: {exc}", file=sys.stderr)
             copy = build_minimum_copy(body_articles, body_rows)
             claim_check = dict(exc.claim_check)
+            fallback_edition = True
             _accept_fallback_lengths(copy, length_warnings)
             warning = "照合後に必須の朝刊文章が揃わなかったため、記事本文の抜粋で朝刊を出します"
             print(warning, file=sys.stderr)
@@ -1251,15 +1366,22 @@ def generate(articles_path: Path, target: date, edition: str, output_dir: Path) 
     })
     if length_warnings:
         claim_check["length_warnings"] = length_warnings
+    sns_path = output_dir / f"{target.isoformat()}-{edition}.sns.json"
+    if edition == "am" and fallback_edition:
+        # 投稿スクリプトは sns.json が無いと Buffer を呼ぶ前に止まる。
+        # 前回のファイルが残っていると、抜粋の号でもお知らせが出る。
+        if sns_path.exists():
+            sns_path.unlink()
+        notice = "抜粋で出した朝刊のため、朝刊のSNSお知らせは投稿しません。sns.jsonは書きません。"
+        print(notice, file=sys.stderr)
+        print(f"::warning title=朝刊SNSを見送り::{notice}", file=sys.stderr)
+        claim_check["sns_skipped"] = notice
     tmp_claim = output_dir / f"{target.isoformat()}-{edition}.claim_check.json.tmp"
     tmp_claim.write_text(json.dumps(claim_check, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp_page.replace(page_path)
     tmp_claim.replace(output_dir / f"{target.isoformat()}-{edition}.claim_check.json")
-    if edition == "am":
-        atomic_json(
-            output_dir / f"{target.isoformat()}-{edition}.sns.json",
-            sns_post_payload(target, edition, copy),
-        )
+    if edition == "am" and not fallback_edition:
+        atomic_json(sns_path, sns_post_payload(target, edition, copy))
     atomic_json(editions_path, edition_rows)
     (output_dir / "index.html").write_text(render_archive_html(edition_rows), encoding="utf-8")
     sync_issue_navigation(edition_rows, output_dir)
