@@ -1,7 +1,7 @@
 ---
 slug: bitwarden-to-1password
-title: Bitwarden→1Password移行。パスキーはiPhone転送
-description: Bitwardenから1Passwordへ移行すると、パスキーはファイル取り込みで移りません。iPhoneの直接転送で移した手順と、二重になった項目の片付け方を書いた体験記です。
+title: Bitwardenから1Passwordへ移行する手順｜パスキーはiPhone転送で移せる
+description: Bitwardenから1Passwordへ移行した手順を、2026年10月の実体験で解説します。PCのファイル取り込みではパスキーが移らないため、iPhoneアプリから直接転送しました。二重になった項目の片付け方と、乗り換えた理由も書いています。
 eyebrow: AI実録
 answer: パスキーまで移すなら、iPhoneのBitwardenアプリから1Passwordへ直接転送する方法が一番簡単でした。PCで書き出したファイルを取り込む方法では、パスキーは移りません。
 published: 2026-10-31
