@@ -19,7 +19,7 @@ title: Antigravityの使い方。非エンジニアが1年仕事で回した手�
 description: Google Antigravityの使い方を2026年11月時点の公式仕様と1年間の実務記録で解説。AppとIDEの選び方、日本語化、無料枠と最新モデル、CLIやMCPの活用、つまずきまで整理します。
 eyebrow: AI実録
 answer: 非エンジニアがAntigravityを始めるなら、まず個人のGoogleアカウント（無料）でデスクトップ版のAntigravity Appを入れ、日本語の応答ルールを1つ書いてから小さなファイル整理を1回試す流れが最も迷いません。慣れてきたらCLI（agy）やMCPをつなぐと、毎日の定型作業まで任せられます。
-published:
+published: 2026-11-25
 checked: 2026-11-24
 pr: false
 sources:
