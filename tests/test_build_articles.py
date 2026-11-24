@@ -40,6 +40,23 @@ def test_placeholder():
     assert builder.markdown('【画像: 画面の説明】') == '<figure class="placeholder">画像: 画面の説明</figure>'
 
 
+def test_fenced_code_block_is_escaped_and_copyable():
+    body = '前の段落\n```powershell\nirm https://x/install.ps1 | iex\n# <comment> & **raw**\n  - indented\n```\n後の段落'
+    out = builder.markdown(body)
+    assert out.startswith('<p>前の段落</p>\n<div class="code-block">')
+    assert '<span class="code-lang">PowerShell</span>' in out
+    assert '<pre><code>irm https://x/install.ps1 | iex\n# &lt;comment&gt; &amp; **raw**\n  - indented</code></pre>' in out
+    assert 'class="copy-btn"' in out and out.endswith('<p>後の段落</p>')
+    assert '<table' not in out and '<h' not in out and '<li>' not in out
+
+
+def test_copy_script_only_on_pages_with_code():
+    meta, body = builder.load_post(ROOT / 'posts/bitwarden-to-1password.md')
+    assert 'copy-btn' not in builder.render_article(meta, body).split('</style>')[1]
+    page = builder.render_article(meta, '```shell\nagy update\n```')
+    assert '<span class="code-lang">ターミナル</span>' in page and 'navigator.clipboard' in page
+
+
 def test_toc_links_only_to_body_h2():
     meta, body = builder.load_post(ROOT / 'posts/bitwarden-to-1password.md')
     page = builder.render_article(meta, body)
@@ -92,7 +109,8 @@ def test_preview_drafts_and_publish_cleanup(tmp_path):
         assert '下書き（公開前）・このページは本番に出ません' in page
         assert '<meta name="robots" content="noindex">' in page
     index = (tmp_path / 'articles/index.html').read_text(encoding='utf-8')
-    assert index.count('class="draft-badge"') == 2
+    drafts = [p for p in (tmp_path / 'posts').glob('*.md') if not p.name.startswith('_')]
+    assert index.count('class="draft-badge"') == len(drafts)
     assert all((tmp_path / name).read_bytes() == value for name, value in before.items())
     (tmp_path / 'articles/stale.html').write_text('old', encoding='utf-8')
     builder.build(tmp_path, publish=True, today=today)

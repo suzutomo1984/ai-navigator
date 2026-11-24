@@ -78,12 +78,29 @@ def inline(text):
     return re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
 
 
+CODE_LABELS = {'powershell': 'PowerShell', 'bash': 'bash', 'shell': 'ターミナル'}
+
+
+def code_block(lang, code):
+    label = CODE_LABELS.get(lang, lang)
+    head = '<span class="code-lang">'+html.escape(label)+'</span>' if label else '<span></span>'
+    return ('<div class="code-block"><div class="code-head">'+head+
+            '<button type="button" class="copy-btn" aria-label="コードをコピー">コピー</button></div>'
+            '<pre><code>'+html.escape('\n'.join(code))+'</code></pre></div>')
+
+
 def markdown(body, headings=None):
     lines = body.splitlines(); out = []; i = 0; section = 0
     while i < len(lines):
         line = lines[i].strip()
         if not line:
             i += 1; continue
+        m = re.fullmatch(r'```([\w-]*)', line)
+        if m:
+            code = []; i += 1
+            while i < len(lines) and lines[i].strip() != '```':
+                code.append(lines[i].rstrip()); i += 1
+            out.append(code_block(m[1].lower(), code)); i += 1; continue
         m = re.fullmatch(r'【画像[:：]\s*(.*?)】', line)
         if m:
             out.append('<figure class="placeholder">画像: ' + html.escape(m[1]) + '</figure>'); i += 1; continue
@@ -115,7 +132,7 @@ def markdown(body, headings=None):
                 items.append('<li>'+inline(re.sub(pattern, '', lines[i].strip()))+'</li>'); i += 1
             out.append(f'<{tag}>'+''.join(items)+f'</{tag}>'); continue
         para = [line]; i += 1
-        while i < len(lines) and lines[i].strip() and not re.match(r'^(#{2,3} |-|\d+\. |\||【画像[:：])', lines[i].strip()):
+        while i < len(lines) and lines[i].strip() and not re.match(r'^(#{2,3} |-|\d+\. |\||【画像[:：]|```)', lines[i].strip()):
             para.append(lines[i].strip()); i += 1
         out.append('<p>'+inline(' '.join(para))+'</p>')
     return '\n'.join(out)
@@ -158,8 +175,28 @@ CSS = '''
 .placeholder { border:1px dashed var(--rule-strong); aspect-ratio:16/9; display:grid; place-items:center; margin:22px 0; padding:16px; text-align:center; color:var(--ink-muted); }
 .sources { border-top:1px solid var(--rule); margin-top:40px; padding-top:16px; font-size:13px; }
 .table-wrap { overflow-x:auto; max-width:100%; } table { border-collapse:collapse; font-size:14px; } th,td { border:1px solid var(--rule); padding:8px; }
+#article-main code { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace; font-size:.88em; color:#a3123a; background:#ece4d1; border:1px solid var(--rule); border-radius:4px; padding:.05em .35em; overflow-wrap:anywhere; -webkit-box-decoration-break:clone; box-decoration-break:clone; }
+.code-block { margin:10px 0 22px; border-radius:var(--radius-sm); background:#25231f; color:#f7f3e8; overflow:hidden; max-width:100%; }
+.code-head { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 8px 6px 14px; border-bottom:1px solid rgba(247,243,232,.16); font-size:12px; }
+.code-lang { color:#cfc7b6; font-weight:700; letter-spacing:.02em; }
+.copy-btn { font:inherit; font-size:12px; font-weight:700; color:#f7f3e8; background:transparent; border:1px solid rgba(247,243,232,.4); border-radius:4px; padding:3px 10px; cursor:pointer; min-width:7.5em; }
+.copy-btn:hover, .copy-btn:focus-visible { background:rgba(247,243,232,.12); }
+.copy-btn.copied { color:#25231f; background:#8fd6a1; border-color:#8fd6a1; }
+#article-main .code-block pre { margin:0; padding:12px 14px; overflow-x:auto; white-space:pre; overflow-wrap:normal; line-height:1.6; }
+#article-main .code-block code { color:inherit; background:none; border:0; padding:0; font-size:14px; overflow-wrap:normal; }
 .article-card { display:block; padding:22px 0; border-bottom:1px solid var(--rule); color:inherit; } .article-card h2 { margin:0 0 8px!important; border:0!important; } .article-card p { margin:4px 0!important; }
 '''
+
+
+# Copies the code text without a trailing newline so a paste does not run the command at once.
+COPY_SCRIPT = '''<script>(function(){
+function fallback(text){var t=document.createElement("textarea");t.value=text;t.setAttribute("readonly","");t.style.position="fixed";t.style.opacity="0";document.body.appendChild(t);t.select();var ok=false;try{ok=document.execCommand("copy");}catch(e){}document.body.removeChild(t);return ok?Promise.resolve():Promise.reject();}
+function show(btn,msg,ok){clearTimeout(btn._t);btn.textContent=msg;btn.classList.toggle("copied",ok);btn._t=setTimeout(function(){btn.textContent="コピー";btn.classList.remove("copied");},1600);}
+document.querySelectorAll(".code-block .copy-btn").forEach(function(btn){btn.setAttribute("aria-live","polite");btn.addEventListener("click",function(){
+var text=btn.closest(".code-block").querySelector("code").textContent.replace(/\\n+$/,"");
+var p=(navigator.clipboard&&window.isSecureContext)?navigator.clipboard.writeText(text).catch(function(){return fallback(text);}):fallback(text);
+p.then(function(){show(btn,"コピーしました",true);},function(){show(btn,"コピーできません",false);});});});
+})();</script>'''
 
 
 def shell(title, description, url, content, structured=None, is_article=False, draft=False):
@@ -194,6 +231,8 @@ def render_article(meta, body, draft=False):
            'if(mobile.addEventListener) mobile.addEventListener("change",update);'
            'else if(mobile.addListener) mobile.addListener(update);})();</script>') if headings else ''
     content = f'''<nav class="crumb"><a href="/">TOP</a> › <a href="/articles/">記事</a> › {e(meta['title'])}</nav><div class="eyebrow">{'【PR】 ' if meta.get('pr') == 'true' else ''}{e(meta['eyebrow'])}</div><h1>{e(meta['title'])}</h1><div class="article-meta">確認日 {e(meta['checked'])} ・ {published} ・ AI Navigator</div><aside class="answer"><span class="answer-label">先に結論</span>{e(meta['answer'])}</aside>{toc}<article class="article-body">{body_html}</article><section class="sources"><h2>出典</h2><ul>{sources}</ul></section>'''
+    if 'class="code-block"' in body_html:
+        content += COPY_SCRIPT
     if draft:
         content = '<div class="draft-banner">下書き（公開前）・このページは本番に出ません</div>' + content
     return shell(meta['title'],meta['description'],url,content,structured,True,draft)
