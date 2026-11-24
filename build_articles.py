@@ -75,7 +75,16 @@ def inline(text):
     text = html.escape(text)
     text = re.sub(r'\[([^\]]+)\]\((https?://[^ )]+)\)', r'<a href="\2">\1</a>', text)
     text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
-    return re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
+    return re.sub(r'`([^`]+)`', inline_code, text)
+
+
+# Short code stays on one line; longer code (URLs, long names) may wrap so it never overflows a phone screen.
+SHORT_CODE = 24
+
+
+def inline_code(m):
+    long = len(html.unescape(m[1])) > SHORT_CODE
+    return ('<code class="long">' if long else '<code>') + m[1] + '</code>'
 
 
 CODE_LABELS = {'powershell': 'PowerShell', 'bash': 'bash', 'shell': 'ターミナル'}
@@ -175,7 +184,8 @@ CSS = '''
 .placeholder { border:1px dashed var(--rule-strong); aspect-ratio:16/9; display:grid; place-items:center; margin:22px 0; padding:16px; text-align:center; color:var(--ink-muted); }
 .sources { border-top:1px solid var(--rule); margin-top:40px; padding-top:16px; font-size:13px; }
 .table-wrap { overflow-x:auto; max-width:100%; } table { border-collapse:collapse; font-size:14px; } th,td { border:1px solid var(--rule); padding:8px; }
-#article-main code { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace; font-size:.88em; color:#a3123a; background:#ece4d1; border:1px solid var(--rule); border-radius:4px; padding:.05em .35em; overflow-wrap:anywhere; -webkit-box-decoration-break:clone; box-decoration-break:clone; }
+#article-main code { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace; font-size:.88em; color:#a3123a; background:#ece4d1; border:1px solid var(--rule); border-radius:4px; padding:.05em .35em; white-space:nowrap; overflow-wrap:normal; -webkit-box-decoration-break:clone; box-decoration-break:clone; }
+#article-main code.long { white-space:normal; overflow-wrap:anywhere; }
 .code-block { margin:10px 0 22px; border-radius:var(--radius-sm); background:#25231f; color:#f7f3e8; overflow:hidden; max-width:100%; }
 .code-head { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 8px 6px 14px; border-bottom:1px solid rgba(247,243,232,.16); font-size:12px; }
 .code-lang { color:#cfc7b6; font-weight:700; letter-spacing:.02em; }
@@ -183,7 +193,7 @@ CSS = '''
 .copy-btn:hover, .copy-btn:focus-visible { background:rgba(247,243,232,.12); }
 .copy-btn.copied { color:#25231f; background:#8fd6a1; border-color:#8fd6a1; }
 #article-main .code-block pre { margin:0; padding:12px 14px; overflow-x:auto; white-space:pre; overflow-wrap:normal; line-height:1.6; }
-#article-main .code-block code { color:inherit; background:none; border:0; padding:0; font-size:14px; overflow-wrap:normal; }
+#article-main .code-block code { color:inherit; background:none; border:0; padding:0; font-size:14px; white-space:pre; overflow-wrap:normal; }
 .article-card { display:block; padding:22px 0; border-bottom:1px solid var(--rule); color:inherit; } .article-card h2 { margin:0 0 8px!important; border:0!important; } .article-card p { margin:4px 0!important; }
 '''
 

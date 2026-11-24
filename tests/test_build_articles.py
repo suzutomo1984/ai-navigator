@@ -50,6 +50,12 @@ def test_fenced_code_block_is_escaped_and_copyable():
     assert '<table' not in out and '<h' not in out and '<li>' not in out
 
 
+def test_only_long_inline_code_may_wrap():
+    assert builder.inline('`npm list -g`') == '<code>npm list -g</code>'
+    long = builder.inline('`https://antigravity.google/cli/install.ps1`')
+    assert long == '<code class="long">https://antigravity.google/cli/install.ps1</code>'
+
+
 def test_copy_script_only_on_pages_with_code():
     meta, body = builder.load_post(ROOT / 'posts/bitwarden-to-1password.md')
     assert 'copy-btn' not in builder.render_article(meta, body).split('</style>')[1]
