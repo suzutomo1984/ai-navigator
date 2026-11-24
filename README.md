@@ -235,7 +235,14 @@ playwright-cli close
    gh api "repos/suzutomo1984/ai-navigator/commits?sha=gh-pages&per_page=1" --jq '.[0].commit.author.date'
    ```
    **実行が success でも、配信の段だけ失敗していることがあります**（配信の段は失敗しても全体を止めない設定）。だからこの確認を飛ばしません。
-7. Cloudflare が `gh-pages` から作り直すのを待つ（20〜60秒ほど）。
+7. Cloudflare が `gh-pages` から作り直すのを待つ（20〜60秒ほど）。作り直しが成功したかは、`gh-pages` の最新 commit の check-run「Cloudflare Pages」で確かめる。
+   ```powershell
+   gh api "repos/suzutomo1984/ai-navigator/commits/gh-pages/check-runs" --jq '.check_runs[] | select(.name=="Cloudflare Pages") | {status, conclusion, completed_at, details_url}'
+   ```
+   - `conclusion` が `success` なら手順 8 へ進む。
+   - `failure` なら、待ち続けずに配信（手順 4〜6）を1回だけやり直す。
+   - 2回続けて `failure` なら止めて、Cloudflare の管理画面のログ（`details_url`）を友也に見てもらう。
+   - 理由: 2026-11-25（日本時間）、反映の失敗に気づかず、本番の表示が変わるのをずっと待っていた。
 8. 本番に届いたかを、本文で確かめる。直した箇所に固有の文字列を探します。
    ```powershell
    $nc = [DateTimeOffset]::Now.ToUnixTimeSeconds()
@@ -319,6 +326,7 @@ playwright-cli close
 | 本番が古い日付のまま | パーソナルピックの実行結果（自動ニュース配信ではなく） | 配信するのはパーソナルピックです。自動ニュース配信が成功でも、配信は別です |
 | パーソナルピックは success なのに本番が古い | ③の手順 6（`gh-pages` の時刻）と、実行ログの `記事数激減ガード` `parse_news.py 実行失敗` | 配信の段は失敗しても全体を success にします |
 | 記事数が激減したと止まった | `$env:OGP_BUDGET_SEC='0'; python parse_news.py` を手元で走らせ、最新日付が出るか（終わったら `Remove-Item Env:OGP_BUDGET_SEC` と、[AGENTS.md](AGENTS.md) の約束事 4 のとおり書き換わったファイルを戻す） | 2026-06-17、サムネ取得が遅すぎて書き出し前に止まったことがあります |
+| `gh-pages` は新しいのに本番が変わらない | `gh-pages` の最新 commit の check-run「Cloudflare Pages」（③の手順 7） | Cloudflare の作り直しが失敗していることがあります。失敗なら配信を1回やり直します |
 | 直したのに見た目が変わらない | ③の手順 8 で本番の本文に届いているか | 届いていればブラウザのキャッシュです。届いていなければ配信がまだか、直した場所が違います |
 | 本番の URL が `200` を返すのにおかしい | `Content-Type` と本文 | 存在しないパスにも、TOP の HTML が `200` で返ります |
 | Python から本番を叩くと `403` | User-Agent を変える | Cloudflare が `Python-urllib` を弾きます。PowerShell と curl は通ります（2026-08-12 の観察。今回は PowerShell で通ることだけ確かめた） |
