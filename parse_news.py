@@ -11,10 +11,12 @@ import sys
 import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from html.parser import HTMLParser
 import urllib.parse
 import xml.etree.ElementTree as ET
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from xml.sax.saxutils import escape as xml_escape
 
 if hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -35,7 +37,11 @@ INDEX_FILE = Path(__file__).parent / "index.html"
 ABOUT_FILE = Path(__file__).parent / "about.html"
 NEWS_FILE = Path(__file__).parent / "news.html"
 OFFICIAL_FILE = Path(__file__).parent / "official.html"
+# 手書きの悩みごとページ。1ページ = guide/<slug>.html。無い・空でもsitemap生成は続ける。
+GUIDE_DIR = Path(__file__).parent / "guide"
 BASE_URL = "https://ai-navigator.dev"
+# article:modified_time / article:published_time の日付部分。時刻があっても日だけ使う。
+_GUIDE_DAY = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:$|T)")
 
 # app.js の isValidArticle と同じURL検証。描画件数と掲載件数が再びずれないよう、
 # どちらかの仕様を変更するときは両方を同期すること。
@@ -882,11 +888,128 @@ def update_about_stats(meta: dict, dates_meta: list[dict]) -> None:
     print(f"✅ about.html の数字を更新: {total:,}本 / {official:,}本 / {days}日分")
 
 
-def generate_sitemap(editions_path: Path | None = None) -> None:
-    """Generate the sitemap for fixed pages and published morning editions."""
+class _GuideMetaParser(HTMLParser):
+    """guide/*.html から canonical と記事日付だけを拾う。"""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.canonical: str | None = None
+        self.modified: str | None = None
+        self.published: str | None = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attr = {key.lower(): (value or "") for key, value in attrs}
+        if tag == "link":
+            rel = attr.get("rel", "").lower().split()
+            if "canonical" in rel and self.canonical is None:
+                self.canonical = attr.get("href", "").strip()
+            return
+        if tag != "meta":
+            return
+        prop = attr.get("property", "").strip().lower()
+        content = attr.get("content", "").strip()
+        if prop == "article:modified_time" and self.modified is None:
+            self.modified = content
+        elif prop == "article:published_time" and self.published is None:
+            self.published = content
+
+
+def _read_guide_meta(html: str) -> tuple[str | None, str | None, str | None]:
+    parser = _GuideMetaParser()
+    parser.feed(html)
+    parser.close()
+    return parser.canonical, parser.modified, parser.published
+
+
+def _guide_day(value: str) -> str | None:
+    """meta の content から YYYY-MM-DD を取り出す。時刻やタイムゾーンは日に換算しない。"""
+    match = _GUIDE_DAY.match(value.strip())
+    if not match:
+        return None
+    day = match.group(1)
+    try:
+        date.fromisoformat(day)
+    except ValueError:
+        return None
+    return day
+
+
+def _warn_guide_skip(filename: str, reason: str) -> None:
+    print(f"⚠️ 悩みごとページをsitemapから除外: {filename} — {reason}")
+
+
+def _guide_lastmod(modified: str | None, published: str | None) -> tuple[str | None, str | None]:
+    """更新日を返す。modified が無いときだけ published を使う。壊れた日付はフォールバックしない。"""
+    if modified is not None:
+        day = _guide_day(modified)
+        if day:
+            return day, None
+        return None, f"article:modified_time の日付を読めません: {modified!r}"
+    if published is not None:
+        day = _guide_day(published)
+        if day:
+            return day, None
+        return None, f"article:published_time の日付を読めません: {published!r}"
+    return None, "article:modified_time も article:published_time もありません"
+
+
+def _guide_sitemap_entries(guide_dir: Path) -> list[str]:
+    """guide/*.html を sitemap の <url> にする。_ で始まるファイルと不正なページは入れない。"""
+    if not guide_dir.is_dir():
+        return []
+    try:
+        paths = sorted(guide_dir.glob("*.html"), key=lambda path: path.name)
+    except OSError as exc:
+        print(f"⚠️ guide/ を読めないため悩みごとページをsitemapに入れません: {exc}")
+        return []
+
+    entries: list[str] = []
+    for path in paths:
+        # _ で始まる下書きは sitemap に入れない。ひな形の実体は docs/guide-page-template.html。
+        if path.name.startswith("_") or not path.is_file():
+            continue
+        slug = path.stem
+        if not slug:
+            _warn_guide_skip(path.name, "ファイル名からslugを作れません")
+            continue
+        loc = f"{BASE_URL}/guide/{slug}"
+        try:
+            html = path.read_text(encoding="utf-8")
+            canonical, modified, published = _read_guide_meta(html)
+        except Exception as exc:
+            _warn_guide_skip(path.name, f"読めません ({type(exc).__name__}: {exc})")
+            continue
+        if not canonical:
+            _warn_guide_skip(path.name, "canonicalがありません")
+            continue
+        if canonical != loc:
+            _warn_guide_skip(
+                path.name,
+                f"canonicalが公開URLと一致しません（ページ: {canonical} / sitemap: {loc}）",
+            )
+            continue
+        lastmod, date_problem = _guide_lastmod(modified, published)
+        if date_problem or not lastmod:
+            _warn_guide_skip(path.name, date_problem or "更新日がありません")
+            continue
+        entries.append(
+            "  <url>\n"
+            f"    <loc>{xml_escape(loc)}</loc>\n"
+            f"    <lastmod>{xml_escape(lastmod)}</lastmod>\n"
+            "    <changefreq>monthly</changefreq>\n"
+            "    <priority>0.6</priority>\n"
+            "  </url>"
+        )
+    return entries
+
+
+def generate_sitemap(editions_path: Path | None = None, guide_dir: Path | None = None) -> None:
+    """Generate the sitemap for fixed pages, morning editions, and handwritten guide pages."""
     today = datetime.now(JST)
     lastmod = today.strftime("%Y-%m-%d")
     editions_path = editions_path or (Path(__file__).parent / "daily" / "editions.json")
+    if guide_dir is None:
+        guide_dir = GUIDE_DIR
     edition_urls = []
     if editions_path.exists():
         try:
@@ -905,13 +1028,23 @@ def generate_sitemap(editions_path: Path | None = None) -> None:
             # Cloudflare Pages redirects .html to extensionless paths; list the canonical URL.
             edition_urls.append(f"  <url>\n    <loc>{BASE_URL}/daily/{issue_date}-{issue_type}</loc>\n    <lastmod>{issue_date}</lastmod>\n    <changefreq>never</changefreq>\n    <priority>0.7</priority>\n  </url>")
 
+    # 手書きページの lastmod はビルド日ではなく、各HTMLの article:modified_time
+    # （無ければ article:published_time）。guide/ が無い・不正でもここでは落とさない。
+    # _ で始まるファイル（ひな形）は入れない。canonical は拡張子なしの公開URLと完全一致が必要。
+    guide_urls = _guide_sitemap_entries(guide_dir)
+    if guide_urls:
+        print(f"✅ 悩みごとページをsitemapに追加: {len(guide_urls)}件")
+
     # --- sitemap.xml (fixed pages plus morning editions; no .html URLs) ---
     # about は毎日更新されないので changefreq を monthly にする。
+    # 悩みごとページも毎日は更新されないので monthly / 0.6（about と同じ）。
     #
     # 【重要】拡張子 .html を付けないこと。
     # Cloudflare Pages は /news.html へのアクセスを /news へ 308 リダイレクトする。
     # sitemap が .html 付きURLを載せると「sitemapのURLが正規URLでない」状態になり、
     # Google はインデックスを保留する（2026-08-05、isPending が44日継続した実例）。
+    # guide/<slug>.html も同様に https://ai-navigator.dev/guide/<slug> を載せる。
+    listed_urls = edition_urls + guide_urls
     sitemap = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
@@ -950,7 +1083,7 @@ def generate_sitemap(editions_path: Path | None = None) -> None:
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
-{chr(10).join(edition_urls)}
+{chr(10).join(listed_urls)}
 </urlset>"""
     SITEMAP_FILE.write_text(sitemap, encoding="utf-8")
 
