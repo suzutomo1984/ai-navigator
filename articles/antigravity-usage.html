@@ -1,0 +1,240 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">  <!-- 旧ドメイン(ai-news-eev.pages.dev)からの来訪を独自ドメインへ転送する。
+       note記事・過去のSNS投稿に旧URLが残っており、Cloudflare Pagesでは
+       pages.dev を301転送する手段が無いため（2026-08-16に_redirects・
+       Redirect Rulesの両方を実測して不可を確認）、クライアント側で転送する。
+       GA4より前に置き、旧ドメインでの計測発火とチラつきを防ぐ。 -->
+  <script>
+    (function () {
+      if (location.hostname === "ai-news-eev.pages.dev") {
+        location.replace("https://ai-navigator.dev" + location.pathname + location.search + location.hash);
+      }
+    })();
+  </script>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-NNQDZVDZ');</script>
+  <!-- End Google Tag Manager -->
+  <script>
+    // GTM移行後もJS側の gtag(...) 呼び出しを生かすためのスタブ。
+    // 実体は dataLayer.push なので、GTM がそのまま受け取る。
+    // ⚠️ これを消すと app.js の typeof ガードが false になり
+    //    select_content / select_item が静かに停止する（JSエラーは出ない）。
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+  </script>
+
+<title>Antigravityの使い方。非エンジニアが1年仕事で回した手順と実例 | AI Navigator</title><meta name="description" content="Google Antigravityの使い方を2026年11月時点の公式仕様と1年間の実務記録で解説。AppとIDEの選び方、日本語化、無料枠と最新モデル、CLIやMCPの活用、つまずきまで整理します。"><meta property="og:title" content="Antigravityの使い方。非エンジニアが1年仕事で回した手順と実例"><meta property="og:description" content="Google Antigravityの使い方を2026年11月時点の公式仕様と1年間の実務記録で解説。AppとIDEの選び方、日本語化、無料枠と最新モデル、CLIやMCPの活用、つまずきまで整理します。"><meta property="og:type" content="article"><meta property="og:url" content="https://ai-navigator.dev/articles/antigravity-usage"><meta property="og:image" content="https://ai-navigator.dev/ogp.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Antigravityの使い方。非エンジニアが1年仕事で回した手順と実例"><meta name="twitter:description" content="Google Antigravityの使い方を2026年11月時点の公式仕様と1年間の実務記録で解説。AppとIDEの選び方、日本語化、無料枠と最新モデル、CLIやMCPの活用、つまずきまで整理します。">  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css"><link rel="canonical" href="https://ai-navigator.dev/articles/antigravity-usage"><script type="application/ld+json">[{"@context": "https://schema.org", "@type": "Article", "headline": "Antigravityの使い方。非エンジニアが1年仕事で回した手順と実例", "description": "Google Antigravityの使い方を2026年11月時点の公式仕様と1年間の実務記録で解説。AppとIDEの選び方、日本語化、無料枠と最新モデル、CLIやMCPの活用、つまずきまで整理します。", "dateModified": "2026-11-24", "author": {"@type": "Organization", "name": "AI Navigator"}, "publisher": {"@type": "Organization", "name": "AI Navigator"}, "mainEntityOfPage": "https://ai-navigator.dev/articles/antigravity-usage", "datePublished": "2026-11-25"}, {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Antigravityは無料でどこまで使えますか", "acceptedAnswer": {"@type": "Answer", "text": "18歳以上の個人Googleアカウントがあれば月額0円で始められます。Antigravity App・IDE・CLI・IDE拡張の全機能と無制限のTab補完が使え、エージェントの実行枠は週ごとに回復します。2026年11月30日にClaude 4.6系とGPT-OSS-120bが削除されたあと、無料プランで選べる主な推論モデルはGemini 3.8 Flashになります。"}}, {"@type": "Question", "name": "Antigravityの画面は日本語にできますか", "acceptedAnswer": {"@type": "Answer", "text": "Antigravity IDE（単体エディタ版）は拡張機能からJapanese Language Pack for Visual Studio Codeを入れて再起動するとメニューが日本語になります。VS Codeなどの拡張機能版もエディタ本体の言語設定に従います。一方、Antigravity AppとAntigravity CLIには2026年11月時点で画面表示を切り替える設定がありません。AIの返答と計画書は、~/.gemini/GEMINI.mdに日本語で回答するルールを書いておけばどの版でも日本語にそろえられます。"}}, {"@type": "Question", "name": "会社のGoogleアカウント（Google Workspace）でも使えますか", "acceptedAnswer": {"@type": "Answer", "text": "Google Workspaceの契約にはAntigravityの有料枠やAIクレジットは含まれません。管理者がブロックしていなければごく限られた初期枠でサインインできる場合がありますが、本格的に業務利用するには個人のGoogleアカウントで使うか、Google Cloudプロジェクトの従量課金（Pay As You Go）またはGemini Enterpriseを契約する必要があります。また、法人アカウントでのサインインに対応するのはApp・CLI・IDE拡張のみで、単体のAntigravity IDEは非対応です。"}}, {"@type": "Question", "name": "非エンジニアでコードが書けなくても使えますか", "acceptedAnswer": {"@type": "Answer", "text": "使えます。2026年11月時点のAntigravity App（v2.30.0以降）には、Gitやターミナルを隠して文書作成や調べものに集中できるKnowledge Workレイアウトが用意されています。私自身もコードを書けませんが、ファイル整理、アクセス解析のレポート作成、定型メールの仕分け判定、記事のファクトチェック補助など日々の業務で1年間使い続けています。"}}, {"@type": "Question", "name": "入力したデータがAIの学習に使われないようにできますか", "acceptedAnswer": {"@type": "Answer", "text": "個人アカウントで使う場合は、設定（Settings）のAccountにあるEnable Telemetryをオフにすることで、モデル改善向けの収集からオプトアウトできます。法人向けのGemini Enterprise契約では、Google Cloudの利用規約のもとでプロンプトやコードがモデル学習に使われないことが明記されています。"}}, {"@type": "Question", "name": "旧Gemini CLIからはどう移行しますか", "acceptedAnswer": {"@type": "Answer", "text": "個人向けのGemini CLIを使っていた場合、Antigravity CLI（agy）へ移行できます。GEMINI.mdとAGENTS.mdはそのまま引き継がれ、拡張機能はagy plugin import geminiコマンドで変換できます。プロジェクト固有のスキル置き場は.gemini/skills/から.agents/skills/へ、MCP設定はmcp_config.jsonへ移します。"}}]}, {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "TOP", "item": "https://ai-navigator.dev/"}, {"@type": "ListItem", "position": 2, "name": "記事", "item": "https://ai-navigator.dev/articles/"}, {"@type": "ListItem", "position": 3, "name": "Antigravityの使い方。非エンジニアが1年仕事で回した手順と実例", "item": "https://ai-navigator.dev/articles/antigravity-usage"}]}]</script><style>
+#article-main { max-width:760px; margin:var(--header-h) auto 0; padding:30px 22px 100px; line-height:1.8; overflow-wrap:anywhere; }
+#article-main h1 { font-family:"Noto Serif JP",serif; font-size:clamp(27px,5vw,40px); line-height:1.4; margin:12px 0; }
+#article-main h2 { font-size:23px; border-bottom:1px solid var(--rule-strong); margin:42px 0 14px; padding-bottom:8px; scroll-margin-top:calc(var(--header-h) + 16px); }
+#article-main h3 { font-size:18px; font-weight:700; margin:28px 0 8px; }
+#article-main p, #article-main ul, #article-main ol { margin:14px 0; line-height:1.8; }
+#article-main ul, #article-main ol { padding-left:1.5em; }
+.crumb,.article-meta { color:var(--ink-muted); font-size:12px; }
+.eyebrow { color:var(--brand-red); font-weight:700; font-size:12px; margin-top:20px; }
+.answer { border-left:3px solid var(--brand-red); background:rgba(255,51,95,.06); padding:16px; margin:24px 0; }
+.answer-label { display:block; color:var(--brand-red); font-size:12px; font-weight:700; }
+.draft-banner { padding:14px 16px; margin-bottom:24px; border:2px solid var(--brand-red); border-radius:var(--radius-sm); background:var(--paper); color:var(--brand-red); font-weight:700; overflow-wrap:anywhere; }
+.draft-badge { display:inline-block; color:var(--brand-red); border:1px solid var(--brand-red); border-radius:var(--radius-sm); padding:1px 7px; font-size:12px; font-weight:700; }
+.article-image { margin:22px 0; } .article-image img { display:block; max-width:100%; height:auto; }
+.article-body ul > li, .sources ul > li { list-style:disc; }
+.article-body ol > li { list-style:decimal; }
+.article-toc { border:1px solid var(--rule); border-radius:var(--radius-sm); background:var(--paper); padding:14px 18px; }
+.article-toc summary { cursor:pointer; font-weight:700; }
+.article-toc summary::before { content:'＋'; margin-right:8px; }
+.article-toc[open] summary::before { content:'−'; }
+#article-main .article-toc ol { margin:12px 0 0; padding-left:1.6em; }
+.article-toc li { list-style:decimal; margin:6px 0; line-height:1.7; }
+.article-toc a { color:var(--ink); }
+.placeholder { border:1px dashed var(--rule-strong); aspect-ratio:16/9; display:grid; place-items:center; margin:22px 0; padding:16px; text-align:center; color:var(--ink-muted); }
+.sources { border-top:1px solid var(--rule); margin-top:40px; padding-top:16px; font-size:13px; }
+.table-wrap { overflow-x:auto; max-width:100%; } table { border-collapse:collapse; font-size:14px; } th,td { border:1px solid var(--rule); padding:8px; }
+#article-main code { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace; font-size:.88em; color:#a3123a; background:#ece4d1; border:1px solid var(--rule); border-radius:4px; padding:.05em .35em; white-space:nowrap; overflow-wrap:normal; -webkit-box-decoration-break:clone; box-decoration-break:clone; }
+#article-main code.long { white-space:normal; overflow-wrap:anywhere; }
+.code-block { margin:10px 0 22px; border-radius:var(--radius-sm); background:#25231f; color:#f7f3e8; overflow:hidden; max-width:100%; }
+.code-head { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 8px 6px 14px; border-bottom:1px solid rgba(247,243,232,.16); font-size:12px; }
+.code-lang { color:#cfc7b6; font-weight:700; letter-spacing:.02em; }
+.copy-btn { font:inherit; font-size:12px; font-weight:700; color:#f7f3e8; background:transparent; border:1px solid rgba(247,243,232,.4); border-radius:4px; padding:3px 10px; cursor:pointer; min-width:7.5em; }
+.copy-btn:hover, .copy-btn:focus-visible { background:rgba(247,243,232,.12); }
+.copy-btn.copied { color:#25231f; background:#8fd6a1; border-color:#8fd6a1; }
+#article-main .code-block pre { margin:0; padding:12px 14px; overflow-x:auto; white-space:pre; overflow-wrap:normal; line-height:1.6; }
+#article-main .code-block code { color:inherit; background:none; border:0; padding:0; font-size:14px; white-space:pre; overflow-wrap:normal; }
+.article-card { display:block; padding:22px 0; border-bottom:1px solid var(--rule); color:inherit; } .article-card h2 { margin:0 0 8px!important; border:0!important; } .article-card p { margin:4px 0!important; }
+</style></head><body>  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NNQDZVDZ"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <header id="header">
+    <a href="/" id="logo">
+      <span id="logo-icon">Ai</span>
+      <div id="logo-group">
+        <span id="logo-text">AI Navigator</span>
+        <span id="logo-tagline">AIニュースを、現場の言葉に。</span>
+      </div>
+    </a>
+
+    <nav id="tabbar">
+      <a class="tab-btn" href="/">🏠 TOP</a>
+      <a class="tab-btn" href="/news">📰 AIニュース</a>
+      <a class="tab-btn" href="/daily/">🌅 朝刊</a>
+      <a class="tab-btn" href="/official">📦 リリースノート</a>
+      <a class="tab-btn active" href="/articles/">📝 記事</a>
+      <a class="tab-btn" href="/about">🛠️ 作り方</a>
+    </nav>
+
+    <div style="flex-shrink:0; width:1px;"></div>
+  </header>
+
+  <!-- ボトムナビ -->
+  <nav id="bottom-nav">
+    <a class="bnav-item" href="/">
+      <span class="bnav-icon">🏠</span>
+      <span class="bnav-label">TOP</span>
+    </a>
+    <a class="bnav-item" href="/news">
+      <span class="bnav-icon">📰</span>
+      <span class="bnav-label">ニュース</span>
+    </a>
+    <a class="bnav-item" href="/daily/">
+      <span class="bnav-icon">🌅</span>
+      <span class="bnav-label">朝刊</span>
+    </a>
+    <a class="bnav-item" href="/official">
+      <span class="bnav-icon">📦</span>
+      <span class="bnav-label">リリース</span>
+    </a>
+    <a class="bnav-item active" href="/articles/">
+      <span class="bnav-icon">📝</span>
+      <span class="bnav-label">記事</span>
+    </a>
+    <a class="bnav-item" href="/about">
+      <span class="bnav-icon">🛠️</span>
+      <span class="bnav-label">作り方</span>
+    </a>
+  </nav>
+
+<main id="article-main"><nav class="crumb"><a href="/">TOP</a> › <a href="/articles/">記事</a> › Antigravityの使い方。非エンジニアが1年仕事で回した手順と実例</nav><div class="eyebrow">AI実録</div><h1>Antigravityの使い方。非エンジニアが1年仕事で回した手順と実例</h1><div class="article-meta">確認日 2026-11-24 ・ 公開 2026-11-25 ・ AI Navigator</div><aside class="answer"><span class="answer-label">先に結論</span>非エンジニアがAntigravityを始めるなら、まず個人のGoogleアカウント（無料）でデスクトップ版のAntigravity Appを入れ、日本語の応答ルールを1つ書いてから小さなファイル整理を1回試す流れが最も迷いません。慣れてきたらCLI（agy）やMCPをつなぐと、毎日の定型作業まで任せられます。</aside><details class="article-toc" open><summary>目次</summary><ol><li><a href="#sec-1">Antigravityの4つの入口。非エンジニアは何から選ぶか</a></li><li><a href="#sec-2">インストールと初期設定の手順</a></li><li><a href="#sec-3">Antigravityを日本語化する方法（画面表示とAIの返答）</a></li><li><a href="#sec-4">最初の1回を通しで動かしてみる</a></li><li><a href="#sec-5">料金プランと使えるモデル（2026年11月時点）</a></li><li><a href="#sec-6">非エンジニアが毎日の仕事で回している実例</a></li><li><a href="#sec-7">使い続ける中でつまずいた点と対処</a></li><li><a href="#sec-8">よくある質問</a></li><li><a href="#sec-9">まとめ</a></li></ol></details><script>(function(){const toc=document.currentScript.previousElementSibling;const mobile=window.matchMedia("(max-width: 768px)");function update(){toc.open=!mobile.matches;} update();if(mobile.addEventListener) mobile.addEventListener("change",update);else if(mobile.addListener) mobile.addListener(update);})();</script><article class="article-body"><p>Google Antigravityは、文章で指示を出すとAIエージェントが計画を立て、手元のファイル編集やコマンド実行、ブラウザでの確認まで進めてくれるプラットフォームです。2025年11月に登場してから形が大きく変わり、2026年5月の2.0以降はアプリ・IDE・CLI・SDKの複数の入口が並ぶ構成になりました。</p>
+<p>私はコードをほとんど書けない非エンジニアですが、Web制作やマーケティング、経理まわりの実務で2025年11月からAntigravityを使い続けてきました。作業記録に残っているだけでも2026年11月までに159日分あり、直近の6か月（2026年6月〜11月）では81日分の業務で使っています。</p>
+<p>この記事では、2026年11月時点の公式ドキュメントで確かめたインストール・日本語化・料金・最新モデルの仕様と、私が1年間毎日の仕事で回して見えた使い方やつまずきをまとめて紹介します。</p>
+<h2 id="sec-1">Antigravityの4つの入口。非エンジニアは何から選ぶか</h2>
+<p>Antigravityを使い始めるときに最初につまずきやすいのが、「どれを入れればよいのか」という点です。2025年11月ごろの記事はVS Codeに似たエディタ画面だけを前提に書かれていますが、2026年11月時点の公式ドキュメントでは次の入口に分かれています。</p>
+<div class="table-wrap"><table><thead><tr><th>入口</th><th>何をするためのものか</th><th>向いている場面</th></tr></thead><tbody><tr><td>Antigravity App</td><td>エージェントに仕事を任せ、計画や成果物を確認するデスクトップアプリ（コードエディタ無し）</td><td>非エンジニアの最初の1歩、調べもの・文章作成・複数タスクの並行管理</td></tr><tr><td>Antigravity IDE / IDE拡張</td><td>エディタの中で補完（Tab）やエージェントを使う開発環境（VS Code・JetBrains等の拡張もあり）</td><td>ファイルの中身を画面で見ながら一緒に編集したいとき、日本語のメニュー表示がほしいとき</td></tr><tr><td>Antigravity CLI（<code>agy</code>）</td><td>ターミナルからコマンドで動かす版</td><td>定期実行やスクリプト組み込み、複数のAIツールを並べて使うとき</td></tr><tr><td>Antigravity SDK</td><td>Pythonのプログラムにエージェントを組み込むための開発キット</td><td>自社アプリや自動処理パイプラインの開発</td></tr></tbody></table></div>
+<p>中身のAIエージェントや使えるモデル、ルールやMCPの仕組みは共通で、異なるのは操作する画面だけです。非エンジニアが最初に触るなら、まずは<strong>Antigravity App</strong>から入るのが自然です。</p>
+<p>特にApp（v2.30.0以降）では、個人のGoogleアカウントで初回ログインしたときに仕事の種類を選ぶ画面が追加され、<strong>Knowledge Work</strong>と<strong>Software Engineering</strong>の2種類のレイアウトを切り替えられるようになりました。Knowledge Workを選ぶと、Gitのブランチ操作やターミナル、コード差分の細かい表示が隠れ、会話とフォルダ内の文書・成果物に集中できる画面になります。あとからSettingsのGeneralにあるInterface Layoutでいつでも切り替えられます。</p>
+<p>一方、メニュー表示そのものを日本語にしたい場合や、フォルダ内のテキストファイルを横で開きながら編集したい場合は、VS Codeベースの<strong>Antigravity IDE</strong>の方が馴染みやすい場面もあります。私はIDEから使い始め、途中でAppやCLI（<code>agy</code>）へと広げてきました。</p>
+<h2 id="sec-2">インストールと初期設定の手順</h2>
+<p>Antigravityはブラウザ上のチャットではなく、手元のPCにインストールして使うソフトです。公式のGet startedに記載されている対応OSは、2026年11月時点で次のとおりです。</p>
+<ul><li>Windows: Windows 10（64ビット）またはWindows 11（x64 / ARM64）</li><li>macOS: Antigravity AppはmacOS 13（Ventura）以降、Antigravity IDEはmacOS 12（Monterey）以降（Apple Silicon / 64ビットIntel）</li><li>Linux: glibc 2.28以上、glibcxx 3.4.25以上（Ubuntu 20以降、Debian 10以降、Fedora 36以降など）</li></ul>
+<p>利用には<strong>18歳以上のGoogleアカウント</strong>が必要です。日本は公式FAQの対象地域に含まれています。ただし、会社や学校の独自ドメインで管理されているGoogle Workspaceアカウントは個人のAIプランの対象外となり、既定ではごく限られた枠しか使えないか、管理者の設定によってはサインインできません。試すときは個人のGmailアカウントで始めるのが確実です。</p>
+<h3>Antigravity Appの導入手順</h3>
+<ol><li><a href="https://antigravity.google/download">公式のダウンロードページ</a>を開き、使っているOSのインストーラーをダウンロードする（Windowsの一般的なPCはx64の<code>.exe</code>、MacはApple SiliconまたはIntelの<code>.dmg</code>）</li><li>Windowsは<code>.exe</code>を実行してウィザードどおりに進める。Macは<code>.dmg</code>を開き、AntigravityをApplicationsフォルダへドラッグする</li><li>アプリを起動して個人のGoogleアカウントでサインインする</li><li>初回起動時に仕事の種類を聞かれたら、非エンジニアの業務なら<strong>Knowledge Work</strong>を選ぶ（コード作業も見るならSoftware Engineeringを選ぶ）</li><li>利用規約とデータの取り扱い（Terms &amp; Data Use）を確認して完了する</li></ol>
+<figure class="article-image"><img src="/assets/ag-01-download.webp" alt="Antigravity公式ダウンロードページ。macOS・Windows・Linuxを選ぶと、AppとCLIのダウンロードボタンが出る"></figure>
+<figure class="article-image"><img src="/assets/ag-02-layout.webp" alt="Antigravity AppのSettingsにあるInterface Layout。Knowledge WorkとSoftware Engineeringはあとからここで切り替えられる"></figure>
+<h3>使い始める前に確認しておきたい2つの設定</h3>
+<p>セットアップが終わったら、業務の資料を触らせる前に左下のSettingsから次の2点を確認しておきます。</p>
+<p>1つ目は<strong>データの学習利用のオプトアウト</strong>です。個人のGoogleアカウントで利用する場合、設定のAccountにある<strong>Enable Telemetry</strong>がオンになっていると、やり取りの記録がAntigravityやモデルの改善に使われます。公式FAQにも設定画面からいつでもオフにできると明記されているため、仕事で使う前にオフにしておくと安心です（なお、オフにしてもサービス提供や安全確認のための処理は残るため、パスワードや顧客の機密情報をそのまま貼り付けない運用は別に守ります）。</p>
+<p>2つ目は<strong>権限（Permission Preset）</strong>です。SettingsのGlobal Permissionsでは、エージェントがファイル編集やコマンドを実行するときにどこまで確認を挟むかを<code>Request Review</code>・<code>Default</code>・<code>Auto</code>・<code>Turbo</code>から選べます。慣れないうちは勝手にコマンドが走らない<code>Default</code>または<code>Request Review</code>のままにしておき、確認のメッセージを読みながら進める方が事故を防げます。</p>
+<h2 id="sec-3">Antigravityを日本語化する方法（画面表示とAIの返答）</h2>
+<p>「Antigravity 日本語化」で調べる人の多くが戸惑うのは、<strong>画面のメニュー表記</strong>と<strong>AIの返答言語</strong>が別々に動いている点です。さらに、App・IDE・CLIのどれを使うかでメニューを日本語にできるかどうかが変わります。</p>
+<div class="table-wrap"><table><thead><tr><th>対象</th><th>画面メニューの日本語化（2026年11月時点）</th><th>AIの返答・計画書の日本語化</th></tr></thead><tbody><tr><td>Antigravity IDE</td><td>拡張機能（<code class="long">Japanese Language Pack for Visual Studio Code</code>）で可能</td><td>ルールファイル（<code>GEMINI.md</code> / <code>AGENTS.md</code>）で可能</td></tr><tr><td>IDE拡張（VS Code等）</td><td>エディタ本体の言語設定をそのまま引き継ぐ</td><td>ルールファイルで可能</td></tr><tr><td>Antigravity App</td><td>公式のSettingsに表示言語の切替項目なし（メニューは英語のまま）</td><td>ルールファイルで可能</td></tr><tr><td>Antigravity CLI（<code>agy</code>）</td><td>メニューやヘルプは英語のまま</td><td>ルールファイルで可能</td></tr></tbody></table></div>
+<p>私は2026年8月にApp（2.0）の画面日本語化を調べた際も、Appには手動の言語切替ボタンがなく、IDE側だけ拡張機能で日本語化できる状態であることを確かめました。AppやCLIはメニューが英語のままでも、入力欄には最初から日本語で指示を出せます。</p>
+<h3>画面メニューを日本語にする手順（Antigravity IDE）</h3>
+<p>Antigravity IDEはVS Codeをもとに作られているため、次の手順でメニューを日本語に変えられます。私も最初に使い始めた2025年12月にこの手順で英語の壁を下げました。</p>
+<ol><li>画面左の拡張機能アイコンを開く（Windowsは<code>Ctrl+Shift+X</code>、Macは<code>Cmd+Shift+X</code>）</li><li>検索欄に<code>Japanese</code>と入力し、<strong>Japanese Language Pack for Visual Studio Code</strong>を選ぶ</li><li><code>Install</code>をクリックし、右下に表示される<code class="long">Change Language and Restart</code>を押して再起動する</li></ol>
+<figure class="article-image"><img src="/assets/ag-03-japanese.webp" alt="Antigravity IDEの拡張機能でJapanese Language Packを検索した画面。一番上がJapanese Language Pack for Visual Studio Code（画像はインストール済みの状態）"></figure>
+<h3>AIの返答と計画書を日本語で固定する手順（App・IDE・CLI共通）</h3>
+<p>メニューよりも実務で困りやすいのは、長いやり取りの途中でAIの返答や実装計画書（Artifacts）が英語に戻ってしまう現象です。これを防ぐには、公式のRulesドキュメントで案内されている<strong>グローバルルールファイル</strong>を1つ作っておきます。</p>
+<p>ユーザーのホームディレクトリ配下に<code>~/.gemini/GEMINI.md</code>（Windowsならユーザーフォルダ直下の<code>.gemini\GEMINI.md</code>。<code>~/.gemini/AGENTS.md</code>でも可）というテキストファイルを作り、次のように書くだけでApp・IDE・CLIのすべてに適用されます。</p>
+<ul><li>回答、実装計画、作業のまとめはすべて日本語で書く</li><li>コマンド名、ファイル名、エラーメッセージの原文は翻訳せずそのまま残す</li></ul>
+<p>特定のフォルダだけに適用したいときは、その作業フォルダ直下に<code>AGENTS.md</code>または<code>GEMINI.md</code>を置きます。もし<code>.agents/rules/</code>フォルダの中にルールファイルを分けて置く場合は、先頭に<code>---</code>で囲んだYAML frontmatterと<code>trigger: always_on</code>（小文字とアンダースコア）を書く必要があります。公式ドキュメントにも、frontmatterが無かったり<code>alwaysOn</code>のように表記を間違えたりすると黙って無視されると注意書きがあります。</p>
+<h2 id="sec-4">最初の1回を通しで動かしてみる</h2>
+<p>インストールと日本語の応答ルールが済んだら、いきなり本番の業務フォルダを開かず、練習用のフォルダを作って1回だけ動かしてみます。</p>
+<ol><li>PCのわかりやすい場所に練習用のフォルダを1つ作り、メモ書きのテキストファイルなどを数件入れておく</li><li>Antigravity Appの左サイドバーから<strong>New Project</strong>（フォルダに＋が付いたアイコン）→ <strong>Add Folder</strong>でそのフォルダを登録し、<strong>Create</strong>を押す</li><li>入力欄に「このフォルダの中にあるファイル一覧と、それぞれの内容を日本語で3行ずつまとめて」と送る</li><li>エージェントが出した計画や作業結果（Artifacts）を読み、問題なければ承認する</li></ol>
+<p>Software Engineeringレイアウトを選んでいる場合、送信前に作業場所として<strong>Local mode</strong>（登録フォルダを直接編集する）と<strong>New worktree mode</strong>（Gitの別作業場所を作って編集する）の選択が出ます。Gitを使っていない普通のフォルダや、Knowledge Workレイアウトでは登録したフォルダ内でそのまま動きます。</p>
+<figure class="article-image"><img src="/assets/ag-04-first-task.webp" alt="Antigravity Appに最初の依頼を送ったところ。依頼文が右上に、エージェントの回答が下に表示される（画像はフォルダを登録せずに質問だけ送った例。回答冒頭の一部はぼかしています）"></figure>
+<h3>非エンジニアが最初に覚えた3つの操作だけ</h3>
+<p>私は2025年12月にAntigravityを使い始めたとき、機能の多さと英語メニューを見て一度立ち止まりました。そのときに全部を覚えるのをやめ、IDEでは次の3つの操作だけを先に使いました。</p>
+<ul><li><strong>元に戻す（<code>Ctrl+Z</code> / <code>Cmd+Z</code>）</strong>: AIの編集が意図と違ってもすぐ戻せるため、試すハードルが下がる</li><li><strong>コマンドパレット（<code>Ctrl+Shift+P</code> / <code>Cmd+Shift+P</code>）</strong>: メニューの場所を暗記せず、やりたいことを検索して呼び出す</li><li><strong>チャットで日本語のまま頼む（<code>Ctrl+L</code> / <code>Cmd+L</code>）</strong>: コマンドを自分で打たず、「このファイルの中身を説明して」「エラーの原因を調べて」と日本語で聞く</li></ul>
+<p>Appの操作に当てはめても考え方は同じで、検索パレット（<code>Ctrl+K</code>で過去の会話検索、<code>Ctrl+Shift+P</code>でコマンド検索）とチャット入力欄（<code>Ctrl+L</code>）から始めれば十分です。</p>
+<h2 id="sec-5">料金プランと使えるモデル（2026年11月時点）</h2>
+<p>Antigravityには単独の有料プランがなく、<strong>個人のGoogle AIプラン（Google AI Plus / Pro / Ultra）</strong>に連動して利用枠と選べるモデルが決まります。どのプランでもApp・IDE・CLI・IDE拡張の全機能と無制限のTab補完を使えます。</p>
+<p>2026年11月24日時点の公式料金ページおよびGoogleの日本向けプランページで確認した内容は以下のとおりです。</p>
+<div class="table-wrap"><table><thead><tr><th>プラン</th><th>日本の月額（税込）</th><th>Antigravityの利用枠</th><th>枠を超えたとき</th></tr></thead><tbody><tr><td>無料（個人アカウント）</td><td>0円</td><td>週ごとに回復する基本枠</td><td>回復まで待つ</td></tr><tr><td>Google AI Plus</td><td>725円</td><td>無料と同じく週ごとに回復する枠</td><td>回復まで待つ</td></tr><tr><td>Google AI Pro</td><td>2,900円</td><td>5時間ごとに回復する枠（週次上限あり）</td><td>購入済みのAIクレジットで継続可</td></tr><tr><td>Google AI Ultra（5x）</td><td>14,500円</td><td>5時間ごとに回復する上位枠（Proの5倍の使用量上限表示）</td><td>購入済みのAIクレジットで継続可</td></tr><tr><td>Google AI Ultra（20x）</td><td>32,000円</td><td>5時間ごとに回復する最上位枠（Proの20倍の使用量上限表示）</td><td>購入済みのAIクレジットで継続可</td></tr><tr><td>法人（Gemini Enterprise）</td><td>Standard/Plusは月30ドル/席〜、または席料0ドルの従量課金</td><td>Google Cloudの規約・管理下で運用</td><td>契約・予算上限の設定による</td></tr></tbody></table></div>
+<p>利用枠は「何回送れるか」という固定回数ではなく、エージェントが実行した作業の量に応じて減る仕組みです。簡単な質問なら多く送れ、複数ファイルの編集や長い調査は多く消費します。自分のAPIキーを持ち込んで枠を増やす仕組み（BYOK）には対応していません。ProとUltraで枠を超えたときにAIクレジットを自動消費するかどうかは、Settingsの<strong>AI Credit Overages</strong>で<code>Never</code>（使わない）か<code>Always</code>（自動で使う）を選べます。</p>
+<h3>プラン別に使えるモデル（2026年11月時点）</h3>
+<p>AntigravityではGoogleのGeminiだけでなく、AnthropicのClaude系モデルも選べます。2026年11月24日時点の公式ドキュメント（Choose a model）に基づく対応は次のとおりです。</p>
+<div class="table-wrap"><table><thead><tr><th>モデル</th><th>無料・Google AI Plus</th><th>Google AI Pro</th><th>Google AI Ultra</th><th>Enterprise</th></tr></thead><tbody><tr><td>Gemini 3.8 Flash</td><td>対応</td><td>対応</td><td>対応</td><td>対応</td></tr><tr><td>Gemini 4 Neon</td><td>非対応</td><td>対応（有料契約・対象端末試用）</td><td>対応</td><td>対応</td></tr><tr><td>Gemini 4 Argon</td><td>非対応</td><td>対応（有料契約・対象端末試用）</td><td>対応</td><td>対応</td></tr><tr><td>Gemini 4 Hydrogen</td><td>非対応</td><td>対応（試用除く有料契約）</td><td>対応</td><td>対応</td></tr><tr><td>Gemini 4 Carbon</td><td>非対応</td><td>非対応</td><td>対応</td><td>対応</td></tr><tr><td>Orchestrator（計画役＋実行役の自動併用）</td><td>非対応</td><td>対応（有料契約・対象端末試用）</td><td>対応</td><td>対応（構成固定）</td></tr><tr><td>Claude Sonnet 5.5 / Opus 5.5（thinking）</td><td>非対応</td><td>対応（試用除く有料契約）</td><td>対応</td><td>対応（管理者有効化）</td></tr><tr><td>Claude Sonnet 4.6 / Opus 4.6（thinking）</td><td>対応（2026年11月30日削除予定）</td><td>対応（2026年11月30日削除予定）</td><td>非対応</td><td>非対応</td></tr><tr><td>GPT-OSS-120b</td><td>対応（2026年11月30日削除予定）</td><td>対応（2026年11月30日削除予定）</td><td>対応（2026年11月30日削除予定）</td><td>非対応</td></tr></tbody></table></div>
+<p>注意点として、<strong>Claude 4.6系とGPT-OSS-120bは2026年11月30日に削除予定</strong>と公式表に明記されています。それ以降、無料プランとGoogle AI Plusで使える推論モデルはGemini 3.8 Flashが中心になります。また、多くのモデルでは推論の深さ（<code>Low</code> / <code>Medium</code> / <code>High</code>、Gemini 4 NeonとHydrogenはさらに<code>Extra</code>）を会話ごとに切り替えられます。</p>
+<p>迷ったときは、まず無料の個人アカウントでGemini 3.8 Flashを試してみてください。毎日の業務で使うようになり、週次リセットでは足りなくなったり、Gemini 4系やClaude 5.5系を使いたくなったりした段階でGoogle AI Pro（月2,900円）へ上げる流れが無駄がありません。私自身もGoogle AI Proで運用しています。</p>
+<h2 id="sec-6">非エンジニアが毎日の仕事で回している実例</h2>
+<p>インストールして試作を1つ動かすだけでも便利さを感じられますが、Antigravityが本領を発揮するのは毎日の定型業務や調査・確認に組み込んだあとです。ここでは、私が2026年6月〜11月の実務で回してきた4つの使い方を記録にもとづいて紹介します。</p>
+<h3>1. CLI（<code>agy</code>）で定型業務の定期実行を回す</h3>
+<p>Antigravityにはコマンドライン版の<strong>Antigravity CLI（<code>agy</code>）</strong>があり、ターミナルから1行で入れられます。</p>
+<p><strong>Windows（PowerShell）</strong></p>
+<div class="code-block"><div class="code-head"><span class="code-lang">PowerShell</span><button type="button" class="copy-btn" aria-label="コードをコピー">コピー</button></div><pre><code>irm https://antigravity.google/cli/install.ps1 | iex</code></pre></div>
+<p><strong>macOS・Linux</strong></p>
+<div class="code-block"><div class="code-head"><span class="code-lang">bash</span><button type="button" class="copy-btn" aria-label="コードをコピー">コピー</button></div><pre><code>curl -fsSL https://antigravity.google/cli/install.sh | bash</code></pre></div>
+<p>導入後は次のコマンドで確認できます。</p>
+<div class="code-block"><div class="code-head"><span class="code-lang">ターミナル</span><button type="button" class="copy-btn" aria-label="コードをコピー">コピー</button></div><pre><code>agy --version</code></pre></div>
+<p>更新は<code>npm</code>ではなく次のコマンドで行います（Go製のネイティブ実行ファイルのため、<code>npm list -g</code>には表示されません）。</p>
+<div class="code-block"><div class="code-head"><span class="code-lang">ターミナル</span><button type="button" class="copy-btn" aria-label="コードをコピー">コピー</button></div><pre><code>agy update</code></pre></div>
+<p>私は2026年8月21日に旧Gemini CLIを削除し、<code>agy</code>へ完全に切り替えました。</p>
+<p>現在、メールの仕分け判定や経理書類の照合・チェック、タスクの最新化といった<strong>定期実行タスク13本</strong>をAntigravity CLIで動かしています（2026年11月24日時点）。11月19日には、当時の12本すべてのモデルを<code>gemini-4-hydrogen-high</code>に固定しました。</p>
+<p>定期実行をAntigravityに寄せたきっかけは、2026年9月2日の失敗でした。別のAIツールで定期実行を組んだところ、そのツールの既定の最上位モデルが起動して週間利用枠を大きく消費していることに気づいたためです。定期処理はAntigravity CLIに寄せ、判断や長い文章作成が必要な作業だけ別のAIツールを使う分担に変えました。</p>
+<p>もう1つ大きな学びは、<strong>全部をAIに丸投げしない構造にする</strong>ことです。2026年9月3日に約800行のJSONデータをそのままAntigravity（Flash）に読ませて集計させたところ、処理が途中で止まりました。そこで、データの取得と結果の反映は決まったスクリプトに固定し、Antigravityには「1件あたり約12行に圧縮したメールを見て、返信要・タスク・情報のみを判定する」工程だけを渡す3段構造へ改めました。その結果、同日の実測では40件の判定で誤判定ゼロになり、それ以降も安定して動いています。</p>
+<p>なお、スクリプトなどから対話なしで1回だけ実行したいときは次のコマンドを使います。</p>
+<div class="code-block"><div class="code-head"><span class="code-lang">ターミナル</span><button type="button" class="copy-btn" aria-label="コードをコピー">コピー</button></div><pre><code>agy -p &quot;指示内容&quot;</code></pre></div>
+<p>ただし、作業フォルダにルールファイルを置いている環境では起動時の読み込み確認で止まり終了コード1で落ちることがありました（2026年8月21日実測）。自動化で使う場合は、確認を飛ばす<code class="long">--dangerously-skip-permissions</code>オプションと、「スクリプトが触れる範囲や書き出し先を限定する安全設計」をセットで組む必要があります。</p>
+<h3>2. MCPで外部サービスのデータに直接つなぐ</h3>
+<p><strong>MCP（Model Context Protocol）</strong>は、AIエージェントが外部サービスのデータを直接読み書きするための共通規格です。Antigravity Appならサイドバーの<code>Customizations</code> → <code>Installed</code> → <code>MCP Servers</code>から一覧で追加でき、IDEならMCP Store、CLIなら<code>/mcp</code>コマンドで管理できます。設定ファイルは公式ドキュメント上、全体共通が<code class="long">~/.gemini/config/mcp_config.json</code>、作業フォルダ専用が<code class="long">&lt;作業フォルダ&gt;/.agents/mcp_config.json</code>です。Antigravityは既定で<strong>Lazy loading</strong>（必要なときだけツールの仕様書を読み込む方式）を採用しているため、複数のMCPをつないでも毎回の消費トークンを抑えられます。</p>
+<p>私の業務環境では、2026年7月〜11月にかけてアクセス解析（GA4・Google Search Console）、ドキュメント管理（Notion）、Web検索（Exa）、ローカルで動かしている会計ソフト連携などをMCPでつなぎました。手作業でCSVを書き出してチャットに貼る手間がなくなり、期間比較の分析レポート作成や取引データの確認を会話の流れで進められます。</p>
+<figure class="article-image"><img src="/assets/ag-05-mcp.webp" alt="Antigravity AppのCustomizations › InstalledにあるMCP Serversの一覧。つないだサービスごとに使えるツールの数が出る"></figure>
+<h3>3. ルールとスキルをフォルダに置いて育て直す</h3>
+<p>毎回チャット欄に「です・ます調で書いて」「この手順で分析して」と打つのは手間がかかります。Antigravityは作業フォルダの<code>.agents/rules/</code>（旧<code>.agent/rules/</code>も互換対応）や<code class="long">.agents/skills/&lt;スキル名&gt;/SKILL.md</code>を自動で読み込むため、仕事の型をMarkdownファイルで置いておけます。</p>
+<p>公式のドキュメントでも、<strong>常に守る制約はルール、複数ステップの手順書はスキル</strong>に分ける使い方が案内されています。私の作業フォルダには2026年11月時点でルールを12個、スキルを34個置いてあり、日本語の技術記事の文章規範やアクセス解析レポートの手順などを必要なときだけ自動で読み込ませています。同じ<code>SKILL.md</code>形式は他のAIツールとも共有しやすいため、ツールをまたいでも同じ品質基準で動かせます。</p>
+<h3>4. ほかのAIツールとの役割分担と、モデル別の精度を確かめた記録</h3>
+<p>1年使い込んで感じたのは、<strong>Antigravityだけで全部を完結させようとせず、別のAIツールと得意分野で分担する方が精度もスピードも上がる</strong>という点です。私は普段、複数のターミナルを並べて動かせる作業環境を使い、計画・文章整理は別のAIツール、定期実行・一次調査・記事のファクトチェック・小規模な画面改修の実装はAntigravity、と役割を分けています。</p>
+<p>特に2026年11月に記事原稿のファクトチェックをモデル別で試した記録では、モデルごとの癖がはっきり出ました。</p>
+<ul><li><strong>Gemini 4 Argon（2026年11月10日・16日）</strong>: 他のAIが拾わなかった細かい指摘を多く見つける一方、手元の保存資料には存在しない英文を「根拠の原文」として引用してしまう現象が2回続いた（11月16日は6か所）。そのため、引用は必ず保存ファイル内を文字列検索して実在を確かめてから採用する手順に変えた</li><li><strong>Gemini 4 Hydrogen (XHigh)（2026年11月17日）</strong>: ファクトチェックの担当をこちらに切り替えて2本の記事で試したところ、引用した計24か所（13か所と11か所）がすべて保存ファイル内に実在していた。所要時間は約1時間と遅めだが、別のAIが見落としたリンク先のズレまで拾った</li><li><strong>Orchestrator (Neon)（2026年11月22日）</strong>: 動画8本（計約23分）の内容チェックを依頼したところ約15分で構成や説明不足の指摘を出せた。ただし、文字数や画面上の細かな表示に関する指摘には誤りが混ざったため、数値と画面細部の照合は別で確かめている</li></ul>
+<p>動画のチェックについては2026年11月17日の実測でも注意点が見つかりました。mp4ファイルをそのまま渡すと映像は1秒1〜2コマで見られるものの音声が渡らず、17分の動画を丸ごと読ませると会話が圧縮されて依頼内容を忘れてしまいます。音声を別ファイルに抜き出し、動画を3分ずつに分割して順番に渡す形にして初めて安定しました。</p>
+<h2 id="sec-7">使い続ける中でつまずいた点と対処</h2>
+<p>1年間使う中では、手順書だけでは分かりにくい落とし穴にも何度か遭遇しました。これから始める人が同じところで止まらないよう、特に大きかった4点をまとめます。</p>
+<h3>1. 2.0の更新でエディタ画面が見えなくなった</h3>
+<p>2026年5月のAntigravity 2.0アップデートでは、それまで1つだったIDEからエージェント管理画面が独立してAntigravity Appになり、コードエディタが無くなったように見えて戸惑いました。2026年11月現在は、エージェントに任せるならApp、コードやテキストを直接編集しながら使うならAntigravity IDEまたはVS Code等の拡張機能、と入口が整理されています。</p>
+<h3>2. 設定ファイルや<code>~/.gemini/</code>フォルダが紛らわしい</h3>
+<p>Antigravityを長く使っていると、ホームディレクトリの<code>~/.gemini/</code>配下に複数の設定フォルダができます。公式ドキュメントではグローバルのMCP設定先として<code class="long">~/.gemini/config/mcp_config.json</code>が案内されていますが、手元の環境では<code class="long">~/.gemini/antigravity/mcp_config.json</code>と<code class="long">~/.gemini/antigravity-cli/mcp_config.json</code>の2つが存在し、片方だけ直しても反映されず迷ったことがありました（2026年11月1日確認）。なお、<code>~/.gemini/</code>という名前でも旧Gemini CLIの残骸ではなくAntigravity本体の設定置き場なので、削除しないでください。設定が効かないときは、AppのCustomizations画面の「Copy Config File Path」やCLIの<code>/mcp</code>から実際に読まれている設定を確認すると早く切り分けられます。</p>
+<h3>3. Google Workspaceアカウントと他社ツール流用の規約</h3>
+<p>会社のGoogle Workspaceアカウントでそのままログインして「上限が増えない」「サインインできない」と止まるケースはよくあります。Google Workspaceの有料プランに入っていても個人のAntigravityプランは付かないため、個人利用なら個人のGmailアカウントで入り、法人として管理するならGoogle CloudのPay As You GoまたはGemini Enterpriseを選びます。</p>
+<p>また、公式FAQには<strong>Claude CodeやOpenClawなど他社製のソフトからAntigravityのログイン情報を流用する行為は利用規約違反であり、アカウント停止や解約の対象になる</strong>と明記されています。<code>agy -p</code>を他社製コーディングエージェントの内部に組み込んだり、アカウントを自動切り替えしたりする使い方も個人プランでは非対応です。他社ツールからGeminiを使いたい場合は、Google AI StudioやGemini EnterpriseのAPIキーを使う必要があります。</p>
+<h3>4. AIの回答や「完了しました」をそのまま信じない</h3>
+<p>先のファクトチェック実例のように、モデルによっては手元の資料に無い文章を根拠として書いたり、文字数や画面の数字を読み違えたりすることがあります。私が2026年9月17日に別の記事検証を回したときも、3つのAIで意見が割れた箇所があり、多数決ではなく公式ページの原文を直接開いて確認したことで誤検証を防げました。Antigravityは優秀な下調べ・下書き・判定の相棒ですが、<strong>社外に出す数字・URL・引用だけは最後に原文と突き合わせる</strong>運用にしておくと安心して使い続けられます。</p>
+<h2 id="sec-8">よくある質問</h2>
+<h3>Antigravityは無料でどこまで使えますか</h3>
+<p>18歳以上の個人Googleアカウントがあれば月額0円で始められます。Antigravity App・IDE・CLI・IDE拡張の全機能と無制限のTab補完が使え、エージェントの実行枠は週ごとに回復します。2026年11月30日にClaude 4.6系とGPT-OSS-120bが削除されたあと、無料プランで選べる主な推論モデルはGemini 3.8 Flashになります。</p>
+<h3>Antigravityの画面は日本語にできますか</h3>
+<p>Antigravity IDE（単体エディタ版）は拡張機能から<code class="long">Japanese Language Pack for Visual Studio Code</code>を入れて再起動するとメニューが日本語になります。VS Codeなどの拡張機能版もエディタ本体の言語設定に従います。一方、Antigravity AppとAntigravity CLIには2026年11月時点で画面表示を切り替える設定がありません。AIの返答と計画書は、<code>~/.gemini/GEMINI.md</code>に日本語で回答するルールを書いておけばどの版でも日本語にそろえられます。</p>
+<h3>会社のGoogleアカウント（Google Workspace）でも使えますか</h3>
+<p>Google Workspaceの契約にはAntigravityの有料枠やAIクレジットは含まれません。管理者がブロックしていなければごく限られた初期枠でサインインできる場合がありますが、本格的に業務利用するには個人のGoogleアカウントで使うか、Google Cloudプロジェクトの従量課金（Pay As You Go）またはGemini Enterpriseを契約する必要があります。また、法人アカウントでのサインインに対応するのはApp・CLI・IDE拡張のみで、単体のAntigravity IDEは非対応です。</p>
+<h3>非エンジニアでコードが書けなくても使えますか</h3>
+<p>使えます。2026年11月時点のAntigravity App（v2.30.0以降）には、Gitやターミナルを隠して文書作成や調べものに集中できる<strong>Knowledge Work</strong>レイアウトが用意されています。私自身もコードを書けませんが、ファイル整理、アクセス解析のレポート作成、定型メールの仕分け判定、記事のファクトチェック補助など日々の業務で1年間使い続けています。</p>
+<h3>入力したデータがAIの学習に使われないようにできますか</h3>
+<p>個人アカウントで使う場合は、設定（Settings）のAccountにある<strong>Enable Telemetry</strong>をオフにすることで、モデル改善向けの収集からオプトアウトできます。法人向けのGemini Enterprise契約では、Google Cloudの利用規約のもとでプロンプトやコードがモデル学習に使われないことが明記されています。</p>
+<h3>旧Gemini CLIからはどう移行しますか</h3>
+<p>個人向けのGemini CLIを使っていた場合、Antigravity CLI（<code>agy</code>）へ移行できます。<code>GEMINI.md</code>と<code>AGENTS.md</code>はそのまま引き継がれ、拡張機能は<code>agy plugin import gemini</code>コマンドで変換できます。プロジェクト固有のスキル置き場は<code>.gemini/skills/</code>から<code>.agents/skills/</code>へ、MCP設定は<code>mcp_config.json</code>へ移します。</p>
+<h2 id="sec-9">まとめ</h2>
+<ul><li>Antigravityは2026年11月時点でApp・IDE・IDE拡張・CLI・SDKの入口があり、非エンジニアの最初はApp（Knowledge Workレイアウト）かIDEから入ると迷いにくい</li><li>日本語化は「画面（IDEのみ言語パック対応）」と「AIの返答（<code>~/.gemini/GEMINI.md</code>で全版共通対応）」の2つに分けて設定する</li><li>無料の個人アカウント（Gemini 3.8 Flash・週次枠）から試せ、毎日仕事で回すなら5時間回復でGemini 4系やClaude 5.5系も使えるGoogle AI Pro（月2,900円）が目安になる</li><li>実務で安定させるコツは、前後の取得・反映をスクリプトに固定してAIに判定だけ渡すこと、引用や数値は原文で照合すること、規約違反になる他社ツールへのログイン流用を避けること</li></ul>
+<p>まずは無料の個人アカウントでAntigravityを入れ、手元の小さなフォルダ整理を1回だけ試してみてください。AntigravityのようなAIツールを非エンジニアが独学で段階的に仕事へ取り入れていく手順は、AI独学ロードマップの記事でも順にまとめていく予定です。</p></article><section class="sources"><h2>出典</h2><ul><li><a target="_blank" rel="noopener noreferrer" href="https://antigravity.google/docs/overview">Choose your Antigravity | Google Antigravity Docs</a></li><li><a target="_blank" rel="noopener noreferrer" href="https://antigravity.google/docs/getting-started">Get started | Google Antigravity Docs</a></li><li><a target="_blank" rel="noopener noreferrer" href="https://antigravity.google/download">Google Antigravity - Download</a></li><li><a target="_blank" rel="noopener noreferrer" href="https://antigravity.google/docs/settings">Settings | Google Antigravity Docs</a></li><li><a target="_blank" rel="noopener noreferrer" href="https://antigravity.google/docs/rules">Rules | Google Antigravity Docs</a></li><li><a target="_blank" rel="noopener noreferrer" href="https://antigravity.google/docs/skills">Agent skills | Google Antigravity Docs</a></li><li><a target="_blank" rel="noopener noreferrer" href="https://antigravity.google/docs/models">Choose a model | Google Antigravity Docs</a></li><li><a target="_blank" rel="noopener noreferrer" href="https://antigravity.google/docs/plans">Plans | Google Antigravity Docs</a></li><li><a target="_blank" rel="noopener noreferrer" href="https://antigravity.google/pricing">Google Antigravity - Pricing</a></li><li><a target="_blank" rel="noopener noreferrer" href="https://antigravity.google/docs/mcp">Model Context Protocol (MCP) | Google Antigravity Docs</a></li><li><a target="_blank" rel="noopener noreferrer" href="https://antigravity.google/docs/cli/reference">CLI commands | Google Antigravity Docs</a></li><li><a target="_blank" rel="noopener noreferrer" href="https://antigravity.google/docs/cli/gcli-migration">Migrating from Gemini CLI | Google Antigravity Docs</a></li><li><a target="_blank" rel="noopener noreferrer" href="https://antigravity.google/docs/faq">FAQ | Google Antigravity Docs</a></li><li><a target="_blank" rel="noopener noreferrer" href="https://gemini.google/jp/subscriptions/?hl=ja">Google AI Pro と Ultra で Gemini 4 Neon などにアクセス | Google</a></li><li><a target="_blank" rel="noopener noreferrer" href="https://codelabs.developers.google.com/getting-started-google-antigravity?hl=ja">Google Antigravity のスタートガイド | Google Codelabs</a></li></ul></section><script>(function(){
+function fallback(text){var t=document.createElement("textarea");t.value=text;t.setAttribute("readonly","");t.style.position="fixed";t.style.opacity="0";document.body.appendChild(t);t.select();var ok=false;try{ok=document.execCommand("copy");}catch(e){}document.body.removeChild(t);return ok?Promise.resolve():Promise.reject();}
+function show(btn,msg,ok){clearTimeout(btn._t);btn.textContent=msg;btn.classList.toggle("copied",ok);btn._t=setTimeout(function(){btn.textContent="コピー";btn.classList.remove("copied");},1600);}
+document.querySelectorAll(".code-block .copy-btn").forEach(function(btn){btn.setAttribute("aria-live","polite");btn.addEventListener("click",function(){
+var text=btn.closest(".code-block").querySelector("code").textContent.replace(/\n+$/,"");
+var p=(navigator.clipboard&&window.isSecureContext)?navigator.clipboard.writeText(text).catch(function(){return fallback(text);}):fallback(text);
+p.then(function(){show(btn,"コピーしました",true);},function(){show(btn,"コピーできません",false);});});});
+})();</script></main></body></html>

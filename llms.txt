@@ -1,0 +1,23 @@
+# AI Navigator
+
+> 生成AI・LLM・自動化の最新ニュースや活用事例、リリース情報を日本語で毎日お届けするメディアです。
+> 中小企業の経営者・現場担当者向けに、AIニュースを現場の言葉で紹介しています。
+
+## サイトの性質
+
+AI Navigator は外部メディアのAIニュースをキュレーションし、
+独自の日本語要約とカテゴリ分類を付与して毎日配信しています。
+記事本文は各引用元サイトにあり、当サイトは要約・分類・選定を提供しています。
+
+## 主なページ
+
+- [トップ](https://ai-navigator.dev/): 本日の重要ニュースとピックアップ
+- [ニュース一覧](https://ai-navigator.dev/news): 全カテゴリのAIニュース
+- [公式リリース](https://ai-navigator.dev/official): AI開発ツール・SDKの公式リリースノート
+- [このサイトについて](https://ai-navigator.dev/about): 運営方針と作り方
+
+- [Antigravityの使い方。非エンジニアが1年仕事で回した手順と実例](https://ai-navigator.dev/articles/antigravity-usage): Google Antigravityの使い方を2026年11月時点の公式仕様と1年間の実務記録で解説。AppとIDEの選び方、日本語化、無料枠と最新モデル、CLIやMCPの活用、つまずきまで整理します。
+- [Bitwardenから1Passwordへ移行する手順｜パスキーはiPhone転送で移せる](https://ai-navigator.dev/articles/bitwarden-to-1password): Bitwardenから1Passwordへ移行した手順を、2026年10月の実体験で解説します。PCのファイル取り込みではパスキーが移らないため、iPhoneアプリから直接転送しました。二重になった項目の片付け方と、乗り換えた理由も書いています。
+## 更新頻度
+
+1日2回（朝・夕）更新しています。
